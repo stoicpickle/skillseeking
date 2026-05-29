@@ -11,6 +11,8 @@ RULES: list[tuple[tuple[str, ...], str]] = [
     (("source quality", "credible", "reliable", "quality notes"), "score source quality"),
     (("summary", "answer", "write", "structured summary"), "write structured answer"),
     (("validate skill", "check skill.md", "skill.md"), "validate skill markdown"),
+    (("count words", "word count", "words in"), "count words"),
+    (("cluster arguments", "argument clustering", "group arguments"), "argument clustering"),
     (("contradiction", "contradictions", "disagree"), "detect contradictions"),
 ]
 
@@ -33,4 +35,3 @@ def plan_task(task_text: str) -> TaskPlan:
 
     digest = hashlib.sha1(task_text.encode("utf-8")).hexdigest()[:10]
     return TaskPlan(task_id=f"task_{digest}", task=task_text, capabilities=capabilities)
-

@@ -17,8 +17,28 @@ def run(
     task: Annotated[str, typer.Argument(help="Task text to route through local skills.")],
     skills_dir: Annotated[Path, typer.Option(help="Local skills directory.")] = Path("skills"),
     runs_dir: Annotated[Path, typer.Option(help="Run log output directory.")] = Path("runs"),
+    temporary_skills: Annotated[
+        bool,
+        typer.Option(
+            "--temporary-skills/--no-temporary-skills",
+            help="Draft and load validated Markdown-only temporary skills for missing capabilities.",
+        ),
+    ] = True,
+    scripted_skills: Annotated[
+        bool,
+        typer.Option(
+            "--scripted-skills/--no-scripted-skills",
+            help="Allow validated local scripted skills to run in a restricted subprocess.",
+        ),
+    ] = False,
 ) -> None:
-    result = run_task(task, skills_dir=skills_dir, runs_dir=runs_dir)
+    result = run_task(
+        task,
+        skills_dir=skills_dir,
+        runs_dir=runs_dir,
+        create_temporary_skills=temporary_skills,
+        allow_scripted_skills=scripted_skills,
+    )
     for stage in result.run_log.trace:
         typer.echo(stage)
     for decision in result.run_log.capability_decisions:
@@ -32,6 +52,21 @@ def run(
         typer.echo(f"Risk: {request['risk_level']}")
         typer.echo(f"Status: {request['status']}")
         typer.echo(f"Request ID: {request['id']}")
+        temporary = request.get("temporary_skill")
+        if temporary:
+            typer.echo(f"Temporary skill: {temporary['skill_name']}")
+            typer.echo(f"Validation passed: {temporary['validation_passed']}")
+            typer.echo(f"Loaded: {temporary['loaded']}")
+    for execution in result.run_log.script_executions:
+        typer.echo("")
+        typer.echo("SCRIPT_EXECUTED")
+        typer.echo(f"Skill: {execution.skill_name}")
+        typer.echo(f"Return code: {execution.returncode}")
+        typer.echo(f"Timed out: {execution.timed_out}")
+        if execution.stdout:
+            typer.echo(f"Stdout: {execution.stdout}")
+        if execution.stderr:
+            typer.echo(f"Stderr: {execution.stderr}")
     typer.echo(f"RUN_LOG {result.run_log_path}")
     if result.exit_code:
         raise typer.Exit(result.exit_code)

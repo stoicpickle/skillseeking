@@ -13,7 +13,7 @@ class SkillRegistry:
         self._rejections = sorted(rejections, key=lambda rejection: str(rejection.path))
 
     @classmethod
-    def load(cls, skills_dir: Path) -> "SkillRegistry":
+    def load(cls, skills_dir: Path, allow_scripts: bool = False) -> "SkillRegistry":
         records: list[SkillRecord] = []
         rejections: list[RejectedSkill] = []
 
@@ -27,7 +27,7 @@ class SkillRegistry:
                 rejections.append(RejectedSkill(path=skill_file, reasons=[str(exc)]))
                 continue
 
-            result = validate_parsed_skill(parsed, skills_dir)
+            result = validate_parsed_skill(parsed, skills_dir, allow_scripts=allow_scripts)
             if result.accepted and result.normalized_record is not None:
                 records.append(result.normalized_record)
             else:
@@ -46,4 +46,3 @@ class SkillRegistry:
 
     def rejections(self) -> list[RejectedSkill]:
         return list(self._rejections)
-

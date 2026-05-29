@@ -92,10 +92,22 @@ Run the M1 existing-skill demo:
 .venv/bin/skill-agent run "Extract claims from this article and write a structured summary with source-quality notes."
 ```
 
-Run the M2 missing-skill request demo:
+Run the M2 blocked-only skill request demo:
 
 ```bash
-.venv/bin/skill-agent run "Extract claims from these two sources and identify contradictions."
+.venv/bin/skill-agent run "Extract claims from these two sources and identify contradictions." --no-temporary-skills
+```
+
+Run the M3 temporary Markdown skill demo:
+
+```bash
+.venv/bin/skill-agent run "Cluster arguments from these sources."
+```
+
+Run the M4 scripted-skill demo:
+
+```bash
+.venv/bin/skill-agent run "Count words in one two three." --scripted-skills --no-temporary-skills --skills-dir tests/fixtures/scripted-skills
 ```
 
 Run tests:

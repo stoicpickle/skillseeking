@@ -6,6 +6,7 @@ from pathlib import Path
 from pydantic import ValidationError
 
 from app.models import RejectedSkill, SkillManifest, SkillRecord
+from app.script_validator import validate_script_tests
 from app.skill_parser import ParsedSkill
 
 
@@ -40,7 +41,9 @@ class ValidationResult:
         return RejectedSkill(name=self.name, path=path, reasons=self.reasons)
 
 
-def validate_parsed_skill(parsed: ParsedSkill, skills_dir: Path) -> ValidationResult:
+def validate_parsed_skill(
+    parsed: ParsedSkill, skills_dir: Path, allow_scripts: bool = False
+) -> ValidationResult:
     reasons: list[str] = []
     manifest: SkillManifest | None = None
     name = parsed.frontmatter.get("name") if isinstance(parsed.frontmatter, dict) else None
@@ -66,13 +69,31 @@ def validate_parsed_skill(parsed: ParsedSkill, skills_dir: Path) -> ValidationRe
         if parsed.path.parent.name != manifest.name:
             reasons.append("skill directory name must match frontmatter name")
 
-        if manifest.risk_level != "low":
-            reasons.append("M1 admits only low-risk skills")
+        scripts_dir = parsed.path.parent / "scripts"
+        has_scripts = scripts_dir.exists()
+
+        if has_scripts and not allow_scripts:
+            reasons.append("M1 skills cannot include scripts/")
+
+        if not has_scripts and manifest.script is not None:
+            reasons.append("script metadata requires scripts/")
+
+        if has_scripts and manifest.script is None:
+            reasons.append("scripted skills must declare script metadata")
+
+        if not has_scripts and manifest.risk_level != "low":
+            reasons.append("non-scripted skills must be low risk")
+
+        if allow_scripts and has_scripts and manifest.risk_level != "medium":
+            reasons.append("scripted skills must be medium risk")
 
         if manifest.metadata.status not in {"candidate", "stable"}:
             reasons.append("M1 admits only candidate or stable skills")
 
-        if manifest.allowed_tools:
+        if has_scripts:
+            if manifest.allowed_tools != ["python"]:
+                reasons.append("scripted skills must declare only the python tool")
+        elif manifest.allowed_tools:
             reasons.append("M1 skills cannot declare allowed tools")
 
         permissions = manifest.permissions
@@ -84,11 +105,22 @@ def validate_parsed_skill(parsed: ParsedSkill, skills_dir: Path) -> ValidationRe
             reasons.append("M1 skills cannot request network permission")
         if permissions.secrets:
             reasons.append("M1 skills cannot request secrets")
-        if permissions.execute_code:
+        if permissions.execute_code and not (allow_scripts and has_scripts):
             reasons.append("M1 skills cannot request code execution")
+        if has_scripts and not permissions.execute_code:
+            reasons.append("scripted skills must request code execution")
 
-    if (parsed.path.parent / "scripts").exists():
-        reasons.append("M1 skills cannot include scripts/")
+        if allow_scripts and has_scripts and manifest.script is not None:
+            entrypoint = (parsed.path.parent / manifest.script.entrypoint).resolve()
+            try:
+                entrypoint.relative_to(parsed.path.parent.resolve())
+            except ValueError:
+                reasons.append("script entrypoint escaped skill directory")
+            if not entrypoint.exists():
+                reasons.append("script entrypoint does not exist")
+            tests_passed, test_output = validate_script_tests(parsed.path.parent)
+            if not tests_passed:
+                reasons.append(f"script tests failed: {test_output}")
 
     scan_text = f"{_frontmatter_values_text(parsed.frontmatter)}\n{parsed.body_text_for_scan_only}"
     for pattern in SUSPICIOUS_PATTERNS:
@@ -114,6 +146,7 @@ def validate_parsed_skill(parsed: ParsedSkill, skills_dir: Path) -> ValidationRe
         compatibility=manifest.compatibility,
         validation_status=manifest.validation.status,
         path=parsed.path,
+        script=manifest.script,
     )
     return ValidationResult(True, [], normalized_record=record, name=manifest.name)
 

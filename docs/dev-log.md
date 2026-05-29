@@ -123,7 +123,7 @@ Verified:
 
 ```bash
 .venv/bin/python -m pytest -q
-.venv/bin/skill-agent run "Extract claims from these two sources and identify contradictions."
+.venv/bin/skill-agent run "Extract claims from these two sources and identify contradictions." --no-temporary-skills
 ```
 
 Result:
@@ -131,3 +131,56 @@ Result:
 - 25 tests passed.
 - Missing-skill demo emits a structured request and exits blocked.
 - M2 does not draft, validate, create, or load temporary skills.
+
+## 2026-05-29 M3 Markdown Skillsmith
+
+Implemented M3 as a deterministic Markdown-only Skillsmith.
+
+Added:
+
+- `TemporarySkillResult` contract.
+- `skillsmith` module for drafting temporary `SKILL.md` files under the local skills directory.
+- Safe YAML frontmatter emission with no scripts, tools, network, secrets, dependencies, or code execution.
+- Agent-loop integration that drafts, validates, reloads the registry, and loads the temporary skill for the current run.
+- `--no-temporary-skills` CLI flag to preserve M2 blocked-only behavior.
+- Tests for temporary skill generation, validation, loading, run logging, and M2 compatibility mode.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q
+.venv/bin/skill-agent run "Cluster arguments from these sources."
+```
+
+Result:
+
+- 31 tests passed.
+- Low-risk missing-skill tasks now draft, validate, and load a temporary Markdown skill by default.
+- Medium-risk missing-skill tasks preserve their risk level and fail M1/M3 validation until an approval path exists.
+- M3 does not generate scripts, install dependencies, use network access, access secrets, or promote skills.
+
+## 2026-05-29 M4 Scripted Skills
+
+Implemented M4 as an explicitly enabled local scripted-skill path.
+
+Added:
+
+- `ScriptSpec` and script execution log contracts.
+- Script validation via local pytest tests before registry admission.
+- `--scripted-skills` CLI flag.
+- Restricted subprocess runner with JSON stdin/stdout, timeout, captured stdout/stderr, and reduced environment.
+- Scripted `count-words` fixture skill for validation and CLI demo.
+- Tests proving scripted skills are rejected by default, admitted only when enabled, and executed with logs.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q
+.venv/bin/skill-agent run "Count words in one two three." --scripted-skills --no-temporary-skills --skills-dir tests/fixtures/scripted-skills
+```
+
+Result:
+
+- 40 tests passed.
+- Scripted skills remain opt-in.
+- M4 does not allow network, secrets, file writes, external dependencies, or untested script execution.

@@ -5,6 +5,8 @@ import re
 
 from app.models import RouteDecision, SkillRequest
 
+SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
+
 
 def create_skill_request(task_id: str, decision: RouteDecision) -> SkillRequest:
     desired_name = _desired_skill_name(decision.capability)
@@ -69,5 +71,10 @@ def _request_id(task_id: str, capability: str) -> str:
 def _desired_skill_name(capability: str) -> str:
     words = re.findall(r"[a-z0-9]+", capability.lower())
     if words and words[0] in {"detect", "extract", "compare", "score", "write", "validate"}:
-        return "-".join(words[:4])
-    return "-".join(words[:4]) or "requested-skill"
+        candidate = "-".join(words[:4])
+    else:
+        candidate = "-".join(words[:4]) or "requested-skill"
+
+    if not SKILL_NAME_RE.match(candidate):
+        return "requested-skill"
+    return candidate

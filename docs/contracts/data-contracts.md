@@ -113,10 +113,28 @@ ABORT_UNSAFE
       "reason": "Needed claim conflict detection."
     }
   ],
+  "script_executions": [
+    {
+      "skill_name": "count-words",
+      "command": ["python", "skills/count-words/scripts/count_words.py"],
+      "returncode": 0,
+      "stdout": "{\"word_count\": 6}",
+      "stderr": "",
+      "timed_out": false
+    }
+  ],
   "skill_requests": [
     {
-      "name": "detect-contradictions",
-      "status": "created-temporary"
+      "id": "skillreq_001",
+      "desired_skill_name": "detect-contradictions",
+      "status": "requested",
+      "temporary_skill": {
+        "skill_name": "detect-contradictions",
+        "skill_path": "skills/detect-contradictions/SKILL.md",
+        "validation_passed": true,
+        "validation_reasons": [],
+        "loaded": true
+      }
     }
   ],
   "result_quality": {

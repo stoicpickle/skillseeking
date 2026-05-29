@@ -29,6 +29,7 @@ def test_accepts_valid_skill(fixture_skills_dir):
         ("network-skill", "network permission"),
         ("scripted-skill", "scripts/"),
         ("extra-field-skill", "invalid manifest"),
+        ("medium-risk-markdown", "non-scripted skills must be low risk"),
     ],
 )
 def test_rejects_invalid_or_unsafe_skills(fixture_skills_dir, fixture_name, reason_part):

@@ -24,3 +24,16 @@ def test_create_contradiction_skill_request_contract():
     assert not request.approval_required
     assert request.status == "requested"
 
+
+def test_fallback_skill_request_name_preserves_registry_name_contract():
+    decision = RouteDecision(
+        capability="!!!",
+        decision="REQUEST_SKILL",
+        reason="No existing skill met threshold.",
+        best_match=BestMatch(skill_name=None, score=0.0, coverage="none"),
+        risk_level="low",
+    )
+
+    request = create_skill_request("task_test", decision)
+
+    assert request.desired_skill_name == "requested-skill"

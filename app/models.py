@@ -38,6 +38,13 @@ class ValidationMetadata(BaseModel):
     notes: str = ""
 
 
+class ScriptSpec(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    entrypoint: str
+    timeout_seconds: int = 5
+
+
 class SkillManifest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -52,6 +59,7 @@ class SkillManifest(BaseModel):
     input_schema: dict[str, str] = Field(default_factory=dict)
     output_schema: dict[str, str] = Field(default_factory=dict)
     validation: ValidationMetadata
+    script: ScriptSpec | None = None
 
 
 class ParsedSkill(BaseModel):
@@ -75,6 +83,7 @@ class SkillRecord(BaseModel):
     compatibility: dict[str, str]
     validation_status: str
     path: Path
+    script: ScriptSpec | None = None
 
 
 class RejectedSkill(BaseModel):
@@ -155,6 +164,26 @@ class LoadedSkillLog(BaseModel):
     path: str
     loaded_for_capability: str
     load_reason: str
+    temporary: bool = False
+
+
+class ScriptExecutionLog(BaseModel):
+    skill_name: str
+    command: list[str]
+    returncode: int
+    stdout: str
+    stderr: str
+    timed_out: bool = False
+
+
+class TemporarySkillResult(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    skill_name: str
+    skill_path: Path
+    validation_passed: bool
+    validation_reasons: list[str] = Field(default_factory=list)
+    loaded: bool = False
 
 
 class RunLog(BaseModel):
@@ -164,13 +193,14 @@ class RunLog(BaseModel):
     plan: list[str]
     capability_decisions: list[dict]
     skills_loaded: list[LoadedSkillLog]
+    script_executions: list[ScriptExecutionLog] = Field(default_factory=list)
     skill_requests: list[dict] = Field(default_factory=list)
     rejected_skills: list[dict] = Field(default_factory=list)
     trace: list[str]
     result_quality: dict = Field(
         default_factory=lambda: {
             "score": None,
-            "notes": "M1 route-only execution; quality scoring deferred.",
+            "notes": "Route/request execution; quality scoring deferred.",
         }
     )
 

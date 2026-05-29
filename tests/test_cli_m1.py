@@ -56,6 +56,7 @@ def test_missing_skill_demo_emits_structured_request(copied_seed_skills, tmp_pat
         [
             "run",
             "Extract claims from these two sources and identify contradictions.",
+            "--no-temporary-skills",
             "--skills-dir",
             str(copied_seed_skills),
             "--runs-dir",
@@ -79,3 +80,70 @@ def test_missing_skill_demo_emits_structured_request(copied_seed_skills, tmp_pat
     assert request["desired_skill_name"] == "detect-contradictions"
     assert request["status"] == "requested"
     assert request["output_schema"]["contradictions"] == "array"
+
+
+def test_temporary_skill_demo_drafts_validates_and_loads_skill(copied_seed_skills, tmp_path):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            "Cluster arguments from these sources.",
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--runs-dir",
+            str(runs_dir),
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "DRAFTING_TEMP_SKILL" in result.stdout
+    assert "VALIDATION_PASSED" in result.stdout
+    assert "LOADING_TEMP_SKILL" in result.stdout
+    assert "Temporary skill: argument-clustering" in result.stdout
+    assert "Validation passed: True" in result.stdout
+    assert "Loaded: True" in result.stdout
+    assert (copied_seed_skills / "argument-clustering" / "SKILL.md").exists()
+    logs = list(runs_dir.glob("run_*.json"))
+    assert len(logs) == 1
+    data = json.loads(logs[0].read_text(encoding="utf-8"))
+    request = data["skill_requests"][0]
+    assert request["temporary_skill"]["validation_passed"]
+    assert request["temporary_skill"]["loaded"]
+    loaded_names = {skill["name"] for skill in data["skills_loaded"]}
+    assert "argument-clustering" in loaded_names
+
+
+def test_medium_risk_temporary_skill_fails_validation_and_stays_blocked(
+    copied_seed_skills, tmp_path
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            "Extract claims from these two sources and identify contradictions.",
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--runs-dir",
+            str(runs_dir),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert "DRAFTING_TEMP_SKILL" in result.stdout
+    assert "VALIDATION_FAILED" in result.stdout
+    assert "Temporary skill: detect-contradictions" in result.stdout
+    assert "Validation passed: False" in result.stdout
+    assert "Loaded: False" in result.stdout
+    assert not (copied_seed_skills / "detect-contradictions").exists()
+    logs = list(runs_dir.glob("run_*.json"))
+    assert len(logs) == 1
+    data = json.loads(logs[0].read_text(encoding="utf-8"))
+    request = data["skill_requests"][0]
+    assert not request["temporary_skill"]["validation_passed"]
+    assert not request["temporary_skill"]["loaded"]

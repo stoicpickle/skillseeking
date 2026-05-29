@@ -9,20 +9,29 @@ from app.models import AgentRunResult, LoadedSkillLog, RunLog
 from app.planner import plan_task
 from app.registry import SkillRegistry
 from app.run_log import write_run_log
+from app.script_executor import execute_scripted_skill
 from app.skill_requester import create_skill_request
+from app.skillsmith import SkillsmithError, draft_temporary_skill
 
 
-def run_task(task_text: str, skills_dir: Path, runs_dir: Path) -> AgentRunResult:
+def run_task(
+    task_text: str,
+    skills_dir: Path,
+    runs_dir: Path,
+    create_temporary_skills: bool = True,
+    allow_scripted_skills: bool = False,
+) -> AgentRunResult:
     trace: list[str] = ["PLANNING"]
     plan = plan_task(task_text)
 
     trace.append("CHECKING_SKILLS")
-    registry = SkillRegistry.load(skills_dir)
+    registry = SkillRegistry.load(skills_dir, allow_scripts=allow_scripted_skills)
 
     trace.append("ROUTING")
     decisions = check_capabilities(plan.capabilities, registry)
 
     loaded_logs: list[LoadedSkillLog] = []
+    script_execution_logs = []
     skill_requests: list[dict] = []
     exit_code = 0
     for decision in decisions:
@@ -31,7 +40,46 @@ def run_task(task_text: str, skills_dir: Path, runs_dir: Path) -> AgentRunResult
             trace.append("REQUESTING_SKILL")
             skill_request = create_skill_request(plan.task_id, decision)
             skill_requests.append(skill_request.model_dump(mode="json"))
-            exit_code = 1
+            if not create_temporary_skills:
+                exit_code = 1
+                continue
+
+            trace.append("DRAFTING_TEMP_SKILL")
+            try:
+                temp_result = draft_temporary_skill(skill_request, skills_dir)
+            except SkillsmithError as exc:
+                skill_requests[-1]["temporary_skill_error"] = str(exc)
+                trace.append("VALIDATION_FAILED")
+                exit_code = 1
+                continue
+            skill_requests[-1]["temporary_skill"] = temp_result.model_dump(mode="json")
+            if not temp_result.validation_passed:
+                trace.append("VALIDATION_FAILED")
+                exit_code = 1
+                continue
+
+            trace.append("VALIDATION_PASSED")
+            trace.append("LOADING_TEMP_SKILL")
+            registry = SkillRegistry.load(skills_dir, allow_scripts=allow_scripted_skills)
+            record = registry.get(temp_result.skill_name)
+            if record is None:
+                trace.append("VALIDATION_FAILED")
+                exit_code = 1
+                continue
+
+            loaded = load_skill(record, skills_dir, decision.capability, skill_request.reason)
+            temp_result.loaded = True
+            skill_requests[-1]["temporary_skill"] = temp_result.model_dump(mode="json")
+            loaded_logs.append(
+                LoadedSkillLog(
+                    name=loaded.name,
+                    version=loaded.version,
+                    path=str(loaded.path),
+                    loaded_for_capability=loaded.loaded_for_capability,
+                    load_reason=loaded.load_reason,
+                    temporary=True,
+                )
+            )
             continue
 
         record = registry.get(decision.selected_skill)
@@ -54,6 +102,12 @@ def run_task(task_text: str, skills_dir: Path, runs_dir: Path) -> AgentRunResult
                 load_reason=loaded.load_reason,
             )
         )
+        if record.script is not None and allow_scripted_skills:
+            trace.append("EXECUTING_SCRIPT")
+            script_log = execute_scripted_skill(record, {"task": task_text, "text": task_text})
+            script_execution_logs.append(script_log)
+            if script_log.returncode != 0:
+                exit_code = 1
 
     trace.append("ROUTE_COMPLETE")
 
@@ -64,6 +118,7 @@ def run_task(task_text: str, skills_dir: Path, runs_dir: Path) -> AgentRunResult
         plan=[capability.capability for capability in plan.capabilities],
         capability_decisions=[decision.model_dump(mode="json") for decision in decisions],
         skills_loaded=loaded_logs,
+        script_executions=script_execution_logs,
         skill_requests=skill_requests,
         rejected_skills=[rejection.model_dump(mode="json") for rejection in registry.rejections()],
         trace=trace,

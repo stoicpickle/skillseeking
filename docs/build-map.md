@@ -148,7 +148,8 @@ Slices:
 | --- | --- | --- |
 | Static skill loader | complete | Existing-skill task selects and loads local skill |
 | Skill request mode | complete | Missing-skill task emits structured request |
-| Markdown Skillsmith | not_started | Temporary Markdown skill is drafted and validated |
+| Markdown Skillsmith | complete | Temporary Markdown skill is drafted and validated |
+| Scripted skills | complete | Scripted local skill validates and executes only when explicitly enabled |
 | Malicious skill rejection | not_started | Suspicious skill fixture is quarantined |
 | v0 trace demo | not_started | CLI shows plan -> check -> blocked -> request -> validate -> load -> result |
 
@@ -216,3 +217,38 @@ Slices:
 | Blocked CLI trace | complete | CLI prints `BLOCKED_MISSING_SKILL`, `REQUESTING_SKILL`, and a blocked card |
 | Run log persistence | complete | JSON run log includes `skill_requests` |
 | No generation boundary | complete | Missing-skill demo does not create `skills/detect-contradictions` |
+
+## Milestone 3: Markdown Skillsmith
+
+Status: complete
+
+Goal:
+Draft, validate, and load Markdown-only temporary skills for missing capabilities.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Temporary skill writer | complete | Skillsmith writes `skills/<requested-name>/SKILL.md` only |
+| Safe frontmatter generation | complete | Generated YAML validates through the existing parser and validator |
+| Temporary validation | complete | Generated skills have `validation.status: temporary` |
+| Agent-loop integration | complete | Missing capability drafts, validates, and loads the temporary skill |
+| M2 compatibility mode | complete | `--no-temporary-skills` preserves blocked-only request behavior |
+| Run log trace | complete | Logs include request plus temporary skill validation/load status |
+
+## Milestone 4: Scripted Skills
+
+Status: complete
+
+Goal:
+Allow local scripted skills to validate and execute only behind an explicit CLI flag.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Script manifest contract | complete | Scripted skills declare `script.entrypoint`, medium risk, `allowed_tools: [python]`, and `execute_code: true` |
+| Explicit enablement | complete | Scripted skills are rejected unless `allow_scripts` / `--scripted-skills` is set |
+| Pytest validation | complete | Scripted skill tests pass before the skill is admitted to the registry |
+| Restricted subprocess execution | complete | Script runs with JSON stdin/stdout, timeout, captured logs, and a reduced environment |
+| Run log trace | complete | Logs include script command, return code, stdout, stderr, and timeout status |
