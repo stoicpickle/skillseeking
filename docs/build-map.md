@@ -150,6 +150,7 @@ Slices:
 | Skill request mode | complete | Missing-skill task emits structured request |
 | Markdown Skillsmith | complete | Temporary Markdown skill is drafted and validated |
 | Scripted skills | complete | Scripted local skill validates and executes only when explicitly enabled |
+| Skill maintenance | complete | Library health report summarizes usage, requests, failures, duplicates, and rejected skills |
 | Malicious skill rejection | not_started | Suspicious skill fixture is quarantined |
 | v0 trace demo | not_started | CLI shows plan -> check -> blocked -> request -> validate -> load -> result |
 
@@ -252,3 +253,20 @@ Slices:
 | Pytest validation | complete | Scripted skill tests pass before the skill is admitted to the registry |
 | Restricted subprocess execution | complete | Script runs with JSON stdin/stdout, timeout, captured logs, and a reduced environment |
 | Run log trace | complete | Logs include script command, return code, stdout, stderr, and timeout status |
+
+## Milestone 5: Skill Maintenance
+
+Status: complete
+
+Goal:
+Report skill-library health from local skill metadata and run logs.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Health report model | complete | Structured report includes accepted/rejected counts, run-log count, metrics, and issues |
+| Run-log metrics | complete | Loaded skills, temporary uses, requests, and script failures are counted |
+| Library issue detection | complete | Rejected skills, duplicate contracts, failed temporary validation, failed script execution, and unused skills are reported |
+| CLI report | complete | `skill-agent health` prints text and `skill-agent health --json` prints JSON |
+| Local-only boundary | complete | Health reads local `skills/` and `runs/` only and does not modify files |

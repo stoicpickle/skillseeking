@@ -11,6 +11,7 @@ SkillStatus = Literal["draft", "temporary", "candidate", "stable", "deprecated",
 RiskLevel = Literal["low", "medium", "high"]
 CapabilityDecisionType = Literal["USE_SKILL", "REQUEST_SKILL"]
 SkillRequestStatus = Literal["requested"]
+HealthSeverity = Literal["info", "warning", "critical"]
 
 
 class Permissions(BaseModel):
@@ -190,6 +191,7 @@ class RunLog(BaseModel):
     task_id: str
     task: str
     created_at: datetime
+    exit_code: int = 0
     plan: list[str]
     capability_decisions: list[dict]
     skills_loaded: list[LoadedSkillLog]
@@ -209,3 +211,33 @@ class AgentRunResult(BaseModel):
     run_log: RunLog
     run_log_path: Path
     exit_code: int
+
+
+class SkillUsageMetrics(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    uses: int = 0
+    temporary_uses: int = 0
+    script_failures: int = 0
+    requests: int = 0
+    last_used: str | None = None
+
+
+class SkillHealthIssue(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    severity: HealthSeverity
+    code: str
+    skill_name: str | None = None
+    message: str
+
+
+class LibraryHealthReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    accepted_skills: int
+    rejected_skills: int
+    run_logs_read: int
+    metrics: list[SkillUsageMetrics]
+    issues: list[SkillHealthIssue] = Field(default_factory=list)

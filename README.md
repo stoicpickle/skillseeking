@@ -110,6 +110,13 @@ Run the M4 scripted-skill demo:
 .venv/bin/skill-agent run "Count words in one two three." --scripted-skills --no-temporary-skills --skills-dir tests/fixtures/scripted-skills
 ```
 
+Run the M5 library health report:
+
+```bash
+.venv/bin/skill-agent health
+.venv/bin/skill-agent health --json
+```
+
 Run tests:
 
 ```bash

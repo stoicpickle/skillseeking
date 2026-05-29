@@ -115,6 +115,7 @@ def run_task(
         task_id=plan.task_id,
         task=plan.task,
         created_at=datetime.now(),
+        exit_code=exit_code,
         plan=[capability.capability for capability in plan.capabilities],
         capability_decisions=[decision.model_dump(mode="json") for decision in decisions],
         skills_loaded=loaded_logs,

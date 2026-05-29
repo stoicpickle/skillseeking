@@ -184,3 +184,30 @@ Result:
 - 40 tests passed.
 - Scripted skills remain opt-in.
 - M4 does not allow network, secrets, file writes, external dependencies, or untested script execution.
+
+## 2026-05-29 M5 Skill Maintenance
+
+Implemented M5 as a local library-health reporting pass.
+
+Added:
+
+- `LibraryHealthReport`, `SkillUsageMetrics`, and `SkillHealthIssue` contracts.
+- `librarian` module that reads the local registry and JSON run logs.
+- Usage counts for loaded skills, temporary uses, skill requests, and script failures.
+- Issue detection for rejected skills, duplicate input/output contracts, failed temporary validation, failed script execution, failed-run usage, and unused skills.
+- `skill-agent health` text report.
+- `skill-agent health --json` structured report.
+- Tests using temporary skills and run logs.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q
+.venv/bin/skill-agent health
+.venv/bin/skill-agent health --json
+```
+
+Result:
+
+- 45 tests passed.
+- M5 is read-only: it does not repair, retire, mutate, or promote skills.
