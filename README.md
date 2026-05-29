@@ -162,3 +162,9 @@ Run tests:
 ```bash
 .venv/bin/python -m pytest -q
 ```
+
+Run the M10 acceptance harness:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_v0_acceptance.py
+```

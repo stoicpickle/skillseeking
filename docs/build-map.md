@@ -155,6 +155,7 @@ Slices:
 | v0 trace demo | complete | CLI shows plan -> check -> blocked -> request -> validate -> load -> result |
 | Core demo suite | complete | Four canonical demos document expected commands, statuses, and output landmarks |
 | Skill repair request | complete | Failed temporary validation emits a structured repair request without auto-repairing |
+| v0 acceptance harness | complete | End-to-end CLI cases verify traces, run logs, filesystem effects, and entrypoint smoke |
 
 ## Current First Slice
 
@@ -339,3 +340,20 @@ Slices:
 | CLI repair card | complete | `skill-agent run` prints `REPAIR_REQUESTED` with skill, capability, status, objective, and failure reasons |
 | No auto-repair boundary | complete | M9 does not rewrite, validate, load, or promote a repaired skill |
 | Regression coverage | complete | Tests prove failed `detect-contradictions` validation now emits a repair request while staying blocked |
+
+## Milestone 10: v0 Acceptance Harness
+
+Status: complete
+
+Goal:
+Prove the v0 loop end to end with isolated, repeatable CLI acceptance cases.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Acceptance helpers | complete | Shared helpers check ordered landmarks, run-log JSON, and no Markdown bodies |
+| Core CLI matrix | complete | Existing, temporary, blocked, repair, malicious, and scripted paths are covered |
+| Run-log assertions | complete | Acceptance cases verify loaded skills, requests, repair requests, and script executions |
+| Filesystem assertions | complete | Tests verify expected temporary skill creation or cleanup |
+| Entrypoint smoke | complete | Subprocess smoke runs `.venv/bin/skill-agent` when available |

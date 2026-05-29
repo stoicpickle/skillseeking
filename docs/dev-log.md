@@ -325,3 +325,30 @@ Result:
 
 - Failed temporary validation now produces a useful next-step artifact instead of only a failed route.
 - M9 does not auto-repair, rewrite, validate, load, execute, or promote any repaired skill.
+
+## 2026-05-29 M10 v0 Acceptance Harness
+
+Implemented M10 as the comprehensive v0 confidence gate.
+
+Added:
+
+- `tests/test_v0_acceptance.py` with shared helpers for ordered CLI landmarks, run-log loading, and no-Markdown-body checks.
+- Acceptance coverage for existing-skill, temporary-skill, blocked, repair-request, malicious-rejection, and scripted opt-in paths.
+- Run-log assertions for loaded skills, skill requests, repair requests, and script executions.
+- Filesystem assertions for temporary skill creation and validation-failure cleanup.
+- Optional subprocess smoke for `.venv/bin/skill-agent` when the local entrypoint is available.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_v0_acceptance.py
+.venv/bin/python -m pytest -q
+.venv/bin/python -m compileall -q app
+git diff --check
+coderabbit review --agent -t uncommitted
+```
+
+Result:
+
+- The v0 demo, safety, repair, run-log, and entrypoint paths now have one acceptance-level regression harness.
+- M10 adds no new CLI command, dependency, schema, or runtime behavior.
