@@ -58,6 +58,29 @@ ASK_HUMAN
 ABORT_UNSAFE
 ```
 
+## Skill Repair Request
+
+```json
+{
+  "id": "repairreq_001",
+  "task_id": "task_001",
+  "skill_request_id": "skillreq_001",
+  "skill_name": "detect-contradictions",
+  "failed_capability": "detect contradictions",
+  "failed_skill_path": "skills/detect-contradictions/SKILL.md",
+  "failure_reasons": [
+    "non-scripted skills must be low risk"
+  ],
+  "repair_objective": "Revise the temporary Markdown skill so it satisfies the validator while preserving the requested capability contract.",
+  "constraints": [
+    "Keep the repair Markdown-only.",
+    "Do not add scripts, dependencies, network access, secrets, or code execution.",
+    "Do not auto-load the repaired skill without a fresh validation pass."
+  ],
+  "status": "requested"
+}
+```
+
 ## Skill Record
 
 ```json
@@ -135,6 +158,16 @@ ABORT_UNSAFE
         "validation_reasons": [],
         "loaded": true
       }
+    }
+  ],
+  "skill_repair_requests": [
+    {
+      "id": "repairreq_001",
+      "skill_request_id": "skillreq_001",
+      "skill_name": "detect-contradictions",
+      "failed_capability": "detect contradictions",
+      "failure_reasons": ["non-scripted skills must be low risk"],
+      "status": "requested"
     }
   ],
   "result_quality": {

@@ -271,3 +271,57 @@ Result:
 
 - The canonical demo shows `PLANNING -> CHECKING_SKILLS -> BLOCKED_MISSING_SKILL -> REQUESTING_SKILL -> VALIDATION_PASSED -> LOADING_TEMP_SKILL -> ROUTE_COMPLETE -> RESULT`.
 - M7 adds no new CLI command, dependency, routing behavior, or generated executable skill path.
+
+## 2026-05-29 M8 Core Demo Suite
+
+Implemented M8 as the public-facing v0 demo baseline.
+
+Added:
+
+- `docs/demo-suite.md` with four canonical demos:
+  - existing skill
+  - temporary skill success
+  - blocked/no-temporary-skill
+  - malicious skill rejected
+- README entrypoint for running the four demos with an isolated skills copy.
+- Lightweight demo-suite tests that assert exit status and durable output landmarks without full-output snapshots.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q
+.venv/bin/python -m compileall -q app
+git diff --check
+```
+
+Result:
+
+- The repo now has a stable, documented demo spine before adding the future repair flow.
+- M8 adds no new CLI command, dependency, routing behavior, or agent capability.
+
+## 2026-05-29 M9 Skill Repair Request
+
+Implemented M9 as a structured repair-request layer for failed temporary validation.
+
+Added:
+
+- `SkillRepairRequest` contract.
+- `skill_repairer` module for deterministic repair request creation.
+- Agent-loop integration for temporary skill validation failures.
+- `REQUESTING_REPAIR` trace stage.
+- `REPAIR_REQUESTED` CLI card with failed skill, failed capability, status, objective, and validation reasons.
+- Run-log persistence under `skill_repair_requests`.
+- Tests proving failed `detect-contradictions` validation stays blocked and now emits a repair request.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q
+.venv/bin/python -m compileall -q app
+git diff --check
+```
+
+Result:
+
+- Failed temporary validation now produces a useful next-step artifact instead of only a failed route.
+- M9 does not auto-repair, rewrite, validate, load, execute, or promote any repaired skill.

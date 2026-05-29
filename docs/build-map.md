@@ -153,6 +153,8 @@ Slices:
 | Skill maintenance | complete | Library health report summarizes usage, requests, failures, duplicates, and rejected skills |
 | Malicious skill rejection | complete | Suspicious skill fixtures are quarantined and visible in registry/health reports |
 | v0 trace demo | complete | CLI shows plan -> check -> blocked -> request -> validate -> load -> result |
+| Core demo suite | complete | Four canonical demos document expected commands, statuses, and output landmarks |
+| Skill repair request | complete | Failed temporary validation emits a structured repair request without auto-repairing |
 
 ## Current First Slice
 
@@ -302,3 +304,38 @@ Slices:
 | Trace landmarks | complete | Canonical run prints `PLANNING`, `CHECKING_SKILLS`, `BLOCKED_MISSING_SKILL`, `REQUESTING_SKILL`, `VALIDATION_PASSED`, `LOADING_TEMP_SKILL`, and `ROUTE_COMPLETE` |
 | Result summary | complete | CLI prints `RESULT` with exit code, loaded skills, temporary skills, and run-log path |
 | Regression coverage | complete | Existing-skill, blocked-only, scripted-skill, health, malicious-rejection, and failed-validation paths remain covered |
+
+## Milestone 8: Core Demo Suite
+
+Status: complete
+
+Goal:
+Make the v0 behavior easy to understand, rerun, test, and share.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Demo guide | complete | `docs/demo-suite.md` lists four canonical demos with commands, statuses, landmarks, and proof statements |
+| README entrypoint | complete | README links the demo suite and includes copy-paste commands using an isolated skills copy |
+| Existing-skill demo contract | complete | Test locks status and landmarks for the existing-skill path |
+| Temporary-skill demo contract | complete | Test locks status and landmarks for the temporary skill success path |
+| Blocked demo contract | complete | Test locks status and landmarks for blocked request mode |
+| Malicious-skill demo contract | complete | Test locks registry quarantine output for malicious fixtures |
+
+## Milestone 9: Skill Repair Request
+
+Status: complete
+
+Goal:
+Turn failed temporary skill validation into a structured repair request without auto-repairing or auto-loading anything.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Repair request contract | complete | `SkillRepairRequest` records failed skill, capability, validation reasons, objective, constraints, and status |
+| Failure-path integration | complete | Temporary validation failure appends `REQUESTING_REPAIR` and writes `skill_repair_requests` to the run log |
+| CLI repair card | complete | `skill-agent run` prints `REPAIR_REQUESTED` with skill, capability, status, objective, and failure reasons |
+| No auto-repair boundary | complete | M9 does not rewrite, validate, load, or promote a repaired skill |
+| Regression coverage | complete | Tests prove failed `detect-contradictions` validation now emits a repair request while staying blocked |

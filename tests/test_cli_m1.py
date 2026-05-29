@@ -150,11 +150,16 @@ def test_medium_risk_temporary_skill_fails_validation_and_stays_blocked(
     assert result.exit_code == 1
     assert "DRAFTING_TEMP_SKILL" in result.stdout
     assert "VALIDATION_FAILED" in result.stdout
+    assert "REQUESTING_REPAIR" in result.stdout
+    assert "REPAIR_REQUESTED" in result.stdout
     assert "RESULT" in result.stdout
     assert "Exit code: 1" in result.stdout
     assert "Temporary skill: detect-contradictions" in result.stdout
     assert "Validation passed: False" in result.stdout
     assert "Loaded: False" in result.stdout
+    assert "Skill: detect-contradictions" in result.stdout
+    assert "Failed capability: detect contradictions" in result.stdout
+    assert "Failure reason: non-scripted skills must be low risk" in result.stdout
     assert "Loaded skills: extract-claims" in result.stdout
     assert "Temporary skills: -" in result.stdout
     assert not (copied_seed_skills / "detect-contradictions").exists()
@@ -164,3 +169,9 @@ def test_medium_risk_temporary_skill_fails_validation_and_stays_blocked(
     request = data["skill_requests"][0]
     assert not request["temporary_skill"]["validation_passed"]
     assert not request["temporary_skill"]["loaded"]
+    repair_request = data["skill_repair_requests"][0]
+    assert repair_request["skill_request_id"] == request["id"]
+    assert repair_request["skill_name"] == "detect-contradictions"
+    assert repair_request["failed_capability"] == "detect contradictions"
+    assert repair_request["status"] == "requested"
+    assert "non-scripted skills must be low risk" in repair_request["failure_reasons"]

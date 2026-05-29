@@ -19,6 +19,7 @@ def emit_run_output(result: AgentRunResult) -> None:
         typer.echo(f"{decision['decision']} {selected or '-'} :: {decision['capability']}")
 
     _emit_skill_requests(result.run_log.skill_requests)
+    _emit_skill_repair_requests(result.run_log.skill_repair_requests)
     _emit_script_executions(result.run_log.script_executions)
     _emit_result(result)
 
@@ -37,6 +38,20 @@ def _emit_skill_requests(skill_requests: Iterable[dict]) -> None:
             typer.echo(f"Temporary skill: {temporary['skill_name']}")
             typer.echo(f"Validation passed: {temporary['validation_passed']}")
             typer.echo(f"Loaded: {temporary['loaded']}")
+
+
+def _emit_skill_repair_requests(skill_repair_requests: Iterable[dict]) -> None:
+    for request in skill_repair_requests:
+        typer.echo("")
+        typer.echo("REPAIR_REQUESTED")
+        typer.echo(f"Skill: {request['skill_name']}")
+        typer.echo(f"Failed capability: {request['failed_capability']}")
+        typer.echo(f"Status: {request['status']}")
+        typer.echo(f"Repair ID: {request['id']}")
+        typer.echo(f"Skill request ID: {request['skill_request_id']}")
+        typer.echo(f"Objective: {request['repair_objective']}")
+        for reason in request["failure_reasons"]:
+            typer.echo(f"Failure reason: {reason}")
 
 
 def _emit_script_executions(script_executions: Iterable[ScriptExecutionLog]) -> None:

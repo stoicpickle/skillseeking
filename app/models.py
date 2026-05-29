@@ -11,6 +11,7 @@ SkillStatus = Literal["draft", "temporary", "candidate", "stable", "deprecated",
 RiskLevel = Literal["low", "medium", "high"]
 CapabilityDecisionType = Literal["USE_SKILL", "REQUEST_SKILL"]
 SkillRequestStatus = Literal["requested"]
+SkillRepairRequestStatus = Literal["requested"]
 HealthSeverity = Literal["info", "warning", "critical"]
 
 
@@ -143,6 +144,21 @@ class SkillRequest(BaseModel):
     status: SkillRequestStatus = "requested"
 
 
+class SkillRepairRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    task_id: str
+    skill_request_id: str
+    skill_name: str
+    failed_capability: str
+    failed_skill_path: str | None = None
+    failure_reasons: list[str]
+    repair_objective: str
+    constraints: list[str]
+    status: SkillRepairRequestStatus = "requested"
+
+
 class TaskPlan(BaseModel):
     task_id: str
     task: str
@@ -197,6 +213,7 @@ class RunLog(BaseModel):
     skills_loaded: list[LoadedSkillLog]
     script_executions: list[ScriptExecutionLog] = Field(default_factory=list)
     skill_requests: list[dict] = Field(default_factory=list)
+    skill_repair_requests: list[dict] = Field(default_factory=list)
     rejected_skills: list[dict] = Field(default_factory=list)
     trace: list[str]
     result_quality: dict = Field(
