@@ -117,6 +117,14 @@ Run the M5 library health report:
 .venv/bin/skill-agent health --json
 ```
 
+Run the M6 malicious-skill rejection demo:
+
+```bash
+mkdir -p /tmp/skillseeking-empty-runs
+.venv/bin/skill-agent registry --skills-dir tests/fixtures/malicious-skills
+.venv/bin/skill-agent health --skills-dir tests/fixtures/malicious-skills --runs-dir /tmp/skillseeking-empty-runs
+```
+
 Run tests:
 
 ```bash

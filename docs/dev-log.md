@@ -211,3 +211,33 @@ Result:
 
 - 45 tests passed.
 - M5 is read-only: it does not repair, retire, mutate, or promote skills.
+
+## 2026-05-29 M6 Malicious Skill Rejection
+
+Implemented M6 as a quarantine-proof milestone using the existing registry and health surfaces.
+
+Added:
+
+- Dedicated malicious skill fixtures with one safe control skill.
+- Metadata routing attack fixture.
+- Body prompt-injection fixture.
+- Obfuscated base64-like instruction fixture.
+- Unsafe secrets-permission fixture.
+- Tests proving unsafe skills are rejected before routing or loading.
+- CLI tests proving rejection is visible through `skill-agent registry`, `skill-agent health`, and `skill-agent health --json`.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q
+.venv/bin/skill-agent registry --skills-dir tests/fixtures/malicious-skills
+.venv/bin/skill-agent health --skills-dir tests/fixtures/malicious-skills --runs-dir /tmp/skillseeking-empty-runs
+.venv/bin/skill-agent health --skills-dir tests/fixtures/malicious-skills --runs-dir /tmp/skillseeking-empty-runs --json
+coderabbit review --agent -t uncommitted
+```
+
+Result:
+
+- 48 tests passed.
+- CodeRabbit review found 0 issues.
+- M6 adds no new CLI command, execution path, network access, or generated code.

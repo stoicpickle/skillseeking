@@ -151,7 +151,7 @@ Slices:
 | Markdown Skillsmith | complete | Temporary Markdown skill is drafted and validated |
 | Scripted skills | complete | Scripted local skill validates and executes only when explicitly enabled |
 | Skill maintenance | complete | Library health report summarizes usage, requests, failures, duplicates, and rejected skills |
-| Malicious skill rejection | not_started | Suspicious skill fixture is quarantined |
+| Malicious skill rejection | complete | Suspicious skill fixtures are quarantined and visible in registry/health reports |
 | v0 trace demo | not_started | CLI shows plan -> check -> blocked -> request -> validate -> load -> result |
 
 ## Current First Slice
@@ -270,3 +270,19 @@ Slices:
 | Library issue detection | complete | Rejected skills, duplicate contracts, failed temporary validation, failed script execution, and unused skills are reported |
 | CLI report | complete | `skill-agent health` prints text and `skill-agent health --json` prints JSON |
 | Local-only boundary | complete | Health reads local `skills/` and `runs/` only and does not modify files |
+
+## Milestone 6: Malicious Skill Rejection
+
+Status: complete
+
+Goal:
+Prove unsafe local skill packages are quarantined before routing or loading.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Malicious fixture set | complete | Safe control skill is accepted while metadata, body, obfuscated, and secrets attacks reject |
+| Registry quarantine proof | complete | `skill-agent registry` shows accepted skills and `REJECTED` rows for malicious fixtures |
+| Health visibility | complete | `skill-agent health` and `health --json` report rejected-skill issues |
+| No new runtime surface | complete | M6 adds no new CLI command, execution path, network access, or generated code |

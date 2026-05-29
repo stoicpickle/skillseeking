@@ -22,8 +22,12 @@ def fixture_skills_dir(repo_root: Path) -> Path:
 
 
 @pytest.fixture
+def malicious_skills_dir(repo_root: Path) -> Path:
+    return repo_root / "tests" / "fixtures" / "malicious-skills"
+
+
+@pytest.fixture
 def copied_seed_skills(tmp_path: Path, seed_skills_dir: Path) -> Path:
     target = tmp_path / "skills"
     copytree(seed_skills_dir, target)
     return target
-
