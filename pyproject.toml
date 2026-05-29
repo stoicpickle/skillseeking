@@ -1,0 +1,30 @@
+[project]
+name = "skillseeking"
+version = "0.1.0"
+description = "CLI-first static skill loader for a skill-seeking agent."
+requires-python = ">=3.11"
+dependencies = [
+  "pydantic>=2,<3",
+  "PyYAML>=6,<7",
+  "typer>=0.21,<1.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=9,<10",
+]
+
+[project.scripts]
+skill-agent = "app.cli:main"
+
+[build-system]
+requires = ["setuptools>=69"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["app*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+

@@ -74,3 +74,33 @@ Status values:
 Added:
 
 - `docs/build-map.md`
+
+## 2026-05-29 M1 Static Skill Loader
+
+Implemented M1 as a CLI-first static skill loader.
+
+Added:
+
+- Python package scaffold and `skill-agent` CLI.
+- Local `skills/<name>/SKILL.md` convention.
+- Five seed skills: `extract-claims`, `compare-claims`, `source-quality-check`, `write-structured-answer`, and `validate-skill-md`.
+- Strict frontmatter parser using safe YAML loading.
+- Pydantic models for compact skill records, route decisions, loaded skills, and run logs.
+- M1 validator for low-risk Markdown-only skills.
+- Suspicious text scanner for routing manipulation and prompt-injection style phrases.
+- Deterministic registry, planner, router, loader, and run logger.
+- JSON run logs under `runs/`.
+- Pytest coverage for parser, validator, registry, router, loader, run logs, and CLI demo.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q
+.venv/bin/skill-agent run "Extract claims from this article and write a structured summary with source-quality notes."
+```
+
+Result:
+
+- 22 tests passed.
+- Demo selected `extract-claims`, `source-quality-check`, and `write-structured-answer`.
+- M1 does not generate skills, execute scripts, install skill dependencies, import external skills, or promote skills.

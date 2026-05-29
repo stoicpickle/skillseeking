@@ -146,7 +146,7 @@ Slices:
 
 | Milestone | Status | Product Proof |
 | --- | --- | --- |
-| Static skill loader | not_started | Existing-skill task selects and loads local skill |
+| Static skill loader | complete | Existing-skill task selects and loads local skill |
 | Skill request mode | not_started | Missing-skill task emits structured request |
 | Markdown Skillsmith | not_started | Temporary Markdown skill is drafted and validated |
 | Malicious skill rejection | not_started | Suspicious skill fixture is quarantined |
@@ -159,7 +159,7 @@ Recommended first slice:
 ```text
 Milestone: Static skill loader
 Slice: Parse local skill metadata
-Status: not_started
+Status: complete
 ```
 
 Tasks:
@@ -178,3 +178,24 @@ Checks:
 - No Markdown body instructions are used for routing.
 - CLI exits cleanly with a readable trace.
 
+## Milestone 1: Static Skill Loader
+
+Status: complete
+
+Goal:
+Load local Markdown skills and route a task to the best available existing skill or skills.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Project scaffold and CLI boundary | complete | `skill-agent run` and `skill-agent registry` are available |
+| Local skill folder convention and seed skills | complete | Five normalized seed skills are listed |
+| `SKILL.md` parser and compact metadata extraction | complete | Valid fixtures parse and malformed fixtures reject |
+| Metadata validation and M1 safety admission | complete | Unsafe permissions, scripts, and suspicious text reject |
+| Registry index | complete | Accepted and rejected local skills are tracked deterministically |
+| Deterministic planner and capability checker | complete | Demo task maps to expected capabilities |
+| Basic skill router | complete | Existing-skill demo selects expected skills |
+| `load_skill` | complete | Full Markdown loads only after selection |
+| Run trace and JSON run logs | complete | JSON logs are written under `runs/` without full Markdown bodies |
+| Existing-skill demo | complete | CLI exits cleanly and emits the expected trace |

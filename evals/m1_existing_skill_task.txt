@@ -1,0 +1,2 @@
+Extract claims from this article and write a structured summary with source-quality notes.
+

@@ -70,3 +70,30 @@ Keep the first build boring:
 - JSON Schema for contracts.
 - Pytest once executable skills are introduced.
 - No generated executable code in the first phase.
+
+## M1 Quick Start
+
+Set up the local environment:
+
+```bash
+python3 -m venv .venv
+.venv/bin/python -m pip install -e '.[dev]'
+```
+
+List local skills:
+
+```bash
+.venv/bin/skill-agent registry
+```
+
+Run the M1 existing-skill demo:
+
+```bash
+.venv/bin/skill-agent run "Extract claims from this article and write a structured summary with source-quality notes."
+```
+
+Run tests:
+
+```bash
+.venv/bin/python -m pytest -q
+```
