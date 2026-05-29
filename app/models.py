@@ -4,7 +4,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 
 SkillStatus = Literal["draft", "temporary", "candidate", "stable", "deprecated", "blocked"]
@@ -13,6 +13,8 @@ CapabilityDecisionType = Literal["USE_SKILL", "REQUEST_SKILL"]
 
 
 class Permissions(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     read_files: bool = False
     write_files: bool = False
     network: bool = False
@@ -21,17 +23,23 @@ class Permissions(BaseModel):
 
 
 class Metadata(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     version: str
     owner: str = "local"
     status: SkillStatus
 
 
 class ValidationMetadata(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     status: str
     notes: str = ""
 
 
 class SkillManifest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
     name: str
     description: str
     tags: list[str] = Field(default_factory=list)
@@ -153,4 +161,3 @@ class AgentRunResult(BaseModel):
     run_log: RunLog
     run_log_path: Path
     exit_code: int
-

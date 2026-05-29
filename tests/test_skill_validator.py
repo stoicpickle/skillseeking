@@ -28,6 +28,7 @@ def test_accepts_valid_skill(fixture_skills_dir):
         ("malicious-body", "suspicious text"),
         ("network-skill", "network permission"),
         ("scripted-skill", "scripts/"),
+        ("extra-field-skill", "invalid manifest"),
     ],
 )
 def test_rejects_invalid_or_unsafe_skills(fixture_skills_dir, fixture_name, reason_part):
@@ -40,4 +41,3 @@ def test_rejects_invalid_or_unsafe_skills(fixture_skills_dir, fixture_name, reas
 def test_parser_error_is_separate_from_validator(fixture_skills_dir):
     with pytest.raises(SkillParseError):
         parse_skill_file(fixture_skills_dir / "missing-frontmatter" / "SKILL.md")
-
