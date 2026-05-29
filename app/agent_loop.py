@@ -9,6 +9,7 @@ from app.models import AgentRunResult, LoadedSkillLog, RunLog
 from app.planner import plan_task
 from app.registry import SkillRegistry
 from app.run_log import write_run_log
+from app.skill_repairer import create_skill_repair_request
 from app.script_executor import execute_scripted_skill
 from app.skill_requester import create_skill_request
 from app.skillsmith import SkillsmithError, draft_temporary_skill
@@ -33,6 +34,7 @@ def run_task(
     loaded_logs: list[LoadedSkillLog] = []
     script_execution_logs = []
     skill_requests: list[dict] = []
+    skill_repair_requests: list[dict] = []
     exit_code = 0
     for decision in decisions:
         if decision.decision != "USE_SKILL" or decision.selected_skill is None:
@@ -50,11 +52,21 @@ def run_task(
             except SkillsmithError as exc:
                 skill_requests[-1]["temporary_skill_error"] = str(exc)
                 trace.append("VALIDATION_FAILED")
+                trace.append("REQUESTING_REPAIR")
+                repair_request = create_skill_repair_request(skill_request, [str(exc)], None)
+                skill_repair_requests.append(repair_request.model_dump(mode="json"))
                 exit_code = 1
                 continue
             skill_requests[-1]["temporary_skill"] = temp_result.model_dump(mode="json")
             if not temp_result.validation_passed:
                 trace.append("VALIDATION_FAILED")
+                trace.append("REQUESTING_REPAIR")
+                repair_request = create_skill_repair_request(
+                    skill_request,
+                    temp_result.validation_reasons,
+                    str(temp_result.skill_path),
+                )
+                skill_repair_requests.append(repair_request.model_dump(mode="json"))
                 exit_code = 1
                 continue
 
@@ -64,6 +76,13 @@ def run_task(
             record = registry.get(temp_result.skill_name)
             if record is None:
                 trace.append("VALIDATION_FAILED")
+                trace.append("REQUESTING_REPAIR")
+                repair_request = create_skill_repair_request(
+                    skill_request,
+                    ["validated temporary skill could not be loaded from registry"],
+                    str(temp_result.skill_path),
+                )
+                skill_repair_requests.append(repair_request.model_dump(mode="json"))
                 exit_code = 1
                 continue
 
@@ -121,6 +140,7 @@ def run_task(
         skills_loaded=loaded_logs,
         script_executions=script_execution_logs,
         skill_requests=skill_requests,
+        skill_repair_requests=skill_repair_requests,
         rejected_skills=[rejection.model_dump(mode="json") for rejection in registry.rejections()],
         trace=trace,
     )

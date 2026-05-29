@@ -241,3 +241,114 @@ Result:
 - 48 tests passed.
 - CodeRabbit review found 0 issues.
 - M6 adds no new CLI command, execution path, network access, or generated code.
+
+## 2026-05-29 M7 v0 Trace Demo
+
+Implemented M7 as CLI polish for the canonical successful temporary-skill trace.
+
+Canonical command:
+
+```bash
+.venv/bin/skill-agent run "Cluster arguments from these sources."
+```
+
+Added:
+
+- `TRACE`, `DECISIONS`, and `RESULT` sections for `skill-agent run`.
+- A final result summary with exit code, loaded skills, temporary skills, and run-log path.
+- Tests proving the canonical demo emits the required v0 landmarks and loads `argument-clustering`.
+- Regression coverage that the contradiction path still exits blocked when temporary skill validation fails.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q
+.venv/bin/python -m compileall -q app
+.venv/bin/skill-agent run "Cluster arguments from these sources."
+```
+
+Result:
+
+- The canonical demo shows `PLANNING -> CHECKING_SKILLS -> BLOCKED_MISSING_SKILL -> REQUESTING_SKILL -> VALIDATION_PASSED -> LOADING_TEMP_SKILL -> ROUTE_COMPLETE -> RESULT`.
+- M7 adds no new CLI command, dependency, routing behavior, or generated executable skill path.
+
+## 2026-05-29 M8 Core Demo Suite
+
+Implemented M8 as the public-facing v0 demo baseline.
+
+Added:
+
+- `docs/demo-suite.md` with four canonical demos:
+  - existing skill
+  - temporary skill success
+  - blocked/no-temporary-skill
+  - malicious skill rejected
+- README entrypoint for running the four demos with an isolated skills copy.
+- Lightweight demo-suite tests that assert exit status and durable output landmarks without full-output snapshots.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q
+.venv/bin/python -m compileall -q app
+git diff --check
+```
+
+Result:
+
+- The repo now has a stable, documented demo spine before adding the future repair flow.
+- M8 adds no new CLI command, dependency, routing behavior, or agent capability.
+
+## 2026-05-29 M9 Skill Repair Request
+
+Implemented M9 as a structured repair-request layer for failed temporary validation.
+
+Added:
+
+- `SkillRepairRequest` contract.
+- `skill_repairer` module for deterministic repair request creation.
+- Agent-loop integration for temporary skill validation failures.
+- `REQUESTING_REPAIR` trace stage.
+- `REPAIR_REQUESTED` CLI card with failed skill, failed capability, status, objective, and validation reasons.
+- Run-log persistence under `skill_repair_requests`.
+- Tests proving failed `detect-contradictions` validation stays blocked and now emits a repair request.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q
+.venv/bin/python -m compileall -q app
+git diff --check
+```
+
+Result:
+
+- Failed temporary validation now produces a useful next-step artifact instead of only a failed route.
+- M9 does not auto-repair, rewrite, validate, load, execute, or promote any repaired skill.
+
+## 2026-05-29 M10 v0 Acceptance Harness
+
+Implemented M10 as the comprehensive v0 confidence gate.
+
+Added:
+
+- `tests/test_v0_acceptance.py` with shared helpers for ordered CLI landmarks, run-log loading, and no-Markdown-body checks.
+- Acceptance coverage for existing-skill, temporary-skill, blocked, repair-request, malicious-rejection, and scripted opt-in paths.
+- Run-log assertions for loaded skills, skill requests, repair requests, and script executions.
+- Filesystem assertions for temporary skill creation and validation-failure cleanup.
+- Optional subprocess smoke for `.venv/bin/skill-agent` when the local entrypoint is available.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_v0_acceptance.py
+.venv/bin/python -m pytest -q
+.venv/bin/python -m compileall -q app
+git diff --check
+coderabbit review --agent -t uncommitted
+```
+
+Result:
+
+- The v0 demo, safety, repair, run-log, and entrypoint paths now have one acceptance-level regression harness.
+- M10 adds no new CLI command, dependency, schema, or runtime behavior.

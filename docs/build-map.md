@@ -152,7 +152,10 @@ Slices:
 | Scripted skills | complete | Scripted local skill validates and executes only when explicitly enabled |
 | Skill maintenance | complete | Library health report summarizes usage, requests, failures, duplicates, and rejected skills |
 | Malicious skill rejection | complete | Suspicious skill fixtures are quarantined and visible in registry/health reports |
-| v0 trace demo | not_started | CLI shows plan -> check -> blocked -> request -> validate -> load -> result |
+| v0 trace demo | complete | CLI shows plan -> check -> blocked -> request -> validate -> load -> result |
+| Core demo suite | complete | Four canonical demos document expected commands, statuses, and output landmarks |
+| Skill repair request | complete | Failed temporary validation emits a structured repair request without auto-repairing |
+| v0 acceptance harness | complete | End-to-end CLI cases verify traces, run logs, filesystem effects, and entrypoint smoke |
 
 ## Current First Slice
 
@@ -286,3 +289,71 @@ Slices:
 | Registry quarantine proof | complete | `skill-agent registry` shows accepted skills and `REJECTED` rows for malicious fixtures |
 | Health visibility | complete | `skill-agent health` and `health --json` report rejected-skill issues |
 | No new runtime surface | complete | M6 adds no new CLI command, execution path, network access, or generated code |
+
+## Milestone 7: v0 Trace Demo
+
+Status: complete
+
+Goal:
+Make the successful temporary-skill path the polished canonical v0 trace demo.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Stable CLI surface | complete | M7 uses `skill-agent run` with no new command or dependency |
+| Trace landmarks | complete | Canonical run prints `PLANNING`, `CHECKING_SKILLS`, `BLOCKED_MISSING_SKILL`, `REQUESTING_SKILL`, `VALIDATION_PASSED`, `LOADING_TEMP_SKILL`, and `ROUTE_COMPLETE` |
+| Result summary | complete | CLI prints `RESULT` with exit code, loaded skills, temporary skills, and run-log path |
+| Regression coverage | complete | Existing-skill, blocked-only, scripted-skill, health, malicious-rejection, and failed-validation paths remain covered |
+
+## Milestone 8: Core Demo Suite
+
+Status: complete
+
+Goal:
+Make the v0 behavior easy to understand, rerun, test, and share.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Demo guide | complete | `docs/demo-suite.md` lists four canonical demos with commands, statuses, landmarks, and proof statements |
+| README entrypoint | complete | README links the demo suite and includes copy-paste commands using an isolated skills copy |
+| Existing-skill demo contract | complete | Test locks status and landmarks for the existing-skill path |
+| Temporary-skill demo contract | complete | Test locks status and landmarks for the temporary skill success path |
+| Blocked demo contract | complete | Test locks status and landmarks for blocked request mode |
+| Malicious-skill demo contract | complete | Test locks registry quarantine output for malicious fixtures |
+
+## Milestone 9: Skill Repair Request
+
+Status: complete
+
+Goal:
+Turn failed temporary skill validation into a structured repair request without auto-repairing or auto-loading anything.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Repair request contract | complete | `SkillRepairRequest` records failed skill, capability, validation reasons, objective, constraints, and status |
+| Failure-path integration | complete | Temporary validation failure appends `REQUESTING_REPAIR` and writes `skill_repair_requests` to the run log |
+| CLI repair card | complete | `skill-agent run` prints `REPAIR_REQUESTED` with skill, capability, status, objective, and failure reasons |
+| No auto-repair boundary | complete | M9 does not rewrite, validate, load, or promote a repaired skill |
+| Regression coverage | complete | Tests prove failed `detect-contradictions` validation now emits a repair request while staying blocked |
+
+## Milestone 10: v0 Acceptance Harness
+
+Status: complete
+
+Goal:
+Prove the v0 loop end to end with isolated, repeatable CLI acceptance cases.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Acceptance helpers | complete | Shared helpers check ordered landmarks, run-log JSON, and no Markdown bodies |
+| Core CLI matrix | complete | Existing, temporary, blocked, repair, malicious, and scripted paths are covered |
+| Run-log assertions | complete | Acceptance cases verify loaded skills, requests, repair requests, and script executions |
+| Filesystem assertions | complete | Tests verify expected temporary skill creation or cleanup |
+| Entrypoint smoke | complete | Subprocess smoke runs `.venv/bin/skill-agent` when available |

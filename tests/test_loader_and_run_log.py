@@ -47,5 +47,6 @@ def test_run_log_writes_json_without_markdown_body(tmp_path):
     data = json.loads(path.read_text(encoding="utf-8"))
 
     assert data["task_id"] == "task_test"
+    assert data["skill_repair_requests"] == []
     assert data["result_quality"]["notes"] == "Route/request execution; quality scoring deferred."
     assert "markdown_body" not in path.read_text(encoding="utf-8")

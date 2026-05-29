@@ -16,6 +16,7 @@ That capability-gap loop is the core demo, the trust surface, and the long-term 
 - [MVP plan](docs/mvp-plan.md)
 - [v0 build guardrails](docs/v0-build-guardrails.md)
 - [Build map](docs/build-map.md)
+- [Core demo suite](docs/demo-suite.md)
 - [Data contracts](docs/contracts/data-contracts.md)
 - [Evaluation plan](docs/evaluation-plan.md)
 - [Safety model](docs/safety-model.md)
@@ -104,6 +105,37 @@ Run the M3 temporary Markdown skill demo:
 .venv/bin/skill-agent run "Cluster arguments from these sources."
 ```
 
+Run the M7 canonical v0 trace demo:
+
+```bash
+.venv/bin/skill-agent run "Cluster arguments from these sources."
+```
+
+Expected landmarks: `PLANNING`, `CHECKING_SKILLS`, `BLOCKED_MISSING_SKILL`, `REQUESTING_SKILL`, `VALIDATION_PASSED`, `LOADING_TEMP_SKILL`, `ROUTE_COMPLETE`, and `RESULT`.
+
+Run the M8 core demo suite with an isolated skills copy:
+
+```bash
+DEMO_DIR=$(mktemp -d)
+cp -R skills "$DEMO_DIR/skills"
+RUNS_DIR="$DEMO_DIR/runs"
+
+.venv/bin/skill-agent run "Extract claims from this article and write a structured summary with source-quality notes." --skills-dir "$DEMO_DIR/skills" --runs-dir "$RUNS_DIR"
+.venv/bin/skill-agent run "Cluster arguments from these sources." --skills-dir "$DEMO_DIR/skills" --runs-dir "$RUNS_DIR"
+.venv/bin/skill-agent run "Extract claims from these two sources and identify contradictions." --no-temporary-skills --skills-dir "$DEMO_DIR/skills" --runs-dir "$RUNS_DIR"
+.venv/bin/skill-agent registry --skills-dir tests/fixtures/malicious-skills
+```
+
+See [Core demo suite](docs/demo-suite.md) for expected statuses and output landmarks.
+
+Run the M9 repair-request demo:
+
+```bash
+.venv/bin/skill-agent run "Extract claims from these two sources and identify contradictions."
+```
+
+Expected landmarks: `VALIDATION_FAILED`, `REQUESTING_REPAIR`, and `REPAIR_REQUESTED`.
+
 Run the M4 scripted-skill demo:
 
 ```bash
@@ -129,4 +161,10 @@ Run tests:
 
 ```bash
 .venv/bin/python -m pytest -q
+```
+
+Run the M10 acceptance harness:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_v0_acceptance.py
 ```
