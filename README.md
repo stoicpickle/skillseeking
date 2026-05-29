@@ -104,6 +104,14 @@ Run the M3 temporary Markdown skill demo:
 .venv/bin/skill-agent run "Cluster arguments from these sources."
 ```
 
+Run the M7 canonical v0 trace demo:
+
+```bash
+.venv/bin/skill-agent run "Cluster arguments from these sources."
+```
+
+Expected landmarks: `PLANNING`, `CHECKING_SKILLS`, `BLOCKED_MISSING_SKILL`, `REQUESTING_SKILL`, `VALIDATION_PASSED`, `LOADING_TEMP_SKILL`, `ROUTE_COMPLETE`, and `RESULT`.
+
 Run the M4 scripted-skill demo:
 
 ```bash

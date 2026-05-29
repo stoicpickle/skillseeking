@@ -7,6 +7,7 @@ import json
 import typer
 
 from app.agent_loop import run_task
+from app.cli_output import emit_run_output
 from app.librarian import analyze_library
 from app.registry import SkillRegistry
 
@@ -41,35 +42,7 @@ def run(
         create_temporary_skills=temporary_skills,
         allow_scripted_skills=scripted_skills,
     )
-    for stage in result.run_log.trace:
-        typer.echo(stage)
-    for decision in result.run_log.capability_decisions:
-        selected = decision.get("selected_skill") if decision["decision"] == "USE_SKILL" else None
-        typer.echo(f"{decision['decision']} {selected or '-'} :: {decision['capability']}")
-    for request in result.run_log.skill_requests:
-        typer.echo("")
-        typer.echo("BLOCKED")
-        typer.echo(f"Missing capability: {request['missing_capability']}")
-        typer.echo(f"Requested skill: {request['desired_skill_name']}")
-        typer.echo(f"Risk: {request['risk_level']}")
-        typer.echo(f"Status: {request['status']}")
-        typer.echo(f"Request ID: {request['id']}")
-        temporary = request.get("temporary_skill")
-        if temporary:
-            typer.echo(f"Temporary skill: {temporary['skill_name']}")
-            typer.echo(f"Validation passed: {temporary['validation_passed']}")
-            typer.echo(f"Loaded: {temporary['loaded']}")
-    for execution in result.run_log.script_executions:
-        typer.echo("")
-        typer.echo("SCRIPT_EXECUTED")
-        typer.echo(f"Skill: {execution.skill_name}")
-        typer.echo(f"Return code: {execution.returncode}")
-        typer.echo(f"Timed out: {execution.timed_out}")
-        if execution.stdout:
-            typer.echo(f"Stdout: {execution.stdout}")
-        if execution.stderr:
-            typer.echo(f"Stderr: {execution.stderr}")
-    typer.echo(f"RUN_LOG {result.run_log_path}")
+    emit_run_output(result)
     if result.exit_code:
         raise typer.Exit(result.exit_code)
 

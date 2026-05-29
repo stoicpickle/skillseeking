@@ -241,3 +241,33 @@ Result:
 - 48 tests passed.
 - CodeRabbit review found 0 issues.
 - M6 adds no new CLI command, execution path, network access, or generated code.
+
+## 2026-05-29 M7 v0 Trace Demo
+
+Implemented M7 as CLI polish for the canonical successful temporary-skill trace.
+
+Canonical command:
+
+```bash
+.venv/bin/skill-agent run "Cluster arguments from these sources."
+```
+
+Added:
+
+- `TRACE`, `DECISIONS`, and `RESULT` sections for `skill-agent run`.
+- A final result summary with exit code, loaded skills, temporary skills, and run-log path.
+- Tests proving the canonical demo emits the required v0 landmarks and loads `argument-clustering`.
+- Regression coverage that the contradiction path still exits blocked when temporary skill validation fails.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q
+.venv/bin/python -m compileall -q app
+.venv/bin/skill-agent run "Cluster arguments from these sources."
+```
+
+Result:
+
+- The canonical demo shows `PLANNING -> CHECKING_SKILLS -> BLOCKED_MISSING_SKILL -> REQUESTING_SKILL -> VALIDATION_PASSED -> LOADING_TEMP_SKILL -> ROUTE_COMPLETE -> RESULT`.
+- M7 adds no new CLI command, dependency, routing behavior, or generated executable skill path.

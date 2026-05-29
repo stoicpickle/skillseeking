@@ -152,7 +152,7 @@ Slices:
 | Scripted skills | complete | Scripted local skill validates and executes only when explicitly enabled |
 | Skill maintenance | complete | Library health report summarizes usage, requests, failures, duplicates, and rejected skills |
 | Malicious skill rejection | complete | Suspicious skill fixtures are quarantined and visible in registry/health reports |
-| v0 trace demo | not_started | CLI shows plan -> check -> blocked -> request -> validate -> load -> result |
+| v0 trace demo | complete | CLI shows plan -> check -> blocked -> request -> validate -> load -> result |
 
 ## Current First Slice
 
@@ -286,3 +286,19 @@ Slices:
 | Registry quarantine proof | complete | `skill-agent registry` shows accepted skills and `REJECTED` rows for malicious fixtures |
 | Health visibility | complete | `skill-agent health` and `health --json` report rejected-skill issues |
 | No new runtime surface | complete | M6 adds no new CLI command, execution path, network access, or generated code |
+
+## Milestone 7: v0 Trace Demo
+
+Status: complete
+
+Goal:
+Make the successful temporary-skill path the polished canonical v0 trace demo.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Stable CLI surface | complete | M7 uses `skill-agent run` with no new command or dependency |
+| Trace landmarks | complete | Canonical run prints `PLANNING`, `CHECKING_SKILLS`, `BLOCKED_MISSING_SKILL`, `REQUESTING_SKILL`, `VALIDATION_PASSED`, `LOADING_TEMP_SKILL`, and `ROUTE_COMPLETE` |
+| Result summary | complete | CLI prints `RESULT` with exit code, loaded skills, temporary skills, and run-log path |
+| Regression coverage | complete | Existing-skill, blocked-only, scripted-skill, health, malicious-rejection, and failed-validation paths remain covered |

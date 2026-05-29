@@ -99,15 +99,28 @@ def test_temporary_skill_demo_drafts_validates_and_loads_skill(copied_seed_skill
     )
 
     assert result.exit_code == 0
+    for landmark in [
+        "PLANNING",
+        "CHECKING_SKILLS",
+        "BLOCKED_MISSING_SKILL",
+        "REQUESTING_SKILL",
+        "VALIDATION_PASSED",
+        "LOADING_TEMP_SKILL",
+        "ROUTE_COMPLETE",
+        "RESULT",
+    ]:
+        assert landmark in result.stdout
     assert "DRAFTING_TEMP_SKILL" in result.stdout
-    assert "VALIDATION_PASSED" in result.stdout
-    assert "LOADING_TEMP_SKILL" in result.stdout
     assert "Temporary skill: argument-clustering" in result.stdout
     assert "Validation passed: True" in result.stdout
     assert "Loaded: True" in result.stdout
+    assert "Exit code: 0" in result.stdout
+    assert "Loaded skills: argument-clustering" in result.stdout
+    assert "Temporary skills: argument-clustering" in result.stdout
     assert (copied_seed_skills / "argument-clustering" / "SKILL.md").exists()
     logs = list(runs_dir.glob("run_*.json"))
     assert len(logs) == 1
+    assert f"Run log: {logs[0]}" in result.stdout
     data = json.loads(logs[0].read_text(encoding="utf-8"))
     request = data["skill_requests"][0]
     assert request["temporary_skill"]["validation_passed"]
@@ -137,9 +150,13 @@ def test_medium_risk_temporary_skill_fails_validation_and_stays_blocked(
     assert result.exit_code == 1
     assert "DRAFTING_TEMP_SKILL" in result.stdout
     assert "VALIDATION_FAILED" in result.stdout
+    assert "RESULT" in result.stdout
+    assert "Exit code: 1" in result.stdout
     assert "Temporary skill: detect-contradictions" in result.stdout
     assert "Validation passed: False" in result.stdout
     assert "Loaded: False" in result.stdout
+    assert "Loaded skills: extract-claims" in result.stdout
+    assert "Temporary skills: -" in result.stdout
     assert not (copied_seed_skills / "detect-contradictions").exists()
     logs = list(runs_dir.glob("run_*.json"))
     assert len(logs) == 1
