@@ -21,6 +21,10 @@
     "Distinguishes contradiction from nuance",
     "Preserves source IDs"
   ],
+  "failure_modes": [
+    "If claims are unrelated, return no contradiction",
+    "If scope or timing differs, mark as nuance instead of contradiction"
+  ],
   "risk_level": "medium",
   "approval_required": false,
   "status": "requested"
@@ -172,4 +176,3 @@ Turn messy text into short, checkable claims.
 - If text is too short, return an empty list.
 - If claims are ambiguous, mark confidence below 0.5.
 ````
-

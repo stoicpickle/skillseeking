@@ -22,8 +22,16 @@ def run(
     for stage in result.run_log.trace:
         typer.echo(stage)
     for decision in result.run_log.capability_decisions:
-        selected = decision.get("selected_skill") or decision.get("best_match", {}).get("skill_name")
+        selected = decision.get("selected_skill") if decision["decision"] == "USE_SKILL" else None
         typer.echo(f"{decision['decision']} {selected or '-'} :: {decision['capability']}")
+    for request in result.run_log.skill_requests:
+        typer.echo("")
+        typer.echo("BLOCKED")
+        typer.echo(f"Missing capability: {request['missing_capability']}")
+        typer.echo(f"Requested skill: {request['desired_skill_name']}")
+        typer.echo(f"Risk: {request['risk_level']}")
+        typer.echo(f"Status: {request['status']}")
+        typer.echo(f"Request ID: {request['id']}")
     typer.echo(f"RUN_LOG {result.run_log_path}")
     if result.exit_code:
         raise typer.Exit(result.exit_code)
@@ -46,4 +54,3 @@ def main() -> None:
 
 if __name__ == "__main__":
     main()
-

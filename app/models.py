@@ -10,6 +10,7 @@ from pydantic import BaseModel, ConfigDict, Field
 SkillStatus = Literal["draft", "temporary", "candidate", "stable", "deprecated", "blocked"]
 RiskLevel = Literal["low", "medium", "high"]
 CapabilityDecisionType = Literal["USE_SKILL", "REQUEST_SKILL"]
+SkillRequestStatus = Literal["requested"]
 
 
 class Permissions(BaseModel):
@@ -113,6 +114,23 @@ class RouteDecision(BaseModel):
     route_reason: RouteReason | None = None
     risk_level: RiskLevel = "low"
     requires_human_approval: bool = False
+
+
+class SkillRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    task_id: str
+    missing_capability: str
+    reason: str
+    desired_skill_name: str
+    input_schema: dict[str, str]
+    output_schema: dict[str, str]
+    success_criteria: list[str]
+    failure_modes: list[str] = Field(default_factory=list)
+    risk_level: RiskLevel
+    approval_required: bool = False
+    status: SkillRequestStatus = "requested"
 
 
 class TaskPlan(BaseModel):

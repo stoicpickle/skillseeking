@@ -9,6 +9,7 @@ from app.models import AgentRunResult, LoadedSkillLog, RunLog
 from app.planner import plan_task
 from app.registry import SkillRegistry
 from app.run_log import write_run_log
+from app.skill_requester import create_skill_request
 
 
 def run_task(task_text: str, skills_dir: Path, runs_dir: Path) -> AgentRunResult:
@@ -22,16 +23,23 @@ def run_task(task_text: str, skills_dir: Path, runs_dir: Path) -> AgentRunResult
     decisions = check_capabilities(plan.capabilities, registry)
 
     loaded_logs: list[LoadedSkillLog] = []
+    skill_requests: list[dict] = []
     exit_code = 0
     for decision in decisions:
         if decision.decision != "USE_SKILL" or decision.selected_skill is None:
-            trace.append("BLOCKED_NO_EXISTING_SKILL")
+            trace.append("BLOCKED_MISSING_SKILL")
+            trace.append("REQUESTING_SKILL")
+            skill_request = create_skill_request(plan.task_id, decision)
+            skill_requests.append(skill_request.model_dump(mode="json"))
             exit_code = 1
             continue
 
         record = registry.get(decision.selected_skill)
         if record is None:
-            trace.append("BLOCKED_NO_EXISTING_SKILL")
+            trace.append("BLOCKED_MISSING_SKILL")
+            trace.append("REQUESTING_SKILL")
+            skill_request = create_skill_request(plan.task_id, decision)
+            skill_requests.append(skill_request.model_dump(mode="json"))
             exit_code = 1
             continue
 
@@ -56,7 +64,7 @@ def run_task(task_text: str, skills_dir: Path, runs_dir: Path) -> AgentRunResult
         plan=[capability.capability for capability in plan.capabilities],
         capability_decisions=[decision.model_dump(mode="json") for decision in decisions],
         skills_loaded=loaded_logs,
-        skill_requests=[],
+        skill_requests=skill_requests,
         rejected_skills=[rejection.model_dump(mode="json") for rejection in registry.rejections()],
         trace=trace,
     )

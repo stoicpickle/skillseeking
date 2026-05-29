@@ -147,7 +147,7 @@ Slices:
 | Milestone | Status | Product Proof |
 | --- | --- | --- |
 | Static skill loader | complete | Existing-skill task selects and loads local skill |
-| Skill request mode | not_started | Missing-skill task emits structured request |
+| Skill request mode | complete | Missing-skill task emits structured request |
 | Markdown Skillsmith | not_started | Temporary Markdown skill is drafted and validated |
 | Malicious skill rejection | not_started | Suspicious skill fixture is quarantined |
 | v0 trace demo | not_started | CLI shows plan -> check -> blocked -> request -> validate -> load -> result |
@@ -199,3 +199,20 @@ Slices:
 | `load_skill` | complete | Full Markdown loads only after selection |
 | Run trace and JSON run logs | complete | JSON logs are written under `runs/` without full Markdown bodies |
 | Existing-skill demo | complete | CLI exits cleanly and emits the expected trace |
+
+## Milestone 2: Skill Request Mode
+
+Status: complete
+
+Goal:
+Expose missing capabilities as structured skill requests without generating or loading new skills.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Skill request data contract | complete | Pydantic model includes capability, schemas, success criteria, risk, and status |
+| Skill requester | complete | Missing `detect contradictions` route creates `detect-contradictions` request |
+| Blocked CLI trace | complete | CLI prints `BLOCKED_MISSING_SKILL`, `REQUESTING_SKILL`, and a blocked card |
+| Run log persistence | complete | JSON run log includes `skill_requests` |
+| No generation boundary | complete | Missing-skill demo does not create `skills/detect-contradictions` |

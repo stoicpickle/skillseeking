@@ -1,0 +1,2 @@
+Extract claims from these two sources and identify contradictions.
+

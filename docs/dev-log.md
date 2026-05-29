@@ -104,3 +104,30 @@ Result:
 - 22 tests passed.
 - Demo selected `extract-claims`, `source-quality-check`, and `write-structured-answer`.
 - M1 does not generate skills, execute scripts, install skill dependencies, import external skills, or promote skills.
+
+## 2026-05-29 M2 Skill Request Mode
+
+Implemented M2 as a blocked-state and structured request layer on top of M1.
+
+Added:
+
+- `SkillRequest` Pydantic contract.
+- `skill_requester` module for deterministic request creation.
+- Missing-skill CLI trace stages: `BLOCKED_MISSING_SKILL` and `REQUESTING_SKILL`.
+- CLI blocked card showing missing capability, requested skill, risk, status, and request ID.
+- Run-log persistence for `skill_requests`.
+- Missing-skill eval fixture.
+- Tests proving `detect contradictions` creates a `detect-contradictions` request without generating a skill folder.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q
+.venv/bin/skill-agent run "Extract claims from these two sources and identify contradictions."
+```
+
+Result:
+
+- 25 tests passed.
+- Missing-skill demo emits a structured request and exits blocked.
+- M2 does not draft, validate, create, or load temporary skills.

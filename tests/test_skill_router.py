@@ -83,4 +83,4 @@ def test_missing_skill_boundary_does_not_select_low_score(seed_skills_dir):
 
     assert decision.decision == "REQUEST_SKILL"
     assert decision.selected_skill is None
-
+    assert decision.best_match.skill_name is not None

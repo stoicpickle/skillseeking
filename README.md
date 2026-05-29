@@ -92,6 +92,12 @@ Run the M1 existing-skill demo:
 .venv/bin/skill-agent run "Extract claims from this article and write a structured summary with source-quality notes."
 ```
 
+Run the M2 missing-skill request demo:
+
+```bash
+.venv/bin/skill-agent run "Extract claims from these two sources and identify contradictions."
+```
+
 Run tests:
 
 ```bash
