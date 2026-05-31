@@ -14,10 +14,6 @@ def test_registry_lists_seed_skills(seed_skills_dir):
         "write-structured-answer",
     ]
     assert registry.rejections() == []
-    extract = registry.get("extract-claims")
-    assert extract is not None
-    assert extract.source_root == seed_skills_dir.resolve()
-    assert not extract.lifecycle.temporary
 
 
 def test_registry_records_rejections(fixture_skills_dir):

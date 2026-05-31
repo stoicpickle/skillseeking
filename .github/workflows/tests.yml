@@ -29,8 +29,5 @@ jobs:
       - name: Run tests
         run: python -m pytest -q
 
-      - name: Run eval smoke
-        run: skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals
-
       - name: Compile app
         run: python -m compileall -q app

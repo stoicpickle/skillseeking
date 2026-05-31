@@ -20,7 +20,6 @@ def test_library_health_reads_usage_requests_failures_and_rejections(tmp_path, s
                 "task_id": "task_001",
                 "created_at": "2026-05-29T10:00:00",
                 "exit_code": 1,
-                "result_category": "repair_requested",
                 "skills_loaded": [
                     {"name": "extract-claims", "temporary": False},
                     {"name": "argument-clustering", "temporary": True},
@@ -35,9 +34,8 @@ def test_library_health_reads_usage_requests_failures_and_rejections(tmp_path, s
                         },
                     }
                 ],
-                "skill_repair_requests": [{"skill_name": "argument-clustering"}],
                 "script_executions": [
-                    {"skill_name": "count-words", "returncode": 1, "timed_out": False, "failure_category": "nonzero_exit"}
+                    {"skill_name": "count-words", "returncode": 1, "timed_out": False}
                 ],
             }
         ),
@@ -53,37 +51,10 @@ def test_library_health_reads_usage_requests_failures_and_rejections(tmp_path, s
     assert metrics["argument-clustering"].requests == 1
     assert metrics["argument-clustering"].temporary_uses == 1
     assert metrics["count-words"].script_failures == 1
-    assert metrics["count-words"].script_failure_categories == {"nonzero_exit": 1}
-    assert report.result_categories == {"repair_requested": 1}
-    assert report.temporary_outcomes["validation_failed"] == 1
-    assert report.temporary_outcomes["request_not_loaded"] == 1
-    assert report.repair_requests == 1
-    assert report.script_failure_categories == {"nonzero_exit": 1}
     issue_codes = {issue.code for issue in report.issues}
     assert "temporary_validation_failed" in issue_codes
     assert "script_execution_failed" in issue_codes
     assert "used_in_failed_run" in issue_codes
-
-
-def test_library_health_does_not_scan_run_artifacts_as_durable_skills(tmp_path, seed_skills_dir):
-    skills_dir = tmp_path / "skills"
-    runs_dir = tmp_path / "runs"
-    copytree(seed_skills_dir, skills_dir)
-    copytree(
-        seed_skills_dir / "extract-claims",
-        runs_dir / "artifacts" / "run_test" / "skills" / "artifact-only-skill",
-    )
-    skill_file = runs_dir / "artifacts" / "run_test" / "skills" / "artifact-only-skill" / "SKILL.md"
-    skill_file.write_text(
-        skill_file.read_text(encoding="utf-8").replace("name: extract-claims", "name: artifact-only-skill"),
-        encoding="utf-8",
-    )
-
-    report = analyze_library(skills_dir, runs_dir)
-
-    assert report.accepted_skills == 5
-    assert all(metric.name != "artifact-only-skill" for metric in report.metrics)
-
 
 
 def test_library_health_detects_duplicate_contracts(tmp_path, seed_skills_dir):
@@ -179,6 +150,3 @@ def test_health_command_outputs_text_and_json(tmp_path, seed_skills_dir):
     data = json.loads(json_result.stdout)
     assert data["accepted_skills"] == 5
     assert data["run_logs_read"] == 0
-    assert data["result_categories"] == {}
-    assert data["repair_requests"] == 0
-    assert data["script_failure_categories"] == {}

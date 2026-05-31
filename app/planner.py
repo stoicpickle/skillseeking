@@ -2,8 +2,19 @@ from __future__ import annotations
 
 import hashlib
 
-from app.capability_catalog import capability_definitions
 from app.models import CapabilityRequest, TaskPlan
+
+
+RULES: list[tuple[tuple[str, ...], str]] = [
+    (("extract claims", "claims from", "claim extraction"), "extract atomic factual claims"),
+    (("compare", "differences", "similarities"), "compare claims"),
+    (("source quality", "credible", "reliable", "quality notes"), "score source quality"),
+    (("summary", "answer", "write", "structured summary"), "write structured answer"),
+    (("validate skill", "check skill.md", "skill.md"), "validate skill markdown"),
+    (("count words", "word count", "words in"), "count words"),
+    (("cluster arguments", "argument clustering", "group arguments"), "argument clustering"),
+    (("contradiction", "contradictions", "disagree"), "detect contradictions"),
+]
 
 
 def plan_task(task_text: str) -> TaskPlan:
@@ -11,11 +22,11 @@ def plan_task(task_text: str) -> TaskPlan:
     capabilities: list[CapabilityRequest] = []
     seen: set[str] = set()
 
-    for definition in capability_definitions():
-        matched = [term for term in definition.trigger_terms if term in lowered]
-        if matched and definition.name not in seen:
-            capabilities.append(CapabilityRequest(capability=definition.name, source_terms=matched))
-            seen.add(definition.name)
+    for terms, capability in RULES:
+        matched = [term for term in terms if term in lowered]
+        if matched and capability not in seen:
+            capabilities.append(CapabilityRequest(capability=capability, source_terms=matched))
+            seen.add(capability)
 
     if not capabilities:
         capabilities.append(

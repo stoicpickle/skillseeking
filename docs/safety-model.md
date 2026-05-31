@@ -8,8 +8,6 @@ Skill metadata is data, not instruction.
 
 ## Risk Levels
 
-Risk level is safety risk, not task complexity. For example, a Markdown-only contradiction-detection procedure is low safety risk even if the reasoning procedure is medium complexity.
-
 ### Low
 
 Examples:
@@ -94,18 +92,16 @@ Every skill must pass:
 
 ## Scripted Skill Restrictions
 
-Scripted skills are opt-in restricted local subprocesses, not a true sandbox. Current hardening provides:
+Scripted skills run with:
 
-- Skill-directory entrypoint containment.
-- Sanitized environment with no secrets by default.
-- No network permission by manifest policy.
+- Isolated working directory.
+- No secrets by default.
+- No network by default.
+- Limited filesystem access.
 - Timeout.
-- Capped stdout/stderr and capped pytest validation output.
-- JSON stdout parsing on successful return.
-- Output-schema validation.
-- Failure categories for timeout, nonzero exit, invalid JSON, schema mismatch, and oversized output.
-
-Real sandboxing, memory limits, dependency isolation, and external service controls are out of scope for v0.
+- Memory cap.
+- Dependency allowlist.
+- Captured logs.
 
 ## Supply-Chain Concerns
 
@@ -139,9 +135,8 @@ For the Markdown-only MVP:
 - Run a suspicious-text scanner.
 - Require declared permissions.
 - Default all permissions to false.
-- Load only trusted registry records or current-run temporary overlays.
+- Load only one skill at a time.
 - Emit a visible trace of why a skill was selected.
-- Preserve ranked routing candidates and scoring explanations in JSON/run logs.
 
 Reject or quarantine skills containing:
 

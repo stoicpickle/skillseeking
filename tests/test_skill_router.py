@@ -15,10 +15,6 @@ def test_routes_existing_claim_and_summary_skills(seed_skills_dir):
 
     assert claim_decision.decision == "USE_SKILL"
     assert claim_decision.selected_skill == "extract-claims"
-    assert claim_decision.ranked_candidates
-    assert claim_decision.ranked_candidates[0].skill_name == "extract-claims"
-    assert claim_decision.ranked_candidates[0].selected
-    assert claim_decision.ranked_candidates[0].route_reason is not None
     assert summary_decision.decision == "USE_SKILL"
     assert summary_decision.selected_skill == "write-structured-answer"
 
@@ -88,5 +84,3 @@ def test_missing_skill_boundary_does_not_select_low_score(seed_skills_dir):
     assert decision.decision == "REQUEST_SKILL"
     assert decision.selected_skill is None
     assert decision.best_match.skill_name is not None
-    assert decision.ranked_candidates
-    assert not any(candidate.selected for candidate in decision.ranked_candidates)

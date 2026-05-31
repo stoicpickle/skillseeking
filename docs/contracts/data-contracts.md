@@ -1,74 +1,76 @@
 # Data Contracts
 
-Contracts are schema-v2 and serialized with Pydantic `model_dump(mode="json")`. Older run logs without `schema_version` or `run_id` are tolerated by health analysis as legacy v1 logs.
-
 ## Skill Request
 
 ```json
 {
   "id": "skillreq_001",
   "task_id": "task_001",
-  "missing_capability": "detect contradictions",
-  "reason": "No existing skill met threshold.",
+  "missing_capability": "detect contradictions between claims",
+  "reason": "The agent can extract claims but lacks a repeatable contradiction procedure.",
   "desired_skill_name": "detect-contradictions",
-  "input_schema": {"claims": "array"},
-  "output_schema": {"contradictions": "array", "confidence": "number", "explanation": "string", "source_ids": "array"},
-  "success_criteria": ["Finds direct contradiction", "Distinguishes contradiction from nuance or scope difference"],
-  "failure_modes": ["If claims are unrelated, return no contradiction"],
-  "risk_level": "low",
+  "input_schema": {
+    "claims": "array"
+  },
+  "output_schema": {
+    "contradictions": "array",
+    "confidence": "number"
+  },
+  "success_criteria": [
+    "Finds direct contradiction",
+    "Distinguishes contradiction from nuance",
+    "Preserves source IDs"
+  ],
+  "failure_modes": [
+    "If claims are unrelated, return no contradiction",
+    "If scope or timing differs, mark as nuance instead of contradiction"
+  ],
+  "risk_level": "medium",
   "approval_required": false,
   "status": "requested"
 }
 ```
 
-`risk_level` is safety risk, not task difficulty. A Markdown-only contradiction skill is low safety risk even if the procedure is medium complexity.
-
 ## Capability Decision
 
 ```json
 {
-  "capability": "detect contradictions",
+  "capability": "detect contradictions between claims",
   "decision": "REQUEST_SKILL",
-  "reason": "No existing skill met threshold for capability 'detect contradictions'.",
-  "best_match": {"skill_name": "compare-claims", "score": 0.35, "coverage": "partial"},
-  "ranked_candidates": [
-    {
-      "skill_name": "compare-claims",
-      "score": 0.35,
-      "coverage": "partial",
-      "selected": false,
-      "route_reason": {
-        "matched_terms": ["claims"],
-        "schema_overlap": ["claims"],
-        "risk_result": "risk=low",
-        "permission_result": "all permissions false",
-        "status_result": "status=candidate; validation=manual",
-        "compatibility_result": "declared",
-        "score": 0.35,
-        "threshold": 0.55
-      }
-    }
-  ],
-  "risk_level": "low",
+  "reason": "No existing skill meets schema and quality threshold.",
+  "best_match": {
+    "skill_name": "compare-claims",
+    "score": 0.62,
+    "coverage": "partial"
+  },
+  "risk_level": "medium",
   "requires_human_approval": false
 }
 ```
 
-Allowed decisions are `USE_SKILL`, `REQUEST_SKILL`, `ASK_HUMAN`, and `ABORT_UNSAFE`. Temporary drafting is recorded under `skill_requests[].temporary_skill`, not as a separate route decision.
+Allowed decisions:
+
+```text
+USE_SKILL
+REQUEST_SKILL
+CREATE_TEMP_SKILL
+ASK_HUMAN
+ABORT_UNSAFE
+```
 
 ## Skill Repair Request
-
-Repair requests are emitted when a generated temporary skill fails validation. The repair acceptance demo uses an explicitly medium-risk local-code capability so risk is not used as a proxy for text-task difficulty.
 
 ```json
 {
   "id": "repairreq_001",
   "task_id": "task_001",
   "skill_request_id": "skillreq_001",
-  "skill_name": "local-python-analysis",
-  "failed_capability": "run local python analysis",
-  "failed_skill_path": "runs/artifacts/run_id/skills/local-python-analysis/SKILL.md",
-  "failure_reasons": ["non-scripted skills must be low risk"],
+  "skill_name": "detect-contradictions",
+  "failed_capability": "detect contradictions",
+  "failed_skill_path": "skills/detect-contradictions/SKILL.md",
+  "failure_reasons": [
+    "non-scripted skills must be low risk"
+  ],
   "repair_objective": "Revise the temporary Markdown skill so it satisfies the validator while preserving the requested capability contract.",
   "constraints": [
     "Keep the repair Markdown-only.",
@@ -79,138 +81,149 @@ Repair requests are emitted when a generated temporary skill fails validation. T
 }
 ```
 
+## Skill Record
+
+```json
+{
+  "name": "detect-contradictions",
+  "version": "0.2.1",
+  "description": "Detects contradictions between atomic claims.",
+  "status": "candidate",
+  "input_schema": {},
+  "output_schema": {},
+  "allowed_tools": ["read_file", "python"],
+  "risk_level": "medium",
+  "tests": {
+    "total": 12,
+    "passing": 11
+  },
+  "metrics": {
+    "uses": 23,
+    "success_rate": 0.82,
+    "human_correction_rate": 0.18
+  },
+  "last_used": "2026-05-29T10:00:00-07:00",
+  "last_tested": "2026-05-29T09:30:00-07:00"
+}
+```
+
 ## Run Log
 
 ```json
 {
-  "schema_version": 2,
-  "run_id": "a1b2c3d4",
   "task_id": "task_001",
-  "result_category": "success",
-  "exit_code": 0,
-  "trace": ["PLANNING", "CHECKING_SKILLS", "ROUTE_COMPLETE", "RUN_LOG_WRITTEN"],
-  "trace_events": [
-    {"sequence": 1, "stage": "PLANNING", "message": "", "details": {"run_id": "a1b2c3d4"}}
+  "task": "Compare two sources and find disagreements.",
+  "plan": ["extract claims", "compare claims", "write summary"],
+  "capability_decisions": [
+    {
+      "capability": "extract claims",
+      "decision": "USE_SKILL",
+      "skill": "extract-claims"
+    },
+    {
+      "capability": "detect contradictions",
+      "decision": "CREATE_TEMP_SKILL",
+      "skill_request": "skillreq_001"
+    }
   ],
-  "execution_summary": {
-    "loaded_skills": ["extract-claims"],
-    "temporary_skills": [],
-    "requested_skills": [],
-    "repair_requested_skills": [],
-    "script_executions": [],
-    "failed_scripts": [],
-    "safety_decisions": [],
-    "result_category": "success"
-  },
-  "capability_decisions": [],
-  "skills_loaded": [],
-  "skill_requests": [],
-  "skill_repair_requests": [],
-  "script_executions": []
+  "skills_loaded": [
+    {
+      "name": "extract-claims",
+      "reason": "Needed source-level factual claims."
+    },
+    {
+      "name": "detect-contradictions",
+      "reason": "Needed claim conflict detection."
+    }
+  ],
+  "script_executions": [
+    {
+      "skill_name": "count-words",
+      "command": ["python", "skills/count-words/scripts/count_words.py"],
+      "returncode": 0,
+      "stdout": "{\"word_count\": 6}",
+      "stderr": "",
+      "timed_out": false
+    }
+  ],
+  "skill_requests": [
+    {
+      "id": "skillreq_001",
+      "desired_skill_name": "detect-contradictions",
+      "status": "requested",
+      "temporary_skill": {
+        "skill_name": "detect-contradictions",
+        "skill_path": "skills/detect-contradictions/SKILL.md",
+        "validation_passed": true,
+        "validation_reasons": [],
+        "loaded": true
+      }
+    }
+  ],
+  "skill_repair_requests": [
+    {
+      "id": "repairreq_001",
+      "skill_request_id": "skillreq_001",
+      "skill_name": "detect-contradictions",
+      "failed_capability": "detect contradictions",
+      "failure_reasons": ["non-scripted skills must be low risk"],
+      "status": "requested"
+    }
+  ],
+  "result_quality": {
+    "score": 0.78,
+    "notes": "Missed one indirect contradiction."
+  }
 }
 ```
 
-`run_id` identifies one execution and appears in the filename. `task_id` remains deterministic for the task text. Temporary generated skills live under `runs/artifacts/<run_id>/skills/...` and are only loaded through that run's registry overlay.
+## Minimal `SKILL.md`
 
-Result categories use this precedence: `unsafe_aborted`, `awaiting_human_approval`, `repair_requested`, `route_load_failed`, `script_failed`, `blocked_missing_skill`, `success`.
+````markdown
+---
+name: extract-claims
+description: Extracts atomic factual claims from articles, PDFs, transcripts, or reports. Use when a task requires comparing, verifying, deduplicating, or contradicting source statements.
+compatibility: Requires Python 3.11+
+metadata:
+  version: "0.1.0"
+  owner: "local"
+  risk: "low"
+  status: "candidate"
+---
 
-## Script Execution Log
+## What This Skill Does
 
-Scripted skills are opt-in restricted local subprocesses, not a true sandbox. Logs cap stdout/stderr, parse successful stdout as JSON, validate it against `output_schema`, and categorize failures.
+Turn messy text into short, checkable claims.
+
+## Inputs
+
+- `text`: source text
+- `source_id`: source label
+- `granularity`: `coarse` or `fine`
+
+## Output
 
 ```json
-{
-  "skill_name": "count-words",
-  "command": ["python", ".../count_words.py"],
-  "returncode": 0,
-  "stdout": "{\"word_count\": 6}",
-  "stderr": "",
-  "timed_out": false,
-  "parsed_stdout": {"word_count": 6},
-  "output_validated": true,
-  "failure_category": null
-}
+[
+  {
+    "claim": "string",
+    "source_id": "string",
+    "evidence_quote": "string",
+    "confidence": 0.0
+  }
+]
 ```
 
-Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mismatch`, and `output_too_large`.
+## Procedure
 
-## JSON CLI Surfaces
+1. Split text into candidate factual statements.
+2. Remove opinions unless they contain factual assertions.
+3. Keep each claim atomic.
+4. Preserve source references.
+5. Return JSON only.
 
-- `skill-agent run --json` emits run result data: IDs, exit code, result category, run-log path, execution summary, decisions, requests, repairs, loaded skills, rejected skills, trace events, and script executions.
-- `skill-agent registry --json` emits `{ "accepted": [...], "rejected": [...] }`.
-- `skill-agent health --json` is additive and includes v2 metrics such as result categories, temporary outcomes, repair counts, safety stops, human approval waits, route/load failures, and script failure categories.
-- `skill-agent eval --json` emits the eval suite path, timestamp, per-task run-log paths, task pass/fail status, routing decisions, skill requests, request-quality scores, and aggregate counts.
-- `skill-agent explain <run-log.json>` reads an existing run log and prints a human-readable trace summary. It does not mutate the run log.
+## Failure Cases
 
-## Eval Task
-
-Eval suites are JSONL. Blank lines and comment lines are ignored.
-
-```json
-{
-  "id": "missing_contradiction_001",
-  "task": "Extract claims from these two sources and identify contradictions.",
-  "expected": {
-    "outcome": "missing_skill_request",
-    "capability": "detect contradictions",
-    "must_request_skill": true,
-    "must_not_load_skill": "compare-claims",
-    "min_request_quality": 4.0,
-    "must_have_routing_decision": true,
-    "trace_complete": true
-  },
-  "tags": ["missing_skill", "contradiction"]
-}
-```
-
-Supported v0 expectations include `outcome`, `capability`, `must_request_skill`, `must_load_skill`, `must_not_load_skill`, `min_request_quality`, `must_have_routing_decision`, `must_block_adversarial`, and `trace_complete`.
-
-## Eval Report
-
-```json
-{
-  "suite": "evals/capgap_smoke.jsonl",
-  "timestamp": "2026-05-30T21:18:55",
-  "passed": true,
-  "aggregate": {
-    "total": 4,
-    "passed": 4,
-    "failed": 0,
-    "missing_skill_true_positives": 1,
-    "missing_skill_false_positives": 0,
-    "missing_skill_false_negatives": 0,
-    "wrong_skill_loads": 0,
-    "unsafe_allowed": 0,
-    "safe_blocked": 0,
-    "adversarial_attempted": 0,
-    "adversarial_blocked": 0,
-    "average_request_quality": 4.6
-  },
-  "tasks": []
-}
-```
-
-Per-task records include `run_id`, `run_log_path`, `result_category`, `loaded_skills`, `requested_skills`, `rejected_skills`, `skill_requests`, `request_quality`, `routing_decisions`, `trace`, and any assertion issues.
-
-## Request Quality
-
-Request quality is deterministic and normalized to a 0-5 score:
-
-```json
-{
-  "score": 4.6,
-  "max_score": 5,
-  "dimensions": {
-    "specificity": 2,
-    "input_contract": 1,
-    "output_contract": 2,
-    "success_criteria": 2,
-    "failure_modes": 2,
-    "risk_level_correctness": 2,
-    "reuse_potential": 2
-  },
-  "notes": ["Weak input contract."]
-}
-```
-
-Dimensions are scored 0-2: specificity, input contract, output contract, success criteria, failure modes, risk-level correctness, and reuse potential.
+- If text is too short, return an empty list.
+- If claims are ambiguous, mark confidence below 0.5.
+````

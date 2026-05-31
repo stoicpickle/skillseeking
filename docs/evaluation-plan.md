@@ -125,43 +125,6 @@ Each eval run should produce:
 - Final quality score.
 - Notes for skill repair or retirement.
 
-## Capability-Gap Eval Runner
-
-The v0 eval runner is intentionally small and deterministic:
-
-```bash
-skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals
-```
-
-The suite is JSONL. Each line describes one task, its expected outcome, and any routing/request assertions:
-
-```json
-{
-  "id": "missing_contradiction_001",
-  "task": "Extract claims from these two sources and identify contradictions.",
-  "expected": {
-    "outcome": "missing_skill_request",
-    "capability": "detect contradictions",
-    "must_request_skill": true,
-    "must_not_load_skill": "compare-claims",
-    "min_request_quality": 4.0,
-    "must_have_routing_decision": true,
-    "trace_complete": true
-  },
-  "tags": ["missing_skill", "contradiction"]
-}
-```
-
-The runner executes the real `skill-agent run` pipeline for each task, writes per-task run logs, and emits:
-
-- a JSON report for automation and regression checks,
-- a Markdown summary for review,
-- aggregate counts for missing-skill true/false positives, wrong skill loads, unsafe allowed, safe blocked, adversarial attempted/blocked, and average request quality.
-
-Request quality is scored without an LLM judge. The dimensions are specificity, input contract, output contract, success criteria, failure modes, risk-level correctness, and reuse potential. Each dimension is scored 0-2 and normalized to 0-5.
-
-Use `skill-agent explain <run-log.json>` to inspect any failed eval task. The trace is a first-class artifact: the desired flow is `BLOCKED -> REQUESTED -> VALIDATED -> LOADED/REJECTED -> CONTINUED`.
-
 ## Success Criteria for MVP
 
 The MVP is working if:

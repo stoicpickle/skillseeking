@@ -1,50 +1,10 @@
 from __future__ import annotations
 
 from collections.abc import Iterable
-import json
 
 import typer
 
 from app.models import AgentRunResult, LoadedSkillLog, ScriptExecutionLog
-from app.registry import SkillRegistry
-
-
-def emit_run_json(result: AgentRunResult) -> None:
-    typer.echo(
-        json.dumps(
-            {
-                "run_id": result.run_log.run_id,
-                "task_id": result.run_log.task_id,
-                "exit_code": result.exit_code,
-                "result_category": result.run_log.result_category,
-                "run_log_path": str(result.run_log_path),
-                "execution_summary": result.run_log.execution_summary.model_dump(mode="json"),
-                "decisions": result.run_log.capability_decisions,
-                "skill_requests": result.run_log.skill_requests,
-                "skill_repair_requests": result.run_log.skill_repair_requests,
-                "script_executions": [execution.model_dump(mode="json") for execution in result.run_log.script_executions],
-                "skills_loaded": [skill.model_dump(mode="json") for skill in result.run_log.skills_loaded],
-                "rejected_skills": result.run_log.rejected_skills,
-                "trace": result.run_log.trace,
-                "trace_events": [event.model_dump(mode="json") for event in result.run_log.trace_events],
-            },
-            indent=2,
-            sort_keys=True,
-        )
-    )
-
-
-def emit_registry_json(registry: SkillRegistry) -> None:
-    typer.echo(
-        json.dumps(
-            {
-                "accepted": [record.model_dump(mode="json") for record in registry.list_records()],
-                "rejected": [rejection.model_dump(mode="json") for rejection in registry.rejections()],
-            },
-            indent=2,
-            sort_keys=True,
-        )
-    )
 
 
 def emit_run_output(result: AgentRunResult) -> None:
@@ -58,23 +18,10 @@ def emit_run_output(result: AgentRunResult) -> None:
         selected = decision.get("selected_skill") if decision["decision"] == "USE_SKILL" else None
         typer.echo(f"{decision['decision']} {selected or '-'} :: {decision['capability']}")
 
-    _emit_safety_decisions(result.run_log.capability_decisions)
     _emit_skill_requests(result.run_log.skill_requests)
     _emit_skill_repair_requests(result.run_log.skill_repair_requests)
     _emit_script_executions(result.run_log.script_executions)
     _emit_result(result)
-
-
-def _emit_safety_decisions(decisions: Iterable[dict]) -> None:
-    for decision in decisions:
-        if decision.get("decision") not in {"ASK_HUMAN", "ABORT_UNSAFE"}:
-            continue
-        typer.echo("")
-        typer.echo("SAFETY")
-        typer.echo(f"Decision: {decision['decision']}")
-        typer.echo(f"Capability: {decision['capability']}")
-        typer.echo(f"Reason: {decision['reason']}")
-        typer.echo(f"Approval required: {decision.get('requires_human_approval', False)}")
 
 
 def _emit_skill_requests(skill_requests: Iterable[dict]) -> None:
@@ -114,9 +61,6 @@ def _emit_script_executions(script_executions: Iterable[ScriptExecutionLog]) -> 
         typer.echo(f"Skill: {execution.skill_name}")
         typer.echo(f"Return code: {execution.returncode}")
         typer.echo(f"Timed out: {execution.timed_out}")
-        if execution.failure_category:
-            typer.echo(f"Failure category: {execution.failure_category}")
-        typer.echo(f"Output validated: {execution.output_validated}")
         if execution.stdout:
             typer.echo(f"Stdout: {execution.stdout}")
         if execution.stderr:
@@ -131,9 +75,6 @@ def _emit_result(result: AgentRunResult) -> None:
 
     typer.echo("")
     typer.echo("RESULT")
-    typer.echo(f"Run ID: {result.run_log.run_id}")
-    typer.echo(f"Task ID: {result.run_log.task_id}")
-    typer.echo(f"Result category: {result.run_log.result_category}")
     typer.echo(f"Exit code: {result.exit_code}")
     typer.echo(f"Loaded skills: {loaded_names}")
     typer.echo(f"Temporary skills: {temporary_names}")

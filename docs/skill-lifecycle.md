@@ -5,7 +5,7 @@
 ```text
 requested   missing capability has been identified
 draft       skill has been created but not validated
-temporary   passed minimal validation and can be used for one task from run-scoped artifacts
+temporary   passed minimal validation and can be used for one task
 candidate   passed broader checks and can be reused with caution
 stable      repeatedly useful and maintained
 deprecated  replaced, stale, or scheduled for retirement
@@ -56,7 +56,6 @@ Merged later into compare-claims v0.4.
 
 Draft to temporary:
 
-- The draft lives under `runs/artifacts/<run_id>/skills`, not durable `skills/`.
 - Metadata is valid.
 - Inputs and outputs are explicit.
 - At least one example is present.
@@ -65,7 +64,6 @@ Draft to temporary:
 
 Temporary to candidate:
 
-- Requires an explicit copy/promotion workflow; run artifacts are never scanned as durable registry entries by default.
 - Used successfully at least 3 times.
 - Human correction rate is acceptable.
 - No unresolved safety flags.

@@ -1,21 +1,18 @@
 from __future__ import annotations
 
 import json
-import re
+import uuid
+from datetime import datetime
 from pathlib import Path
 
-from app.models import RunLog, new_default_run_id
-
-
-def new_run_id() -> str:
-    return new_default_run_id()
+from app.models import RunLog
 
 
 def write_run_log(run_log: RunLog, runs_dir: Path) -> Path:
     runs_dir.mkdir(parents=True, exist_ok=True)
-    timestamp = run_log.created_at.strftime("%Y%m%d_%H%M%S")
-    run_id = _filename_safe_run_id(run_log.run_id)
-    path = runs_dir / f"run_{timestamp}_{run_id}.json"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    shortid = uuid.uuid4().hex[:8]
+    path = runs_dir / f"run_{timestamp}_{shortid}.json"
     tmp_path = path.with_suffix(".tmp")
     tmp_path.write_text(
         json.dumps(run_log.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",
@@ -23,9 +20,4 @@ def write_run_log(run_log: RunLog, runs_dir: Path) -> Path:
     )
     tmp_path.replace(path)
     return path
-
-
-def _filename_safe_run_id(run_id: str) -> str:
-    safe = re.sub(r"[^A-Za-z0-9_-]", "-", run_id).strip("-")
-    return safe or new_run_id()
 
