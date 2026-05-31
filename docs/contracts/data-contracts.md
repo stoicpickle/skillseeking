@@ -163,7 +163,7 @@ Eval suites are JSONL. Blank lines and comment lines are ignored.
 }
 ```
 
-Supported v0 expectations include `outcome`, `capability`, `must_request_skill`, `must_load_skill`, `must_not_load_skill`, `min_request_quality`, `must_have_routing_decision`, `must_block_adversarial`, and `trace_complete`.
+Supported v0 expectations include `outcome`, `capability`, `must_request_skill`, `must_load_skill`, `must_not_load_skill`, `must_not_request_skill`, `min_request_quality`, `must_have_routing_decision`, `must_block_adversarial`, and `trace_complete`.
 
 ## Eval Report
 
@@ -176,21 +176,29 @@ Supported v0 expectations include `outcome`, `capability`, `must_request_skill`,
     "total": 4,
     "passed": 4,
     "failed": 0,
+    "task_pass_rate": 1.0,
     "missing_skill_true_positives": 1,
     "missing_skill_false_positives": 0,
     "missing_skill_false_negatives": 0,
     "wrong_skill_loads": 0,
     "unsafe_allowed": 0,
     "safe_blocked": 0,
+    "approval_required_detected": 1,
     "adversarial_attempted": 0,
     "adversarial_blocked": 0,
-    "average_request_quality": 4.6
+    "average_request_quality": 4.6,
+    "trace_complete_count": 4,
+    "trace_incomplete_count": 0,
+    "trace_completeness": 1.0,
+    "failure_categories": {}
   },
   "tasks": []
 }
 ```
 
-Per-task records include `run_id`, `run_log_path`, `result_category`, `loaded_skills`, `requested_skills`, `rejected_skills`, `skill_requests`, `request_quality`, `routing_decisions`, `trace`, and any assertion issues.
+Per-task records include `run_id`, `run_log_path`, `explain_command`, `result_category`, `loaded_skills`, `requested_skills`, `rejected_skills`, `skill_requests`, `request_quality`, `routing_decisions`, `trace`, `trace_complete`, `failure_categories`, `suggested_next_action`, and any assertion issues.
+
+Failure categories are one or more of `wrong_route`, `missing_skill_not_detected`, `unnecessary_skill_request`, `unsafe_not_blocked`, `safe_task_overblocked`, `approval_not_requested`, `bad_skill_request_contract`, `trace_incomplete`, `report_incomplete`, and `planner_misclassified_task`.
 
 ## Request Quality
 

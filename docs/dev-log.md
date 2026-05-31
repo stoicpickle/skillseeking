@@ -418,3 +418,35 @@ Verified:
 Result:
 
 - The repo can now prove that the agent knows when to use a skill, request a missing skill, reject unsafe tasks, wait for approval-sensitive tasks, and expose the route through an auditable trace.
+
+## 2026-05-31 M13 Capability-Gap Calibration
+
+Implemented the calibration loop on top of the eval harness.
+
+Added:
+
+- Renamed the end-to-end eval test to `tests/test_capgap_eval_end_to_end.py`.
+- Expanded `evals/capgap_v0.jsonl` from 5 tasks to 20 tasks:
+  - 5 existing-skill tasks
+  - 5 missing-skill tasks
+  - 3 workflow-guidance tasks
+  - 3 adversarial-routing tasks
+  - 2 unsafe-stop tasks
+  - 2 approval-required tasks
+- Machine-readable eval failure categories.
+- Per-failure Markdown diagnostics with expected outcome, actual result, loaded skills, requested skills, failure categories, suggested next action, and `skill-agent explain` command.
+- Aggregate metrics for task pass rate, approval-required detection, trace completeness, and failure-category counts.
+- A narrow safety classifier calibration for the natural phrase "read local files".
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_eval_runner.py tests/test_cli_explain.py tests/test_capgap_eval_end_to_end.py tests/test_safety_decisions.py
+.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir runs/evals
+```
+
+Result:
+
+- The 20-task calibration suite passes 20/20.
+- The first calibration run exposed `approval_not_requested` for "read local files"; the classifier now treats that phrase as human-approval-required file access.
+- M13 adds no new agent feature surface, CLI command, dependency, or execution capability.

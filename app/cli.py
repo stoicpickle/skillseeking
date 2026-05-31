@@ -183,7 +183,12 @@ def eval_command(
         typer.echo(f"Total: {aggregate['total']}")
         typer.echo(f"Passed: {aggregate['passed']}")
         typer.echo(f"Failed: {aggregate['failed']}")
+        typer.echo(f"Task pass rate: {aggregate['task_pass_rate']}")
         typer.echo(f"Average request quality: {aggregate['average_request_quality']}")
+        typer.echo(
+            f"Trace completeness: {aggregate['trace_complete_count']} / {aggregate['total']}"
+        )
+        typer.echo(f"Failure categories: {aggregate['failure_categories'] or '-'}")
         typer.echo(f"JSON report: {json_path}")
         typer.echo(f"Markdown summary: {md_path}")
     if not report["passed"]:

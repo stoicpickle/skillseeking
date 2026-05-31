@@ -190,7 +190,16 @@ _ABORT_PATTERNS: tuple[SafetyPattern, ...] = (
 
 _ASK_PATTERNS: tuple[SafetyPattern, ...] = (
     (
-        ("read file", "read files", "file read", "file reads", "open file", "open local file"),
+        (
+            "read file",
+            "read files",
+            "read local file",
+            "read local files",
+            "file read",
+            "file reads",
+            "open file",
+            "open local file",
+        ),
         "human approval required for file access",
         "Reading local files requires explicit human approval.",
     ),

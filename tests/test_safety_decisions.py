@@ -6,6 +6,7 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from app.agent_loop import _result_category
+from app.capability_catalog import classify_task_safety
 from app.cli import app
 from app.models import ScriptExecutionLog
 
@@ -98,6 +99,14 @@ def test_approval_needed_task_stops_without_requesting_skill(copied_seed_skills,
     assert "SAFETY_REVIEW_REQUIRED" in data["trace"]
 
 
+def test_read_local_files_phrase_requires_human_approval():
+    decision = classify_task_safety("Read local files and summarize them.")
+
+    assert decision is not None
+    assert decision.decision == "ASK_HUMAN"
+    assert decision.capability == "human approval required for file access"
+
+
 def test_result_category_precedence_uses_explicit_route_load_before_script_failure():
     script_failure = ScriptExecutionLog(
         skill_name="count-words",
@@ -128,4 +137,3 @@ def test_result_category_precedence_uses_explicit_route_load_before_script_failu
         )
         == "script_failed"
     )
-

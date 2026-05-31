@@ -157,6 +157,8 @@ Slices:
 | Skill repair request | complete | Failed temporary validation emits a structured repair request without auto-repairing |
 | v0 acceptance harness | complete | End-to-end CLI cases verify traces, run logs, filesystem effects, and entrypoint smoke |
 | Skill Gauntlet demo | complete | One scripted showcase combines safe loading, malicious rejection, temporary skill loading, repair request, and run-log proof |
+| Capability-Gap Eval Harness | complete | JSONL eval suites run through the real loop with reports and trace explain output |
+| Capability-Gap Calibration | complete | Twenty-task suite tracks classification, safety, approval, trace completeness, and failure taxonomy |
 
 ## Current First Slice
 
@@ -392,3 +394,20 @@ Slices:
 | Reports | complete | Eval writes machine-readable JSON and human-readable Markdown summaries |
 | Trace explainer | complete | `skill-agent explain <run-log.json>` summarizes task, capabilities, decisions, requests, safety stops, and trace stages |
 | Regression coverage | complete | Tests cover loader, reports, CLI eval, request scoring, explain, and CI eval smoke |
+
+## Milestone 13: Capability-Gap Calibration
+
+Status: complete
+
+Goal:
+Prove the agent can classify capability gaps across varied normal, missing-skill, workflow-guidance, adversarial-routing, unsafe, and approval-required tasks.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| End-to-end calibration test | complete | `tests/test_capgap_eval_end_to_end.py` covers existing skill, missing skill, unsafe stop, approval wait, reports, and explain output |
+| Twenty-task suite | complete | `evals/capgap_v0.jsonl` includes 5 existing-skill, 5 missing-skill, 3 workflow-guidance, 3 adversarial-routing, 2 unsafe, and 2 approval-required tasks |
+| Failure taxonomy | complete | Failed eval tasks emit categories such as `wrong_route`, `missing_skill_not_detected`, `approval_not_requested`, and `trace_incomplete` |
+| Diagnostic reports | complete | Markdown reports show summary metrics, failure categories, per-failure diagnostics, suggested next action, and `skill-agent explain` command |
+| Calibration fix loop | complete | The first 20-task run exposed `approval_not_requested` for "read local files"; classifier coverage now catches that phrase |

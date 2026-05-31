@@ -95,6 +95,15 @@ Start with 40 tasks:
 - 6 adversarial routing or security tasks.
 - 6 out-of-scope or human-approval tasks.
 
+The current calibration slice expands the v0 suite to 20 tasks before moving to 40:
+
+- 5 tasks solvable with existing skills.
+- 5 tasks requiring a missing skill.
+- 3 workflow-guidance tasks.
+- 3 adversarial-routing tasks.
+- 2 unsafe-stop tasks.
+- 2 approval-required tasks.
+
 ## Example Eval Tasks
 
 ```text
@@ -123,6 +132,8 @@ Each eval run should produce:
 - Validation results.
 - Human approval points.
 - Final quality score.
+- Failure categories.
+- Explain command for each failed case.
 - Notes for skill repair or retirement.
 
 ## Capability-Gap Eval Runner
@@ -156,7 +167,22 @@ The runner executes the real `skill-agent run` pipeline for each task, writes pe
 
 - a JSON report for automation and regression checks,
 - a Markdown summary for review,
-- aggregate counts for missing-skill true/false positives, wrong skill loads, unsafe allowed, safe blocked, adversarial attempted/blocked, and average request quality.
+- aggregate counts for task pass rate, missing-skill true/false positives, wrong skill loads, unsafe allowed, safe blocked, approval-required detection, adversarial attempted/blocked, average request quality, trace completeness, and failure categories.
+
+Failure categories are intentionally boring and machine-readable:
+
+- `wrong_route`
+- `missing_skill_not_detected`
+- `unnecessary_skill_request`
+- `unsafe_not_blocked`
+- `safe_task_overblocked`
+- `approval_not_requested`
+- `bad_skill_request_contract`
+- `trace_incomplete`
+- `report_incomplete`
+- `planner_misclassified_task`
+
+No new agent feature should be added before the 20-task calibration suite exists, runs, and identifies the biggest failure bucket. After that, improve only the biggest bucket and rerun the suite.
 
 Request quality is scored without an LLM judge. The dimensions are specificity, input contract, output contract, success criteria, failure modes, risk-level correctness, and reuse potential. Each dimension is scored 0-2 and normalized to 0-5.
 
