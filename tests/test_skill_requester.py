@@ -20,7 +20,7 @@ def test_create_contradiction_skill_request_contract():
     assert request.desired_skill_name == "detect-contradictions"
     assert request.input_schema == {"claims": "array"}
     assert "contradictions" in request.output_schema
-    assert request.risk_level == "medium"
+    assert request.risk_level == "low"
     assert not request.approval_required
     assert request.status == "requested"
 

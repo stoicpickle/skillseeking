@@ -4,7 +4,7 @@ from pathlib import Path
 
 import yaml
 
-from app.models import SkillRequest, TemporarySkillResult
+from app.models import SkillLifecycle, SkillRequest, TemporarySkillResult
 from app.skill_parser import parse_skill_file
 from app.skill_validator import validate_parsed_skill
 
@@ -13,8 +13,10 @@ class SkillsmithError(ValueError):
     pass
 
 
-def draft_temporary_skill(request: SkillRequest, skills_dir: Path) -> TemporarySkillResult:
-    skill_dir = _safe_skill_dir(skills_dir, request.desired_skill_name)
+def draft_temporary_skill(
+    request: SkillRequest, temporary_skills_root: Path, run_id: str | None = None
+) -> TemporarySkillResult:
+    skill_dir = _safe_skill_dir(temporary_skills_root, request.desired_skill_name)
     skill_file = skill_dir / "SKILL.md"
     if skill_file.exists():
         raise SkillsmithError(f"temporary skill already exists: {skill_file}")
@@ -23,29 +25,31 @@ def draft_temporary_skill(request: SkillRequest, skills_dir: Path) -> TemporaryS
     skill_file.write_text(_render_skill_markdown(request), encoding="utf-8")
 
     parsed = parse_skill_file(skill_file)
-    validation = validate_parsed_skill(parsed, skills_dir)
-    if not validation.accepted:
-        skill_file.unlink(missing_ok=True)
-        try:
-            skill_dir.rmdir()
-        except OSError:
-            pass
+    lifecycle = SkillLifecycle(
+        stage="temporary",
+        source="skillsmith",
+        run_id=run_id,
+        temporary=True,
+        notes="Generated under run-scoped artifacts for one-run provisional use.",
+    )
+    validation = validate_parsed_skill(parsed, temporary_skills_root, lifecycle=lifecycle)
 
     return TemporarySkillResult(
         skill_name=request.desired_skill_name,
         skill_path=skill_file,
         validation_passed=validation.accepted,
         validation_reasons=validation.reasons,
+        lifecycle=lifecycle,
     )
 
 
-def _safe_skill_dir(skills_dir: Path, skill_name: str) -> Path:
-    root = skills_dir.resolve()
+def _safe_skill_dir(temporary_skills_root: Path, skill_name: str) -> Path:
+    root = temporary_skills_root.resolve()
     skill_dir = (root / skill_name).resolve()
     try:
         skill_dir.relative_to(root)
     except ValueError as exc:
-        raise SkillsmithError("temporary skill path escaped skills directory") from exc
+        raise SkillsmithError("temporary skill path escaped temporary skill root") from exc
     return skill_dir
 
 

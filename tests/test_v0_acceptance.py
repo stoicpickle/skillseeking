@@ -6,6 +6,7 @@ from pathlib import Path
 from shutil import copytree
 
 import pytest
+from textwrap import dedent
 from typer.testing import CliRunner
 
 from app.cli import app
@@ -63,12 +64,21 @@ def test_acceptance_existing_skill_loads_without_requests(copied_seed_skills, tm
     assert_no_markdown_body(log_path)
     loaded_names = {skill["name"] for skill in data["skills_loaded"]}
     assert {"extract-claims", "source-quality-check", "write-structured-answer"} <= loaded_names
+    assert data["schema_version"] == 2
+    assert data["run_id"] in log_path.name
+    assert data["result_category"] == "success"
+    assert [event["sequence"] for event in data["trace_events"]] == list(range(1, len(data["trace_events"]) + 1))
+    assert [event["stage"] for event in data["trace_events"]] == data["trace"]
+    assert data["execution_summary"]["loaded_skills"]
+    assert data["execution_summary"]["skill_request_count"] == 0
+    assert not (runs_dir / "artifacts").exists()
     assert data["skill_requests"] == []
     assert data["skill_repair_requests"] == []
 
 
 def test_acceptance_temporary_skill_success_records_loaded_temp(copied_seed_skills, tmp_path):
     runs_dir = tmp_path / "runs"
+    durable_entries_before = {path.name for path in copied_seed_skills.iterdir()}
     result = CliRunner().invoke(
         app,
         [
@@ -105,15 +115,24 @@ def test_acceptance_temporary_skill_success_records_loaded_temp(copied_seed_skil
             "Exit code: 0",
         ],
     )
-    assert (copied_seed_skills / "argument-clustering" / "SKILL.md").exists()
+    assert not (copied_seed_skills / "argument-clustering" / "SKILL.md").exists()
+    assert {path.name for path in copied_seed_skills.iterdir()} == durable_entries_before
     log_path, data = read_single_run_log(runs_dir)
     assert_no_markdown_body(log_path)
+    artifact_skill = runs_dir / "artifacts" / data["run_id"] / "skills" / "argument-clustering" / "SKILL.md"
+    assert artifact_skill.exists()
     request = data["skill_requests"][0]
     assert request["desired_skill_name"] == "argument-clustering"
+    assert Path(request["temporary_skill"]["skill_path"]) == artifact_skill
     assert request["temporary_skill"]["validation_passed"]
     assert request["temporary_skill"]["loaded"]
+    assert data["result_category"] == "success"
+    assert data["execution_summary"]["temporary_skills"] == ["argument-clustering"]
+    assert data["execution_summary"]["skill_request_count"] == 1
     assert data["skill_repair_requests"] == []
-    assert any(skill["name"] == "argument-clustering" and skill["temporary"] for skill in data["skills_loaded"])
+    loaded_temp = next(skill for skill in data["skills_loaded"] if skill["name"] == "argument-clustering")
+    assert loaded_temp["temporary"]
+    assert loaded_temp["lifecycle"]["run_id"] == data["run_id"]
 
 
 def test_acceptance_blocked_no_temp_skill_does_not_mutate_skills(copied_seed_skills, tmp_path):
@@ -147,8 +166,11 @@ def test_acceptance_blocked_no_temp_skill_does_not_mutate_skills(copied_seed_ski
     )
     assert "DRAFTING_TEMP_SKILL" not in result.stdout
     assert not (copied_seed_skills / "detect-contradictions").exists()
+    assert not (runs_dir / "artifacts").exists()
     log_path, data = read_single_run_log(runs_dir)
     assert_no_markdown_body(log_path)
+    assert data["result_category"] == "blocked_missing_skill"
+    assert data["execution_summary"]["requested_skills"] == ["detect-contradictions"]
     assert data["skill_requests"][0]["desired_skill_name"] == "detect-contradictions"
     assert "temporary_skill" not in data["skill_requests"][0]
     assert data["skill_repair_requests"] == []
@@ -160,7 +182,7 @@ def test_acceptance_validation_failure_emits_repair_request(copied_seed_skills, 
         app,
         [
             "run",
-            "Extract claims from these two sources and identify contradictions.",
+            "Run local Python analysis on this text.",
             "--skills-dir",
             str(copied_seed_skills),
             "--runs-dir",
@@ -182,23 +204,30 @@ def test_acceptance_validation_failure_emits_repair_request(copied_seed_skills, 
     assert_contains(
         result.stdout,
         [
-            "Temporary skill: detect-contradictions",
+            "Temporary skill: local-python-analysis",
             "Validation passed: False",
             "Loaded: False",
-            "Skill: detect-contradictions",
+            "Skill: local-python-analysis",
             "Failure reason: non-scripted skills must be low risk",
             "Exit code: 1",
         ],
     )
-    assert not (copied_seed_skills / "detect-contradictions").exists()
+    assert not (copied_seed_skills / "local-python-analysis").exists()
     log_path, data = read_single_run_log(runs_dir)
     assert_no_markdown_body(log_path)
+    artifact_skill = runs_dir / "artifacts" / data["run_id"] / "skills" / "local-python-analysis" / "SKILL.md"
+    assert artifact_skill.exists()
     request = data["skill_requests"][0]
     repair = data["skill_repair_requests"][0]
     assert not request["temporary_skill"]["validation_passed"]
+    assert request["temporary_skill"]["loaded"] is False
+    assert Path(request["temporary_skill"]["skill_path"]) == artifact_skill
+    assert data["result_category"] == "repair_requested"
+    assert data["execution_summary"]["temporary_skills"] == ["local-python-analysis"]
+    assert data["execution_summary"]["repair_requested_skills"] == ["local-python-analysis"]
     assert repair["skill_request_id"] == request["id"]
-    assert repair["skill_name"] == "detect-contradictions"
-    assert repair["failed_capability"] == "detect contradictions"
+    assert repair["skill_name"] == "local-python-analysis"
+    assert repair["failed_capability"] == "run local python analysis"
     assert repair["status"] == "requested"
 
 
@@ -244,9 +273,61 @@ def test_acceptance_scripted_skill_opt_in_records_execution(tmp_path, repo_root:
     log_path, data = read_single_run_log(runs_dir)
     assert_no_markdown_body(log_path)
     execution = data["script_executions"][0]
+    assert data["execution_summary"]["script_execution_count"] == 1
+    assert data["execution_summary"]["failed_script_count"] == 0
     assert execution["skill_name"] == "count-words"
     assert execution["returncode"] == 0
     assert json.loads(execution["stdout"]) == {"word_count": 6}
+    assert execution["parsed_stdout"] == {"word_count": 6}
+    assert execution["output_validated"]
+    assert execution["failure_category"] is None
+
+
+def test_acceptance_scripted_failure_sets_result_category(tmp_path, repo_root: Path):
+    skills_dir = tmp_path / "scripted-skills"
+    copytree(repo_root / "tests" / "fixtures" / "scripted-skills", skills_dir)
+    script = skills_dir / "count-words" / "scripts" / "count_words.py"
+    script.write_text(
+        dedent(
+            '''
+            from __future__ import annotations
+            import json
+            import sys
+
+            payload = json.loads(sys.stdin.read() or "{}")
+            text = str(payload.get("text", ""))
+            if text == "one two two":
+                print(json.dumps({"word_count": 3}))
+            else:
+                print("not json")
+            '''
+        ),
+        encoding="utf-8",
+    )
+    runs_dir = tmp_path / "runs"
+
+    result = CliRunner().invoke(
+        app,
+        [
+            "run",
+            "Count words in one two three.",
+            "--scripted-skills",
+            "--no-temporary-skills",
+            "--skills-dir",
+            str(skills_dir),
+            "--runs-dir",
+            str(runs_dir),
+        ],
+    )
+
+    assert result.exit_code == 1
+    assert_contains(result.stdout, ["SCRIPT_EXECUTED", "Failure category: invalid_json", "Result category: script_failed"])
+    log_path, data = read_single_run_log(runs_dir)
+    assert_no_markdown_body(log_path)
+    assert data["result_category"] == "script_failed"
+    assert data["script_executions"][0]["failure_category"] == "invalid_json"
+    assert data["execution_summary"]["failed_script_count"] == 1
+
 
 
 def test_acceptance_packaged_cli_entrypoint_smoke(tmp_path, repo_root: Path):
@@ -281,4 +362,7 @@ def test_acceptance_packaged_cli_entrypoint_smoke(tmp_path, repo_root: Path):
     )
     log_path, data = read_single_run_log(runs_dir)
     assert_no_markdown_body(log_path)
+    artifact_skill = runs_dir / "artifacts" / data["run_id"] / "skills" / "argument-clustering" / "SKILL.md"
+    assert artifact_skill.exists()
+    assert not (skills_dir / "argument-clustering" / "SKILL.md").exists()
     assert data["skill_requests"][0]["temporary_skill"]["loaded"]

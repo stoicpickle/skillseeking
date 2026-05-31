@@ -4,3 +4,9 @@ __pycache__/
 *.pyc
 *.egg-info/
 runs/run_*.json
+runs/evals/
+runs/artifacts/
+prompt-exports/
+.env
+.env.*
+.DS_Store

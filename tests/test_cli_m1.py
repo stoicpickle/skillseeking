@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 
 from typer.testing import CliRunner
 
@@ -15,6 +16,45 @@ def test_registry_command_lists_seed_skills(seed_skills_dir):
     assert result.exit_code == 0
     assert "extract-claims" in result.stdout
     assert "write-structured-answer" in result.stdout
+
+
+def test_registry_json_lists_accepted_and_rejected(seed_skills_dir):
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["registry", "--skills-dir", str(seed_skills_dir), "--json"])
+
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)
+    assert {record["name"] for record in data["accepted"]} >= {"extract-claims", "write-structured-answer"}
+    assert data["rejected"] == []
+
+
+def test_run_json_outputs_machine_readable_result(copied_seed_skills, tmp_path):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            "Extract claims from this article and write a structured summary with source-quality notes.",
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--runs-dir",
+            str(runs_dir),
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert "TRACE" not in result.stdout
+    data = json.loads(result.stdout)
+    assert data["exit_code"] == 0
+    assert data["result_category"] == "success"
+    assert data["run_id"] in data["run_log_path"]
+    assert data["execution_summary"]["loaded_skills"]
+    assert data["decisions"][0]["ranked_candidates"]
+
 
 
 def test_existing_skill_demo(copied_seed_skills, tmp_path):
@@ -117,14 +157,17 @@ def test_temporary_skill_demo_drafts_validates_and_loads_skill(copied_seed_skill
     assert "Exit code: 0" in result.stdout
     assert "Loaded skills: argument-clustering" in result.stdout
     assert "Temporary skills: argument-clustering" in result.stdout
-    assert (copied_seed_skills / "argument-clustering" / "SKILL.md").exists()
+    assert not (copied_seed_skills / "argument-clustering" / "SKILL.md").exists()
     logs = list(runs_dir.glob("run_*.json"))
     assert len(logs) == 1
     assert f"Run log: {logs[0]}" in result.stdout
     data = json.loads(logs[0].read_text(encoding="utf-8"))
+    artifact_skill = runs_dir / "artifacts" / data["run_id"] / "skills" / "argument-clustering" / "SKILL.md"
+    assert artifact_skill.exists()
     request = data["skill_requests"][0]
     assert request["temporary_skill"]["validation_passed"]
     assert request["temporary_skill"]["loaded"]
+    assert Path(request["temporary_skill"]["skill_path"]) == artifact_skill
     loaded_names = {skill["name"] for skill in data["skills_loaded"]}
     assert "argument-clustering" in loaded_names
 
@@ -139,7 +182,7 @@ def test_medium_risk_temporary_skill_fails_validation_and_stays_blocked(
         app,
         [
             "run",
-            "Extract claims from these two sources and identify contradictions.",
+            "Run local Python analysis on this text.",
             "--skills-dir",
             str(copied_seed_skills),
             "--runs-dir",
@@ -154,24 +197,26 @@ def test_medium_risk_temporary_skill_fails_validation_and_stays_blocked(
     assert "REPAIR_REQUESTED" in result.stdout
     assert "RESULT" in result.stdout
     assert "Exit code: 1" in result.stdout
-    assert "Temporary skill: detect-contradictions" in result.stdout
+    assert "Temporary skill: local-python-analysis" in result.stdout
     assert "Validation passed: False" in result.stdout
     assert "Loaded: False" in result.stdout
-    assert "Skill: detect-contradictions" in result.stdout
-    assert "Failed capability: detect contradictions" in result.stdout
+    assert "Skill: local-python-analysis" in result.stdout
+    assert "Failed capability: run local python analysis" in result.stdout
     assert "Failure reason: non-scripted skills must be low risk" in result.stdout
-    assert "Loaded skills: extract-claims" in result.stdout
+    assert "Loaded skills: -" in result.stdout
     assert "Temporary skills: -" in result.stdout
-    assert not (copied_seed_skills / "detect-contradictions").exists()
+    assert not (copied_seed_skills / "local-python-analysis").exists()
     logs = list(runs_dir.glob("run_*.json"))
     assert len(logs) == 1
     data = json.loads(logs[0].read_text(encoding="utf-8"))
+    artifact_skill = runs_dir / "artifacts" / data["run_id"] / "skills" / "local-python-analysis" / "SKILL.md"
+    assert artifact_skill.exists()
     request = data["skill_requests"][0]
     assert not request["temporary_skill"]["validation_passed"]
     assert not request["temporary_skill"]["loaded"]
     repair_request = data["skill_repair_requests"][0]
     assert repair_request["skill_request_id"] == request["id"]
-    assert repair_request["skill_name"] == "detect-contradictions"
-    assert repair_request["failed_capability"] == "detect contradictions"
+    assert repair_request["skill_name"] == "local-python-analysis"
+    assert repair_request["failed_capability"] == "run local python analysis"
     assert repair_request["status"] == "requested"
     assert "non-scripted skills must be low risk" in repair_request["failure_reasons"]

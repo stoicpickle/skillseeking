@@ -14,11 +14,11 @@ def load_skill(
     skill_record: SkillRecord, skills_dir: Path, loaded_for_capability: str, load_reason: str
 ) -> LoadedSkill:
     skill_path = skill_record.path.resolve()
-    root = skills_dir.resolve()
+    root = skill_record.source_root.resolve()
     try:
         skill_path.relative_to(root)
     except ValueError as exc:
-        raise SkillLoadError("selected skill path is outside local skills directory") from exc
+        raise SkillLoadError("selected skill path is outside trusted skill root") from exc
 
     if not skill_path.exists() or skill_path.name != "SKILL.md":
         raise SkillLoadError("selected SKILL.md does not exist")

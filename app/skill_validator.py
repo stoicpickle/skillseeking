@@ -5,7 +5,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from app.models import RejectedSkill, SkillManifest, SkillRecord
+from app.models import RejectedSkill, SkillLifecycle, SkillManifest, SkillRecord
 from app.script_validator import validate_script_tests
 from app.skill_parser import ParsedSkill
 
@@ -42,7 +42,10 @@ class ValidationResult:
 
 
 def validate_parsed_skill(
-    parsed: ParsedSkill, skills_dir: Path, allow_scripts: bool = False
+    parsed: ParsedSkill,
+    skill_root: Path,
+    allow_scripts: bool = False,
+    lifecycle: SkillLifecycle | None = None,
 ) -> ValidationResult:
     reasons: list[str] = []
     manifest: SkillManifest | None = None
@@ -55,9 +58,9 @@ def validate_parsed_skill(
         reasons.append(f"invalid manifest: {exc.errors()[0]['msg']}")
 
     skill_path = parsed.path.resolve()
-    root = skills_dir.resolve()
+    root = skill_root.resolve()
     if not _is_relative_to(skill_path, root):
-        reasons.append("skill path is outside local skills directory")
+        reasons.append("skill path is outside trusted skill root")
 
     if parsed.path.name != "SKILL.md":
         reasons.append("skill file must be named SKILL.md")
@@ -146,7 +149,9 @@ def validate_parsed_skill(
         compatibility=manifest.compatibility,
         validation_status=manifest.validation.status,
         path=parsed.path,
+        source_root=root,
         script=manifest.script,
+        lifecycle=lifecycle or SkillLifecycle(),
     )
     return ValidationResult(True, [], normalized_record=record, name=manifest.name)
 

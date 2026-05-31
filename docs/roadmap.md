@@ -1,5 +1,9 @@
 # Roadmap
 
+## Public Sharing Note
+
+This repo should be framed publicly as an early research/prototype repo, not a production agent framework. Known next steps are roadmap items, not surprise defects: richer skill-guided execution, stronger sandboxing, broader SkillOps, and eventual UI/API surfaces.
+
 ## Phase 1: Static Skill Loader
 
 Goal: the agent can choose from existing skills.
@@ -57,21 +61,21 @@ BLOCKED -> REQUESTED SKILL -> DRAFTED -> VALIDATED -> LOADED -> CONTINUED
 
 ## Phase 4: Scripted Skills
 
-Goal: executable skills can be used safely.
+Goal: executable skills can be used with explicit opt-in trusted-local guardrails. This is not a true sandbox yet.
 
 Deliverables:
 
 - Script execution interface.
 - JSON Schema I/O validation.
 - Pytest runner.
-- Restricted subprocess or Docker sandbox.
+- Restricted local subprocess now; Docker/true sandboxing later.
 - Dependency allowlist.
 - Runtime logs.
 
 Demo:
 
 ```text
-PDF table task -> request script skill -> validate -> execute in sandbox
+PDF table task -> request script skill -> validate -> execute in restricted local subprocess
 ```
 
 ## Phase 5: SkillOps

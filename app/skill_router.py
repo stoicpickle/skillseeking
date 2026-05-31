@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import re
 
-from app.models import BestMatch, RouteDecision, RouteReason, SkillRecord
+from app.models import BestMatch, RouteCandidate, RouteDecision, RouteReason, SkillRecord
 from app.registry import SkillRegistry
 
 
@@ -27,7 +27,18 @@ def route_capability(capability: str, registry: SkillRegistry) -> RouteDecision:
 
     scored.sort(key=lambda item: (-item[0], item[1].risk_level, item[1].validation_status, item[1].name))
     score, record, reason = scored[0]
-    if score >= THRESHOLD:
+    selected = score >= THRESHOLD
+    ranked_candidates = [
+        RouteCandidate(
+            skill_name=candidate.name,
+            score=candidate_reason.score,
+            coverage="matched" if candidate_score >= THRESHOLD else "partial",
+            route_reason=candidate_reason,
+            selected=selected and candidate.name == record.name,
+        )
+        for candidate_score, candidate, candidate_reason in scored
+    ]
+    if selected:
         return RouteDecision(
             capability=capability,
             decision="USE_SKILL",
@@ -35,6 +46,7 @@ def route_capability(capability: str, registry: SkillRegistry) -> RouteDecision:
             reason=f"Selected {record.name} for capability '{capability}'.",
             best_match=BestMatch(skill_name=record.name, score=score, coverage="matched"),
             route_reason=reason,
+            ranked_candidates=ranked_candidates,
             risk_level=record.risk_level,
         )
 
@@ -44,6 +56,7 @@ def route_capability(capability: str, registry: SkillRegistry) -> RouteDecision:
         reason=f"No existing skill met threshold for capability '{capability}'.",
         best_match=BestMatch(skill_name=record.name, score=score, coverage="partial"),
         route_reason=reason,
+        ranked_candidates=ranked_candidates,
         risk_level=record.risk_level,
     )
 

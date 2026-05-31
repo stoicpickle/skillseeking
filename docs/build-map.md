@@ -156,6 +156,7 @@ Slices:
 | Core demo suite | complete | Four canonical demos document expected commands, statuses, and output landmarks |
 | Skill repair request | complete | Failed temporary validation emits a structured repair request without auto-repairing |
 | v0 acceptance harness | complete | End-to-end CLI cases verify traces, run logs, filesystem effects, and entrypoint smoke |
+| Skill Gauntlet demo | complete | One scripted showcase combines safe loading, malicious rejection, temporary skill loading, repair request, and run-log proof |
 
 ## Current First Slice
 
@@ -339,7 +340,7 @@ Slices:
 | Failure-path integration | complete | Temporary validation failure appends `REQUESTING_REPAIR` and writes `skill_repair_requests` to the run log |
 | CLI repair card | complete | `skill-agent run` prints `REPAIR_REQUESTED` with skill, capability, status, objective, and failure reasons |
 | No auto-repair boundary | complete | M9 does not rewrite, validate, load, or promote a repaired skill |
-| Regression coverage | complete | Tests prove failed `detect-contradictions` validation now emits a repair request while staying blocked |
+| Regression coverage | complete | Tests prove an explicitly medium-risk `local-python-analysis` temporary validation failure emits a repair request while staying blocked |
 
 ## Milestone 10: v0 Acceptance Harness
 
@@ -353,7 +354,41 @@ Slices:
 | Slice | Status | Checks |
 | --- | --- | --- |
 | Acceptance helpers | complete | Shared helpers check ordered landmarks, run-log JSON, and no Markdown bodies |
-| Core CLI matrix | complete | Existing, temporary, blocked, repair, malicious, and scripted paths are covered |
-| Run-log assertions | complete | Acceptance cases verify loaded skills, requests, repair requests, and script executions |
+| Core CLI matrix | complete | Existing, temporary, blocked, repair, malicious, scripted success, and scripted failure paths are covered |
+| Run-log assertions | complete | Acceptance cases verify loaded skills, requests, repair requests, result categories, script executions, and script failure categories |
 | Filesystem assertions | complete | Tests verify expected temporary skill creation or cleanup |
 | Entrypoint smoke | complete | Subprocess smoke runs `.venv/bin/skill-agent` when available |
+
+## Milestone 11: Skill Gauntlet Demo
+
+Status: complete
+
+Goal:
+Create one screenshot-worthy pressure test that shows capability awareness and safety judgment together.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Gauntlet fixture library | complete | Dedicated fixture includes three safe skills and two malicious skills while omitting `argument-clustering` and `local-python-analysis` |
+| Scripted showcase | complete | `scripts/run_gauntlet_demo.py` prints `SKILL GAUNTLET`, registry status, trace, and result summary |
+| Mixed-pressure run | complete | Demo loads safe skills, rejects malicious fixtures, loads `argument-clustering` temporarily, and requests repair for `local-python-analysis` |
+| Run-log proof | complete | Test verifies requested skills, rejected skills, repair request, temporary artifacts, and no `markdown_body` leakage |
+
+## Milestone 12: Capability-Gap Eval Harness
+
+Status: complete
+
+Goal:
+Turn the capability-gap loop into a repeatable eval harness with auditable reports.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Eval suite loader | complete | JSONL tasks load with line-numbered errors for invalid input |
+| Eval runner | complete | `skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals` executes real run-loop tasks |
+| Request-quality scorer | complete | Deterministic 0-5 score covers specificity, contracts, success criteria, failure modes, risk correctness, and reuse potential |
+| Reports | complete | Eval writes machine-readable JSON and human-readable Markdown summaries |
+| Trace explainer | complete | `skill-agent explain <run-log.json>` summarizes task, capabilities, decisions, requests, safety stops, and trace stages |
+| Regression coverage | complete | Tests cover loader, reports, CLI eval, request scoring, explain, and CI eval smoke |

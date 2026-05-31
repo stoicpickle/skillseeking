@@ -3,41 +3,30 @@ from __future__ import annotations
 import hashlib
 import re
 
+from app.capability_catalog import get_capability_definition
 from app.models import RouteDecision, SkillRequest
 
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 
 def create_skill_request(task_id: str, decision: RouteDecision) -> SkillRequest:
-    desired_name = _desired_skill_name(decision.capability)
+    definition = get_capability_definition(decision.capability)
+    desired_name = definition.desired_skill_name if definition else _desired_skill_name(decision.capability)
     request_id = _request_id(task_id, decision.capability)
 
-    if "contradiction" in decision.capability:
+    if definition is not None:
         return SkillRequest(
             id=request_id,
             task_id=task_id,
             missing_capability=decision.capability,
             reason=decision.reason,
             desired_skill_name=desired_name,
-            input_schema={"claims": "array"},
-            output_schema={
-                "contradictions": "array",
-                "confidence": "number",
-                "explanation": "string",
-                "source_ids": "array",
-            },
-            success_criteria=[
-                "Finds direct contradiction between two claims",
-                "Distinguishes contradiction from nuance or scope difference",
-                "Preserves source IDs",
-                "Returns confidence for each contradiction",
-            ],
-            failure_modes=[
-                "If claims are unrelated, return no contradiction",
-                "If scope or timing differs, mark as nuance instead of contradiction",
-            ],
-            risk_level="medium",
-            approval_required=False,
+            input_schema=dict(definition.input_schema),
+            output_schema=dict(definition.output_schema),
+            success_criteria=list(definition.success_criteria),
+            failure_modes=list(definition.failure_modes),
+            risk_level=definition.risk_level,
+            approval_required=definition.approval_required or decision.requires_human_approval,
         )
 
     return SkillRequest(

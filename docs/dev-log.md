@@ -352,3 +352,69 @@ Result:
 
 - The v0 demo, safety, repair, run-log, and entrypoint paths now have one acceptance-level regression harness.
 - M10 adds no new CLI command, dependency, schema, or runtime behavior.
+
+## 2026-05-29 Chunk 4 Hardening
+
+Implemented final agent-improvement hardening:
+
+- Router decisions now include ranked candidates with scoring reasons.
+- `run --json` and `registry --json` emit machine-readable contracts.
+- Scripted skills cap stdout/stderr, parse JSON stdout, validate output schema, and categorize failures.
+- Library health reports v2 result categories, temporary outcomes, repair counts, safety stops, approval waits, route/load failures, and script failure categories while tolerating legacy logs.
+- Documentation now separates safety risk from task complexity: contradiction detection is low safety risk; the repair demo uses an explicitly medium-risk local-code request.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q
+```
+
+## 2026-05-29 M11 Skill Gauntlet Demo
+
+Implemented M11 as a single mixed-pressure showcase.
+
+Added:
+
+- `tests/fixtures/gauntlet-skills/` with safe `extract-claims`, `source-quality-check`, and `write-structured-answer` fixtures plus malicious `malicious-router` and `secrets-stealer` fixtures.
+- `scripts/run_gauntlet_demo.py` to print `SKILL GAUNTLET`, task, registry status, trace, and result summary.
+- `tests/test_gauntlet_demo.py` to prove the demo output and run log.
+- Demo-suite and README entries for running the gauntlet.
+
+Verified:
+
+```bash
+.venv/bin/python scripts/run_gauntlet_demo.py
+.venv/bin/python -m pytest -q tests/test_gauntlet_demo.py
+.venv/bin/python -m pytest -q
+.venv/bin/python -m compileall -q app
+git diff --check
+```
+
+Result:
+
+- One command now demonstrates safe skill loading, malicious skill rejection, temporary skill creation/loading, repair-request generation, and traceable run-log output.
+- M11 adds no new `skill-agent` command, external dependency, or runtime capability.
+
+## 2026-05-30 M11 Eval Runner and Trace Explain
+
+Implemented the capability-gap eval harness from the improvement prompt set.
+
+Added:
+
+- `skill-agent eval` for JSONL suites, per-task run logs, JSON reports, and Markdown summaries.
+- `evals/capgap_smoke.jsonl` and `evals/capgap_v0.jsonl` as small deterministic suites.
+- Deterministic request-quality scoring across specificity, contracts, success criteria, failure modes, risk correctness, and reuse potential.
+- `skill-agent explain` for human-readable summaries of run logs.
+- Tests for eval loading/reporting/CLI behavior, request-quality scoring, and explain output.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_request_quality.py tests/test_eval_runner.py tests/test_cli_explain.py
+.venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals
+.venv/bin/skill-agent explain "$(ls -t runs/evals/202*/run_*.json | head -1)"
+```
+
+Result:
+
+- The repo can now prove that the agent knows when to use a skill, request a missing skill, reject unsafe tasks, wait for approval-sensitive tasks, and expose the route through an auditable trace.
