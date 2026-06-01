@@ -64,11 +64,15 @@ def test_acceptance_existing_skill_loads_without_requests(copied_seed_skills, tm
     assert_no_markdown_body(log_path)
     loaded_names = {skill["name"] for skill in data["skills_loaded"]}
     assert {"extract-claims", "source-quality-check", "write-structured-answer"} <= loaded_names
-    assert data["schema_version"] == 2
+    assert data["schema_version"] == 3
     assert data["run_id"] in log_path.name
     assert data["result_category"] == "success"
     assert [event["sequence"] for event in data["trace_events"]] == list(range(1, len(data["trace_events"]) + 1))
     assert [event["stage"] for event in data["trace_events"]] == data["trace"]
+    assert len(data["governor_decisions"]) == len(data["capability_decisions"])
+    assert data["governor_decisions"][0]["decision"] == "USE_SKILL"
+    assert data["governor_decisions"][0]["dominant_signal"] == "skill_match"
+    assert sum(1 for event in data["trace_events"] if event["stage"] == "GOVERNOR_DECIDED") == len(data["governor_decisions"])
     assert data["execution_summary"]["loaded_skills"]
     assert data["execution_summary"]["skill_request_count"] == 0
     assert not (runs_dir / "artifacts").exists()
@@ -123,6 +127,9 @@ def test_acceptance_temporary_skill_success_records_loaded_temp(copied_seed_skil
     assert artifact_skill.exists()
     request = data["skill_requests"][0]
     assert request["desired_skill_name"] == "argument-clustering"
+    assert request["control_summary"]["governor_decision"] == "REQUEST_SKILL"
+    assert request["control_summary"]["dominant_signal"] == "missing_skill"
+    assert request["control_summary"]["approval_gate"] == "none"
     assert Path(request["temporary_skill"]["skill_path"]) == artifact_skill
     assert request["temporary_skill"]["validation_passed"]
     assert request["temporary_skill"]["loaded"]
@@ -172,6 +179,8 @@ def test_acceptance_blocked_no_temp_skill_does_not_mutate_skills(copied_seed_ski
     assert data["result_category"] == "blocked_missing_skill"
     assert data["execution_summary"]["requested_skills"] == ["detect-contradictions"]
     assert data["skill_requests"][0]["desired_skill_name"] == "detect-contradictions"
+    assert data["skill_requests"][0]["control_summary"]["governor_decision"] == "REQUEST_SKILL"
+    assert data["skill_requests"][0]["control_summary"]["approval_gate"] == "none"
     assert "temporary_skill" not in data["skill_requests"][0]
     assert data["skill_repair_requests"] == []
 
@@ -219,6 +228,9 @@ def test_acceptance_validation_failure_emits_repair_request(copied_seed_skills, 
     assert artifact_skill.exists()
     request = data["skill_requests"][0]
     repair = data["skill_repair_requests"][0]
+    assert request["control_summary"]["governor_decision"] == "REQUEST_SKILL"
+    assert request["control_summary"]["risk_level"] == "medium"
+    assert request["control_summary"]["approval_gate"] == "sandbox"
     assert not request["temporary_skill"]["validation_passed"]
     assert request["temporary_skill"]["loaded"] is False
     assert Path(request["temporary_skill"]["skill_path"]) == artifact_skill

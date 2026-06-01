@@ -4,15 +4,37 @@ import hashlib
 import re
 
 from app.capability_catalog import get_capability_definition
-from app.models import RouteDecision, SkillRequest
+from app.models import (
+    ApprovalGate,
+    GovernorDecision,
+    RouteDecision,
+    SkillRequest,
+    SkillRequestControlSummary,
+)
 
 SKILL_NAME_RE = re.compile(r"^[a-z0-9]+(-[a-z0-9]+)*$")
 
 
-def create_skill_request(task_id: str, decision: RouteDecision) -> SkillRequest:
+PROMOTION_EVIDENCE = [
+    "Metadata validation passes",
+    "Input and output contracts are explicit",
+    "Validation examples or tests pass",
+    "Temporary use succeeds on the triggering task",
+    "Human approval is recorded before durable promotion",
+]
+
+
+def create_skill_request(
+    task_id: str, decision: RouteDecision, governor_decision: GovernorDecision | None = None
+) -> SkillRequest:
     definition = get_capability_definition(decision.capability)
     desired_name = definition.desired_skill_name if definition else _desired_skill_name(decision.capability)
     request_id = _request_id(task_id, decision.capability)
+    control_summary = (
+        create_control_summary(decision, governor_decision)
+        if governor_decision is not None
+        else None
+    )
 
     if definition is not None:
         return SkillRequest(
@@ -27,6 +49,7 @@ def create_skill_request(task_id: str, decision: RouteDecision) -> SkillRequest:
             failure_modes=list(definition.failure_modes),
             risk_level=definition.risk_level,
             approval_required=definition.approval_required or decision.requires_human_approval,
+            control_summary=control_summary,
         )
 
     return SkillRequest(
@@ -49,7 +72,47 @@ def create_skill_request(task_id: str, decision: RouteDecision) -> SkillRequest:
         ],
         risk_level=decision.risk_level,
         approval_required=decision.requires_human_approval,
+        control_summary=control_summary,
     )
+
+
+def create_control_summary(
+    decision: RouteDecision, governor_decision: GovernorDecision
+) -> SkillRequestControlSummary:
+    if governor_decision.capability != decision.capability:
+        raise ValueError(
+            "governor decision capability does not match route decision capability: "
+            f"{governor_decision.capability!r} != {decision.capability!r}"
+        )
+    return SkillRequestControlSummary(
+        governor_decision=governor_decision.decision,
+        dominant_signal=governor_decision.dominant_signal,
+        confidence=governor_decision.confidence,
+        risk_level=governor_decision.risk_level,
+        reversibility=governor_decision.reversibility,
+        approval_required=governor_decision.approval_required,
+        approval_gate=_approval_gate(decision, governor_decision),
+        blocked_reason=_blocked_reason(governor_decision),
+        evidence_to_promote=list(PROMOTION_EVIDENCE),
+    )
+
+
+def _approval_gate(
+    decision: RouteDecision, governor_decision: GovernorDecision
+) -> ApprovalGate:
+    if governor_decision.decision == "ABORT_UNSAFE":
+        return "blocked"
+    if decision.requires_human_approval or governor_decision.approval_required:
+        return "sandbox"
+    if decision.risk_level in {"medium", "high"}:
+        return "sandbox"
+    return "none"
+
+
+def _blocked_reason(governor_decision: GovernorDecision) -> str | None:
+    if governor_decision.decision == "ABORT_UNSAFE":
+        return governor_decision.reason
+    return None
 
 
 def _request_id(task_id: str, capability: str) -> str:

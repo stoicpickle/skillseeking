@@ -11,6 +11,9 @@ from pydantic import BaseModel, ConfigDict, Field
 SkillStatus = Literal["draft", "temporary", "candidate", "stable", "deprecated", "blocked"]
 RiskLevel = Literal["low", "medium", "high"]
 CapabilityDecisionType = Literal["USE_SKILL", "REQUEST_SKILL", "ASK_HUMAN", "ABORT_UNSAFE"]
+Reversibility = Literal["reversible", "partially_reversible", "irreversible", "unknown"]
+DominantSignal = Literal["skill_match", "missing_skill", "approval_required", "safety_risk"]
+ApprovalGate = Literal["none", "draft", "sandbox", "load", "promote", "blocked"]
 SkillRequestStatus = Literal["requested"]
 SkillRepairRequestStatus = Literal["requested"]
 HealthSeverity = Literal["info", "warning", "critical"]
@@ -33,7 +36,7 @@ ScriptFailureCategory = Literal[
 ]
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 
 def new_default_run_id() -> str:
@@ -173,6 +176,37 @@ class RouteDecision(BaseModel):
     requires_human_approval: bool = False
 
 
+class GovernorDecision(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    capability: str
+    decision: CapabilityDecisionType
+    confidence: float
+    risk_level: RiskLevel
+    reversibility: Reversibility
+    approval_required: bool = False
+    # Placeholder v1 signals: recorded for trace shape, not active scoring inputs yet.
+    freshness_required: bool = False
+    tool_failure_history: bool = False
+    cost_or_latency_concern: bool = False
+    dominant_signal: DominantSignal
+    reason: str
+
+
+class SkillRequestControlSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    governor_decision: CapabilityDecisionType
+    dominant_signal: DominantSignal
+    confidence: float
+    risk_level: RiskLevel
+    reversibility: Reversibility
+    approval_required: bool
+    approval_gate: ApprovalGate = "none"
+    blocked_reason: str | None = None
+    evidence_to_promote: list[str] = Field(default_factory=list)
+
+
 class SkillRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -187,6 +221,7 @@ class SkillRequest(BaseModel):
     failure_modes: list[str] = Field(default_factory=list)
     risk_level: RiskLevel
     approval_required: bool = False
+    control_summary: SkillRequestControlSummary | None = None
     status: SkillRequestStatus = "requested"
 
 
@@ -294,6 +329,7 @@ class RunLog(BaseModel):
     result_category: RunResultCategory = "success"
     plan: list[str]
     capability_decisions: list[dict]
+    governor_decisions: list[GovernorDecision] = Field(default_factory=list)
     skills_loaded: list[LoadedSkillLog]
     script_executions: list[ScriptExecutionLog] = Field(default_factory=list)
     skill_requests: list[dict] = Field(default_factory=list)

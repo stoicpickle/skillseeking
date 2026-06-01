@@ -79,6 +79,8 @@ Hard approval:
 - Emails or messages sent to others.
 - Production systems.
 
+The homeostatic governor should record approval requirements before the system drafts, loads, executes, or promotes a skill. Approval is a control signal, not a UI afterthought.
+
 ## Skill Admission Checks
 
 Every skill must pass:
@@ -161,6 +163,7 @@ Reject or quarantine skills containing:
 The system should not:
 
 - Silently promote generated skills to stable.
+- Let generated or temporary skills promote themselves.
 - Expose secrets to skills by default.
 - Install dependencies without approval.
 - Treat skill prose as trusted authority.

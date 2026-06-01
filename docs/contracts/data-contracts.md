@@ -1,6 +1,6 @@
 # Data Contracts
 
-Contracts are schema-v2 and serialized with Pydantic `model_dump(mode="json")`. Older run logs without `schema_version` or `run_id` are tolerated by health analysis as legacy v1 logs.
+Contracts are schema-v3 and serialized with Pydantic `model_dump(mode="json")`. Older run logs without `schema_version`, `run_id`, governor records, or request control summaries are tolerated by health analysis and explain output where applicable.
 
 ## Skill Request
 
@@ -17,11 +17,30 @@ Contracts are schema-v2 and serialized with Pydantic `model_dump(mode="json")`. 
   "failure_modes": ["If claims are unrelated, return no contradiction"],
   "risk_level": "low",
   "approval_required": false,
+  "control_summary": {
+    "governor_decision": "REQUEST_SKILL",
+    "dominant_signal": "missing_skill",
+    "confidence": 0.35,
+    "risk_level": "low",
+    "reversibility": "reversible",
+    "approval_required": false,
+    "approval_gate": "none",
+    "blocked_reason": null,
+    "evidence_to_promote": [
+      "Metadata validation passes",
+      "Input and output contracts are explicit",
+      "Validation examples or tests pass",
+      "Temporary use succeeds on the triggering task",
+      "Human approval is recorded before durable promotion"
+    ]
+  },
   "status": "requested"
 }
 ```
 
 `risk_level` is safety risk, not task difficulty. A Markdown-only contradiction skill is low safety risk even if the procedure is medium complexity.
+
+`control_summary` is optional for compatibility with older request records. New `REQUEST_SKILL` artifacts include it as a copied snapshot of the matching governor decision, not as a live reference.
 
 ## Capability Decision
 
@@ -83,7 +102,7 @@ Repair requests are emitted when a generated temporary skill fails validation. T
 
 ```json
 {
-  "schema_version": 2,
+  "schema_version": 3,
   "run_id": "a1b2c3d4",
   "task_id": "task_001",
   "result_category": "success",
@@ -198,7 +217,9 @@ Supported v0 expectations include `outcome`, `capability`, `must_request_skill`,
 
 Per-task records include `run_id`, `run_log_path`, `explain_command`, `result_category`, `loaded_skills`, `requested_skills`, `rejected_skills`, `skill_requests`, `request_quality`, `routing_decisions`, `trace`, `trace_complete`, `failure_categories`, `suggested_next_action`, and any assertion issues.
 
-Failure categories are one or more of `wrong_route`, `missing_skill_not_detected`, `unnecessary_skill_request`, `unsafe_not_blocked`, `safe_task_overblocked`, `approval_not_requested`, `bad_skill_request_contract`, `trace_incomplete`, `report_incomplete`, and `planner_misclassified_task`.
+Per-task records also include `governor_decisions` and `governor_expectation_passed` when governor assertions are evaluated.
+
+Failure categories are one or more of `wrong_route`, `missing_skill_not_detected`, `unnecessary_skill_request`, `unsafe_not_blocked`, `safe_task_overblocked`, `approval_not_requested`, `bad_skill_request_contract`, `trace_incomplete`, `report_incomplete`, `planner_misclassified_task`, `governor_decision_mismatch`, `governor_signal_mismatch`, and `request_control_summary_missing`.
 
 ## Request Quality
 

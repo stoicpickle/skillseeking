@@ -54,6 +54,8 @@ def test_run_json_outputs_machine_readable_result(copied_seed_skills, tmp_path):
     assert data["run_id"] in data["run_log_path"]
     assert data["execution_summary"]["loaded_skills"]
     assert data["decisions"][0]["ranked_candidates"]
+    assert data["governor_decisions"][0]["decision"] == "USE_SKILL"
+    assert data["governor_decisions"][0]["dominant_signal"] == "skill_match"
 
 
 
@@ -120,6 +122,9 @@ def test_missing_skill_demo_emits_structured_request(copied_seed_skills, tmp_pat
     assert request["desired_skill_name"] == "detect-contradictions"
     assert request["status"] == "requested"
     assert request["output_schema"]["contradictions"] == "array"
+    assert request["control_summary"]["governor_decision"] == "REQUEST_SKILL"
+    assert request["control_summary"]["dominant_signal"] == "missing_skill"
+    assert request["control_summary"]["approval_gate"] == "none"
 
 
 def test_temporary_skill_demo_drafts_validates_and_loads_skill(copied_seed_skills, tmp_path):
@@ -165,6 +170,8 @@ def test_temporary_skill_demo_drafts_validates_and_loads_skill(copied_seed_skill
     artifact_skill = runs_dir / "artifacts" / data["run_id"] / "skills" / "argument-clustering" / "SKILL.md"
     assert artifact_skill.exists()
     request = data["skill_requests"][0]
+    assert request["control_summary"]["governor_decision"] == "REQUEST_SKILL"
+    assert request["control_summary"]["approval_gate"] == "none"
     assert request["temporary_skill"]["validation_passed"]
     assert request["temporary_skill"]["loaded"]
     assert Path(request["temporary_skill"]["skill_path"]) == artifact_skill
@@ -212,6 +219,9 @@ def test_medium_risk_temporary_skill_fails_validation_and_stays_blocked(
     artifact_skill = runs_dir / "artifacts" / data["run_id"] / "skills" / "local-python-analysis" / "SKILL.md"
     assert artifact_skill.exists()
     request = data["skill_requests"][0]
+    assert request["control_summary"]["governor_decision"] == "REQUEST_SKILL"
+    assert request["control_summary"]["risk_level"] == "medium"
+    assert request["control_summary"]["approval_gate"] == "sandbox"
     assert not request["temporary_skill"]["validation_passed"]
     assert not request["temporary_skill"]["loaded"]
     repair_request = data["skill_repair_requests"][0]

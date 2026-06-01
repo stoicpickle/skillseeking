@@ -77,6 +77,8 @@ Track:
 - Correct skill selection rate.
 - Missing-skill detection precision.
 - Missing-skill detection recall.
+- Governor decision accuracy.
+- Approval-gate accuracy.
 - False-block rate.
 - Wrong-skill-load rate.
 - Security failure rate.
@@ -128,6 +130,7 @@ Each eval run should produce:
 - Task result.
 - Capability plan.
 - Skill decisions.
+- Governor decisions and dominant control signals.
 - Skill requests.
 - Validation results.
 - Human approval points.
@@ -153,7 +156,11 @@ The suite is JSONL. Each line describes one task, its expected outcome, and any 
   "expected": {
     "outcome": "missing_skill_request",
     "capability": "detect contradictions",
+    "governor_decision": "REQUEST_SKILL",
+    "approval_required": false,
+    "risk_level": "low",
     "must_request_skill": true,
+    "must_have_request_control_summary": true,
     "must_not_load_skill": "compare-claims",
     "min_request_quality": 4.0,
     "must_have_routing_decision": true,
@@ -181,12 +188,27 @@ Failure categories are intentionally boring and machine-readable:
 - `trace_incomplete`
 - `report_incomplete`
 - `planner_misclassified_task`
+- `governor_decision_mismatch`
+- `governor_signal_mismatch`
+- `request_control_summary_missing`
 
 No new agent feature should be added before the 20-task calibration suite exists, runs, and identifies the biggest failure bucket. After that, improve only the biggest bucket and rerun the suite.
 
 Request quality is scored without an LLM judge. The dimensions are specificity, input contract, output contract, success criteria, failure modes, risk-level correctness, and reuse potential. Each dimension is scored 0-2 and normalized to 0-5.
 
 Use `skill-agent explain <run-log.json>` to inspect any failed eval task. The trace is a first-class artifact: the desired flow is `BLOCKED -> REQUESTED -> VALIDATED -> LOADED/REJECTED -> CONTINUED`.
+
+## Governor Evaluation
+
+The homeostatic governor adds a control assertion to each capability decision. Eval tasks should be able to assert:
+
+- expected governor decision: `USE_SKILL`, `REQUEST_SKILL`, `ASK_HUMAN`, or `ABORT_UNSAFE`,
+- expected risk level,
+- expected approval requirement,
+- expected dominant control signal,
+- whether stale data, high cost, tool failure, or low reversibility should affect routing.
+
+The first governor eval slice should extend the current 20-task capability-gap suite without changing the suite's purpose. The suite remains the gate before new routing or planning features. Governor assertions simply make the reason for each route explicit and testable.
 
 ## Success Criteria for MVP
 

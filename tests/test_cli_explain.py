@@ -30,6 +30,8 @@ def test_explain_valid_run_trace(copied_seed_skills, tmp_path):
     assert "RUN" in result.stdout
     assert "CAPABILITIES" in result.stdout
     assert "USE_SKILL extract-claims" in result.stdout
+    assert "GOVERNOR" in result.stdout
+    assert "Dominant signal: skill_match" in result.stdout
     assert "TRACE" in result.stdout
 
 
@@ -55,6 +57,8 @@ def test_explain_missing_skill_trace(copied_seed_skills, tmp_path):
 
     assert result.exit_code == 0
     assert "REQUEST_SKILL - :: detect contradictions" in result.stdout
+    assert "GOVERNOR" in result.stdout
+    assert "Dominant signal: missing_skill" in result.stdout
     assert "detect-contradictions" in result.stdout
 
 
@@ -89,7 +93,34 @@ def test_explain_rejected_unsafe_skill(tmp_path):
 
     assert result.exit_code == 0
     assert "ABORT_UNSAFE" in result.stdout
+    assert "GOVERNOR" in result.stdout
+    assert "- none recorded" in result.stdout
     assert "Requests involving secrets are unsafe." in result.stdout
+
+
+def test_explain_approval_governor_trace(copied_seed_skills, tmp_path):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    run_result = runner.invoke(
+        app,
+        [
+            "run",
+            "Read local files and summarize them.",
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--runs-dir",
+            str(runs_dir),
+        ],
+    )
+    assert run_result.exit_code == 1
+    run_log = next(runs_dir.glob("run_*.json"))
+
+    result = runner.invoke(app, ["explain", str(run_log)])
+
+    assert result.exit_code == 0
+    assert "ASK_HUMAN" in result.stdout
+    assert "Dominant signal: approval_required" in result.stdout
+    assert "Approval required: True" in result.stdout
 
 
 def test_explain_malformed_trace_gives_useful_error(tmp_path):

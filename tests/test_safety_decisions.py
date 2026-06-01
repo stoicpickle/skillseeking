@@ -52,8 +52,18 @@ def test_unsafe_task_aborts_without_routing_or_artifacts(copied_seed_skills, tmp
     assert data["skill_requests"] == []
     assert data["skills_loaded"] == []
     assert data["capability_decisions"][0]["decision"] == "ABORT_UNSAFE"
+    assert data["governor_decisions"][0]["decision"] == "ABORT_UNSAFE"
+    assert data["governor_decisions"][0]["dominant_signal"] == "safety_risk"
+    assert not data["governor_decisions"][0]["approval_required"]
+    assert len(data["governor_decisions"]) == len(data["capability_decisions"])
     assert data["execution_summary"]["safety_decision_count"] == 1
     assert data["execution_summary"]["result_category"] == "unsafe_aborted"
+    governor_events = [
+        event for event in data["trace_events"] if event["stage"] == "GOVERNOR_DECIDED"
+    ]
+    assert len(governor_events) == 1
+    assert governor_events[0]["details"]["risk_level"] == "high"
+    assert governor_events[0]["details"]["dominant_signal"] == "safety_risk"
     assert "UNSAFE_ABORTED" in data["trace"]
 
 
@@ -93,9 +103,19 @@ def test_approval_needed_task_stops_without_requesting_skill(copied_seed_skills,
     assert data["skills_loaded"] == []
     assert data["capability_decisions"][0]["decision"] == "ASK_HUMAN"
     assert data["capability_decisions"][0]["requires_human_approval"]
+    assert data["governor_decisions"][0]["decision"] == "ASK_HUMAN"
+    assert data["governor_decisions"][0]["dominant_signal"] == "approval_required"
+    assert data["governor_decisions"][0]["approval_required"]
+    assert len(data["governor_decisions"]) == len(data["capability_decisions"])
     assert data["execution_summary"]["safety_decisions"] == [
         "ASK_HUMAN:human approval required for file access"
     ]
+    governor_events = [
+        event for event in data["trace_events"] if event["stage"] == "GOVERNOR_DECIDED"
+    ]
+    assert len(governor_events) == 1
+    assert governor_events[0]["details"]["risk_level"] == "medium"
+    assert governor_events[0]["details"]["approval_required"]
     assert "SAFETY_REVIEW_REQUIRED" in data["trace"]
 
 

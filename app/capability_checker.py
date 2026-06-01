@@ -3,6 +3,7 @@ from __future__ import annotations
 from app.capability_catalog import (
     SafetyClassification,
     classify_task_safety,
+    get_capability_definition,
     safety_decision_for_capability,
 )
 from app.models import BestMatch, CapabilityRequest, RouteDecision
@@ -29,7 +30,7 @@ def check_capabilities(
         safety = safety_decision_for_capability(capability.capability)
         if safety is not None:
             return [_safety_route_decision(safety)]
-        decisions.append(route_capability(capability.capability, registry))
+        decisions.append(_apply_capability_definition(route_capability(capability.capability, registry)))
     return decisions
 
 
@@ -44,3 +45,16 @@ def _safety_route_decision(classification: SafetyClassification) -> RouteDecisio
         requires_human_approval=classification.decision == "ASK_HUMAN",
     )
 
+
+def _apply_capability_definition(decision: RouteDecision) -> RouteDecision:
+    definition = get_capability_definition(decision.capability)
+    if definition is None or decision.decision != "REQUEST_SKILL":
+        return decision
+    return decision.model_copy(
+        update={
+            "risk_level": definition.risk_level,
+            "requires_human_approval": (
+                decision.requires_human_approval or definition.approval_required
+            ),
+        }
+    )

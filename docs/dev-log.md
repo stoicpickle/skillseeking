@@ -450,3 +450,108 @@ Result:
 - The 20-task calibration suite passes 20/20.
 - The first calibration run exposed `approval_not_requested` for "read local files"; the classifier now treats that phrase as human-approval-required file access.
 - M13 adds no new agent feature surface, CLI command, dependency, or execution capability.
+
+## 2026-06-01 Homeostatic Governor Planning
+
+Documented the next planned product addition as a control layer, not a new autonomous agent framework.
+
+Added:
+
+- `docs/homeostatic-governor.md`
+
+Updated:
+
+- `docs/product-brief.md`
+- `docs/architecture.md`
+- `docs/evaluation-plan.md`
+- `docs/safety-model.md`
+- `docs/mvp-plan.md`
+
+Direction captured:
+
+- The product wedge is: turn recurring operational friction into validated, human-governed agent skills.
+- The next slice should add a homeostatic governor around capability decisions.
+- The governor records control signals such as confidence, risk, reversibility, approval requirement, freshness concern, tool failure history, and cost or latency concern.
+- Governor output should attach to every capability decision, including `USE_SKILL`, `REQUEST_SKILL`, `ASK_HUMAN`, and `ABORT_UNSAFE`.
+- Eval tasks should be able to assert governor decision accuracy, approval-gate accuracy, risk level, and dominant control signal.
+- Durable promotion remains human-governed; generated or temporary skills should not promote themselves into the durable library.
+
+Implementation touchpoints identified:
+
+- `app/models.py`
+- `app/capability_checker.py`
+- `app/skill_router.py`
+- `app/agent_loop.py`
+- `app/eval_runner.py`
+- `app/explain.py`
+
+Status:
+
+- Documentation-only planning update.
+- No runtime behavior, schema, CLI command, dependency, or eval expectation has changed yet.
+
+## 2026-06-01 Homeostatic Governor Trace + Eval Slice
+
+Implemented the first Homeostatic Governor slice as an observer layer over existing capability decisions.
+
+Added:
+
+- `app/governor.py`
+- `tests/test_governor.py`
+
+Updated:
+
+- `app/models.py`
+- `app/agent_loop.py`
+- `app/cli_output.py`
+- `app/explain.py`
+- `app/eval_runner.py`
+- `evals/capgap_smoke.jsonl`
+- `evals/capgap_v0.jsonl`
+- governor, eval, explain, safety, CLI JSON, and run-log tests
+
+Behavior captured:
+
+- New run logs use schema version 3.
+- Each capability decision gets a deterministic `GovernorDecision`.
+- Each governor record produces a `GOVERNOR_DECIDED` trace event.
+- `run --json` includes `governor_decisions`.
+- `skill-agent explain` includes a `GOVERNOR` section.
+- Eval suites can assert governor decision, risk level, approval requirement, and dominant signal.
+- Eval reports include governor decision accuracy and governor-specific mismatch categories.
+
+Boundaries:
+
+- The governor does not change routing, safety classification, skill loading, temporary skill behavior, result-category precedence, or promotion rules.
+- Freshness, tool failure history, and cost/latency fields are placeholder signals in this slice, not active scoring inputs.
+- High-risk `ABORT_UNSAFE` records `approval_required=false` because the path is blocked, not reviewable.
+
+## 2026-06-01 Skill Request Control Summary
+
+Extended missing-skill request artifacts with a copied governor-control snapshot.
+
+Updated:
+
+- `app/models.py`
+- `app/skill_requester.py`
+- `app/agent_loop.py`
+- `app/eval_runner.py`
+- `evals/capgap_smoke.jsonl`
+- `evals/capgap_v0.jsonl`
+- `docs/contracts/data-contracts.md`
+- request, eval, CLI, and acceptance tests
+
+Behavior captured:
+
+- New `REQUEST_SKILL`-generated `SkillRequest` artifacts include `control_summary`.
+- `control_summary` mirrors the matching governor decision, dominant signal, confidence, risk, reversibility, and approval state.
+- Low-risk missing-skill requests use `approval_gate="none"`.
+- Elevated-risk missing-skill requests use `approval_gate="sandbox"` while preserving existing behavior.
+- `ASK_HUMAN`, `ABORT_UNSAFE`, and existing-skill paths still do not create skill requests.
+- Temporary-skill and repair-request flows preserve the original request control summary.
+- Eval suites can require `must_have_request_control_summary` and report `request_control_summary_missing`.
+
+Boundaries:
+
+- The summary is a copied snapshot, not a live reference to governor records.
+- This slice does not add governor-influenced routing, promotion, quarantine, approval handling, or new CLI commands.

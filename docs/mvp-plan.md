@@ -13,6 +13,8 @@ The MVP is a CLI/API research workflow agent that can:
 7. Continue the task.
 8. Show a skill trace in the final output.
 
+The next planned addition is a homeostatic governor: a small control layer that records confidence, risk, reversibility, approval need, and related signals for every capability decision.
+
 ## Why Research First
 
 Research is a good first domain because:
@@ -48,6 +50,7 @@ No network access from skills
 No secrets
 No filesystem writes outside project
 No autonomous promotion to stable
+No generated or temporary skill self-promotion
 ```
 
 ## Phase 1: Static Skill Loader

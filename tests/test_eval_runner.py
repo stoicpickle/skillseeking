@@ -50,6 +50,9 @@ def test_run_eval_suite_writes_reports(copied_seed_skills, tmp_path):
     assert report["passed"]
     assert report["aggregate"]["average_request_quality"] >= 4.0
     assert report["aggregate"]["task_pass_rate"] == 1.0
+    assert report["aggregate"]["governor_decision_expected"] == 0
+    assert report["aggregate"]["governor_decision_correct"] == 0
+    assert report["aggregate"]["governor_decision_accuracy"] is None
     assert report["aggregate"]["trace_complete_count"] == 2
     persisted = json.loads(json_path.read_text(encoding="utf-8"))
     assert persisted["aggregate"]["total"] == 2
@@ -115,3 +118,56 @@ def test_eval_report_categorizes_failures_and_prints_diagnostics(copied_seed_ski
     assert "- Got: `success`" in markdown
     assert "- Failure categories: `missing_skill_not_detected`, `bad_skill_request_contract`, `wrong_route`" in markdown
     assert "skill-agent explain" in markdown
+
+
+def test_eval_report_categorizes_governor_mismatch(copied_seed_skills, tmp_path):
+    suite = tmp_path / "suite.jsonl"
+    suite.write_text(
+        '{"id":"wrong_governor","task":"Extract claims from this article.","expected":{"outcome":"success","must_load_skill":"extract-claims","governor_decision":"REQUEST_SKILL","governor_dominant_signal":"missing_skill"},"tags":["calibration"]}\n',
+        encoding="utf-8",
+    )
+
+    report = run_eval_suite(suite, copied_seed_skills, tmp_path / "runs")
+    _, md_path = write_eval_reports(report, tmp_path / "reports")
+
+    assert not report["passed"]
+    task = report["tasks"][0]
+    assert task["governor_decisions"][0]["decision"] == "USE_SKILL"
+    assert task["failure_categories"] == [
+        "governor_decision_mismatch",
+        "governor_signal_mismatch",
+    ]
+    assert report["aggregate"]["governor_decision_expected"] == 1
+    assert report["aggregate"]["governor_decision_correct"] == 0
+    assert report["aggregate"]["governor_decision_accuracy"] == 0.0
+    markdown = md_path.read_text(encoding="utf-8")
+    assert "- Governor decisions: `USE_SKILL`" in markdown
+    assert "expected governor decision REQUEST_SKILL" in markdown
+
+
+def test_eval_report_requires_request_control_summary(copied_seed_skills, tmp_path):
+    suite = tmp_path / "suite.jsonl"
+    suite.write_text(
+        '{"id":"needs_summary","task":"Extract claims and identify contradictions.","expected":{"outcome":"missing_skill_request","capability":"detect contradictions","must_request_skill":true,"must_have_request_control_summary":true},"tags":["calibration"]}\n',
+        encoding="utf-8",
+    )
+
+    report = run_eval_suite(suite, copied_seed_skills, tmp_path / "runs")
+
+    assert report["passed"]
+    request = report["tasks"][0]["skill_requests"][0]
+    assert request["control_summary"]["governor_decision"] == "REQUEST_SKILL"
+    assert request["control_summary"]["dominant_signal"] == "missing_skill"
+
+
+def test_eval_report_categorizes_missing_request_control_summary(copied_seed_skills, tmp_path):
+    suite = tmp_path / "suite.jsonl"
+    suite.write_text(
+        '{"id":"wrong_summary_expectation","task":"Extract claims from this article.","expected":{"outcome":"success","must_load_skill":"extract-claims","must_have_request_control_summary":true},"tags":["calibration"]}\n',
+        encoding="utf-8",
+    )
+
+    report = run_eval_suite(suite, copied_seed_skills, tmp_path / "runs")
+
+    assert not report["passed"]
+    assert report["tasks"][0]["failure_categories"] == ["request_control_summary_missing"]

@@ -23,6 +23,9 @@ SUGGESTED_ACTIONS = {
     "trace_incomplete": "Ensure the run log records the expected trace landmarks.",
     "report_incomplete": "Add the missing diagnostic field to the eval report.",
     "planner_misclassified_task": "Tune task planning so the expected capability path is represented.",
+    "governor_decision_mismatch": "Align the governor interpretation with the expected control decision.",
+    "governor_signal_mismatch": "Align the governor's dominant control signal or risk fields.",
+    "request_control_summary_missing": "Attach governor control context to missing-skill request artifacts.",
 }
 
 
@@ -122,6 +125,7 @@ def render_markdown_summary(report: dict[str, Any]) -> str:
         f"- Adversarial attempted: {aggregate['adversarial_attempted']}",
         f"- Adversarial blocked: {aggregate['adversarial_blocked']}",
         f"- Average request quality: {aggregate['average_request_quality']}",
+        f"- Governor decision accuracy: {aggregate['governor_decision_accuracy']} ({aggregate['governor_decision_correct']} / {aggregate['governor_decision_expected']})",
         f"- Trace completeness: {aggregate['trace_complete_count']} / {aggregate['total']}",
         "",
         "## Failure Categories",
@@ -180,6 +184,9 @@ def _run_eval_task(
         loaded_skills=run_log.execution_summary.loaded_skills,
         skill_requests=run_log.skill_requests,
         decisions=run_log.capability_decisions,
+        governor_decisions=[
+            decision.model_dump(mode="json") for decision in run_log.governor_decisions
+        ],
         request_quality=request_quality,
         trace=run_log.trace,
         trace_complete=trace_complete,
@@ -190,6 +197,9 @@ def _run_eval_task(
         loaded_skills=run_log.execution_summary.loaded_skills,
         skill_requests=run_log.skill_requests,
         decisions=run_log.capability_decisions,
+        governor_decisions=[
+            decision.model_dump(mode="json") for decision in run_log.governor_decisions
+        ],
         request_quality=request_quality,
         trace_complete=trace_complete,
         issues=issues,
@@ -214,6 +224,13 @@ def _run_eval_task(
         "skill_requests": run_log.skill_requests,
         "request_quality": request_quality,
         "routing_decisions": run_log.capability_decisions,
+        "governor_decisions": [
+            decision.model_dump(mode="json") for decision in run_log.governor_decisions
+        ],
+        "governor_expectation_passed": not _governor_expectation_issues(
+            expected,
+            [decision.model_dump(mode="json") for decision in run_log.governor_decisions],
+        ),
         "trace": run_log.trace,
         "trace_complete": trace_complete,
     }
@@ -225,6 +242,7 @@ def _evaluate_expectations(
     loaded_skills: list[str],
     skill_requests: list[dict[str, Any]],
     decisions: list[dict[str, Any]],
+    governor_decisions: list[dict[str, Any]],
     request_quality: list[dict[str, Any]],
     trace: list[str],
     trace_complete: bool,
@@ -254,6 +272,9 @@ def _evaluate_expectations(
             request.get("desired_skill_name", "<unknown>") for request in skill_requests
         )
         issues.append(f"unexpected skill request {requested}")
+    if expected.get("must_have_request_control_summary"):
+        if not _has_request_control_summary(skill_requests, capability):
+            issues.append("expected skill request control summary")
     min_quality = expected.get("min_request_quality")
     if min_quality is not None:
         best_quality = max((quality["score"] for quality in request_quality), default=0)
@@ -267,6 +288,7 @@ def _evaluate_expectations(
             issues.append("expected adversarial route to be blocked")
     if expected.get("trace_complete") and not trace_complete:
         issues.append(f"trace is incomplete for result {result_category}: {', '.join(trace)}")
+    issues.extend(_governor_expectation_issues(expected, governor_decisions))
     return issues
 
 
@@ -279,6 +301,12 @@ def _aggregate(task_results: list[dict[str, Any]]) -> dict[str, Any]:
     total = len(task_results)
     passed = sum(1 for task in task_results if task["passed"])
     trace_complete_count = sum(1 for task in task_results if task["trace_complete"])
+    governor_expected = sum(1 for task in task_results if _has_governor_expectation(task["expected"]))
+    governor_correct = sum(
+        1
+        for task in task_results
+        if _has_governor_expectation(task["expected"]) and task["governor_expectation_passed"]
+    )
     return {
         "total": total,
         "passed": passed,
@@ -324,6 +352,11 @@ def _aggregate(task_results: list[dict[str, Any]]) -> dict[str, Any]:
         "average_request_quality": round(sum(request_scores) / len(request_scores), 1)
         if request_scores
         else None,
+        "governor_decision_expected": governor_expected,
+        "governor_decision_correct": governor_correct,
+        "governor_decision_accuracy": round(governor_correct / governor_expected, 3)
+        if governor_expected
+        else None,
         "trace_complete_count": trace_complete_count,
         "trace_incomplete_count": total - trace_complete_count,
         "trace_completeness": round(trace_complete_count / total, 3) if total else 0,
@@ -337,6 +370,7 @@ def _failure_categories(
     loaded_skills: list[str],
     skill_requests: list[dict[str, Any]],
     decisions: list[dict[str, Any]],
+    governor_decisions: list[dict[str, Any]],
     request_quality: list[dict[str, Any]],
     trace_complete: bool,
     issues: list[str],
@@ -379,6 +413,16 @@ def _failure_categories(
         add("planner_misclassified_task")
     if expected.get("trace_complete") and not trace_complete:
         add("trace_incomplete")
+    if _has_governor_expectation(expected):
+        governor_issues = _governor_expectation_issues(expected, governor_decisions)
+        if any("governor decision" in issue for issue in governor_issues):
+            add("governor_decision_mismatch")
+        if any("governor risk" in issue or "governor approval" in issue or "governor dominant signal" in issue for issue in governor_issues):
+            add("governor_signal_mismatch")
+    if expected.get("must_have_request_control_summary") and not _has_request_control_summary(
+        skill_requests, expected.get("capability")
+    ):
+        add("request_control_summary_missing")
 
     return categories or ["planner_misclassified_task"]
 
@@ -392,6 +436,7 @@ def _failure_markdown(task: dict[str, Any]) -> list[str]:
         f"- Got: `{task['result_category']}`",
         f"- Loaded skills: {_markdown_list(task['loaded_skills'])}",
         f"- Requested skills: {_markdown_list(task['requested_skills'])}",
+        f"- Governor decisions: {_markdown_list([decision.get('decision', '-') for decision in task['governor_decisions']])}",
         f"- Failure categories: {_markdown_list(task['failure_categories'])}",
     ]
     for issue in task["issues"]:
@@ -482,8 +527,84 @@ def _requested_capability(skill_requests: list[dict[str, Any]], capability: str 
     return any(request.get("missing_capability") == capability for request in skill_requests)
 
 
+def _has_request_control_summary(
+    skill_requests: list[dict[str, Any]], capability: str | None
+) -> bool:
+    if capability is None:
+        return any(request.get("control_summary") for request in skill_requests)
+    return any(
+        request.get("missing_capability") == capability and request.get("control_summary")
+        for request in skill_requests
+    )
+
+
 def _decision_count(decisions: list[dict[str, Any]], decision_types: set[str]) -> int:
     return sum(1 for decision in decisions if decision.get("decision") in decision_types)
+
+
+def _has_governor_expectation(expected: dict[str, Any]) -> bool:
+    return any(
+        key in expected
+        for key in {
+            "governor_decision",
+            "governor_risk_level",
+            "governor_approval_required",
+            "governor_dominant_signal",
+        }
+    )
+
+
+def _governor_expectation_issues(
+    expected: dict[str, Any], governor_decisions: list[dict[str, Any]]
+) -> list[str]:
+    if not _has_governor_expectation(expected):
+        return []
+
+    governor = _matching_governor_decision(expected, governor_decisions)
+    if governor is None:
+        return ["expected governor decision but none was recorded"]
+
+    issues: list[str] = []
+    expected_decision = expected.get("governor_decision")
+    if expected_decision is not None and governor.get("decision") != expected_decision:
+        issues.append(
+            f"expected governor decision {expected_decision}, got {governor.get('decision')}"
+        )
+    expected_risk = expected.get("governor_risk_level")
+    if expected_risk is not None and governor.get("risk_level") != expected_risk:
+        issues.append(f"expected governor risk {expected_risk}, got {governor.get('risk_level')}")
+    expected_approval = expected.get("governor_approval_required")
+    if (
+        expected_approval is not None
+        and governor.get("approval_required") != bool(expected_approval)
+    ):
+        issues.append(
+            "expected governor approval "
+            f"{bool(expected_approval)}, got {governor.get('approval_required')}"
+        )
+    expected_signal = expected.get("governor_dominant_signal")
+    if expected_signal is not None and governor.get("dominant_signal") != expected_signal:
+        issues.append(
+            "expected governor dominant signal "
+            f"{expected_signal}, got {governor.get('dominant_signal')}"
+        )
+    return issues
+
+
+def _matching_governor_decision(
+    expected: dict[str, Any], governor_decisions: list[dict[str, Any]]
+) -> dict[str, Any] | None:
+    capability = expected.get("capability")
+    if capability is not None:
+        for decision in governor_decisions:
+            if decision.get("capability") == capability:
+                return decision
+    expected_decision = expected.get("governor_decision")
+    if expected_decision is not None:
+        for decision in governor_decisions:
+            if decision.get("decision") == expected_decision:
+                return decision
+    return governor_decisions[0] if governor_decisions else None
 
 
 def _timestamp_slug() -> str:

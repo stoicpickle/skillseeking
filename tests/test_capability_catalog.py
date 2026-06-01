@@ -5,8 +5,10 @@ from app.capability_catalog import (
     classify_task_safety,
     get_capability_definition,
 )
+from app.capability_checker import check_capabilities
 from app.models import BestMatch, RouteDecision
 from app.planner import plan_task
+from app.registry import SkillRegistry
 from app.skill_requester import create_skill_request
 
 
@@ -57,6 +59,17 @@ def test_catalog_lookup_and_contradiction_request_contract():
     assert request.output_schema["source_ids"] == "array"
     assert request.risk_level == "low"
     assert not request.approval_required
+
+
+def test_known_missing_capability_route_uses_catalog_risk(copied_seed_skills):
+    registry = SkillRegistry.load(copied_seed_skills)
+    plan = plan_task("Run local Python analysis on this text.")
+
+    decisions = check_capabilities(plan.capabilities, registry)
+
+    assert decisions[0].decision == "REQUEST_SKILL"
+    assert decisions[0].capability == "run local python analysis"
+    assert decisions[0].risk_level == "medium"
 
 
 def test_safety_classifier_precedence_and_demo_false_positive_guard():

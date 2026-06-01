@@ -20,6 +20,10 @@ def emit_run_json(result: AgentRunResult) -> None:
                 "run_log_path": str(result.run_log_path),
                 "execution_summary": result.run_log.execution_summary.model_dump(mode="json"),
                 "decisions": result.run_log.capability_decisions,
+                "governor_decisions": [
+                    decision.model_dump(mode="json")
+                    for decision in result.run_log.governor_decisions
+                ],
                 "skill_requests": result.run_log.skill_requests,
                 "skill_repair_requests": result.run_log.skill_repair_requests,
                 "script_executions": [execution.model_dump(mode="json") for execution in result.run_log.script_executions],

@@ -38,6 +38,13 @@ def explain_run_log(path: Path) -> str:
     if not decisions:
         lines.append("- none recorded")
 
+    lines.extend(["", "GOVERNOR"])
+    governor_decisions = data.get("governor_decisions") or []
+    for governor in governor_decisions:
+        lines.extend(_governor_lines(governor))
+    if not governor_decisions:
+        lines.append("- none recorded")
+
     lines.extend(["", "SKILL REQUESTS"])
     requests = data.get("skill_requests") or []
     for request in requests:
@@ -88,3 +95,15 @@ def _decision_lines(decision: dict[str, Any]) -> list[str]:
                 f"  - {candidate.get('skill_name', '-')} {candidate.get('score', 0):.2f} {marker}"
             )
     return lines
+
+
+def _governor_lines(governor: dict[str, Any]) -> list[str]:
+    return [
+        f"- {governor.get('decision', '-')} :: {governor.get('capability', '-')}",
+        f"  Confidence: {governor.get('confidence', 0):.2f}",
+        f"  Risk: {governor.get('risk_level', '-')}",
+        f"  Approval required: {governor.get('approval_required', False)}",
+        f"  Reversibility: {governor.get('reversibility', '-')}",
+        f"  Dominant signal: {governor.get('dominant_signal', '-')}",
+        f"  Reason: {governor.get('reason', '-')}",
+    ]

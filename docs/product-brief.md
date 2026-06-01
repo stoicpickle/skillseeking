@@ -36,6 +36,10 @@ It should pass W before I use it.
 
 An agent becomes more trustworthy when it can expose its limitations as structured requests instead of hiding them inside prose, failed tool calls, or low-confidence output.
 
+The sharper wedge is not an agent marketplace. It is the control layer that turns repeated operational friction into validated, human-governed agent skills.
+
+Every metaphor for smarter agents should become a concrete control primitive: a knob, ledger entry, test assertion, or state transition. See `docs/homeostatic-governor.md` for the planned governor addition.
+
 ## Core Loop
 
 ```text
@@ -51,6 +55,8 @@ Task arrives
 -> outcome is logged
 -> useful skills are kept, weak skills are repaired or retired
 ```
+
+Durable promotion remains human-governed. The system can detect capability gaps, draft or request candidates, validate them, quarantine unsafe versions, and explain what evidence would justify promotion. It should not silently promote generated skills into the durable library.
 
 ## Five Product Powers
 
@@ -178,4 +184,3 @@ The shareable screenshot is:
 ```text
 BLOCKED -> REQUESTED SKILL -> VALIDATED -> LOADED -> CONTINUED
 ```
-

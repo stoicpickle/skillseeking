@@ -15,6 +15,12 @@
          v
 +------------------+
 | Capability Check |
++--------+---------+
+         |
+         v
++------------------+
+| Homeostatic      |
+| Governor         |
 +---+----------+---+
     |          |
     |          v
@@ -86,6 +92,33 @@ The checker should explicitly distinguish:
 - Insufficient confidence.
 - Unsafe operation.
 - Permission needed.
+
+### Homeostatic Governor
+
+The governor is the control layer around each capability decision. It does not replace the planner, checker, router, validator, or safety model. It records the signals that explain why the system should use a skill, request a skill, ask a human, or stop.
+
+Initial control signals:
+
+- Confidence.
+- Safety risk.
+- Reversibility.
+- Approval requirement.
+- Data freshness concern.
+- Tool failure history.
+- Cost or latency concern.
+
+The governor emits one of the same decision types used by capability decisions:
+
+```text
+USE_SKILL
+REQUEST_SKILL
+ASK_HUMAN
+ABORT_UNSAFE
+```
+
+The first implementation should be deterministic and auditable. It should combine existing planner, router, safety, permission, and validation outputs into a visible governor record in the run log.
+
+More detail lives in `docs/homeostatic-governor.md`.
 
 ### Skill Registry
 
@@ -235,4 +268,3 @@ Current OpenAI Agents SDK concepts map naturally onto this design:
 - Tracing and sessions can provide the visible run history needed for debugging and demos.
 
 This documentation treats those as implementation options, not hard commitments.
-

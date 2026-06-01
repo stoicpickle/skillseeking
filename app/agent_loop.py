@@ -5,9 +5,11 @@ from pathlib import Path
 from typing import Any
 
 from app.capability_checker import check_capabilities, check_task_safety
+from app.governor import evaluate_governor
 from app.loader import SkillLoadError, load_skill
 from app.models import (
     AgentRunResult,
+    SCHEMA_VERSION,
     ExecutionSummary,
     LoadedSkillLog,
     RunLog,
@@ -49,6 +51,22 @@ def run_task(
 
         _record_trace(trace, trace_events, "ROUTING", run_id=run_id)
         decisions = check_capabilities(plan.capabilities, registry)
+
+    governor_decisions = [evaluate_governor(decision) for decision in decisions]
+    for governor_decision in governor_decisions:
+        _record_trace(
+            trace,
+            trace_events,
+            "GOVERNOR_DECIDED",
+            capability=governor_decision.capability,
+            decision=governor_decision.decision,
+            dominant_signal=governor_decision.dominant_signal,
+            approval_required=governor_decision.approval_required,
+            risk_level=governor_decision.risk_level,
+            confidence=governor_decision.confidence,
+            reversibility=governor_decision.reversibility,
+            run_id=run_id,
+        )
 
     loaded_logs: list[LoadedSkillLog] = []
     script_execution_logs: list[ScriptExecutionLog] = []
@@ -97,7 +115,11 @@ def run_task(
                 capability=decision.capability,
                 run_id=run_id,
             )
-            skill_request = create_skill_request(plan.task_id, decision)
+            skill_request = create_skill_request(
+                plan.task_id,
+                decision,
+                _matching_governor_decision(decision.capability, governor_decisions),
+            )
             skill_requests.append(skill_request.model_dump(mode="json"))
             if not create_temporary_skills:
                 exit_code = 1
@@ -255,7 +277,11 @@ def run_task(
                 capability=decision.capability,
                 run_id=run_id,
             )
-            skill_request = create_skill_request(plan.task_id, decision)
+            skill_request = create_skill_request(
+                plan.task_id,
+                decision,
+                _matching_governor_decision(decision.capability, governor_decisions),
+            )
             skill_requests.append(skill_request.model_dump(mode="json"))
             route_load_failed = True
             exit_code = 1
@@ -334,7 +360,7 @@ def run_task(
 
     _record_trace(trace, trace_events, "RUN_LOG_WRITTEN", run_id=run_id)
     run_log = RunLog(
-        schema_version=2,
+        schema_version=SCHEMA_VERSION,
         run_id=run_id,
         task_id=plan.task_id,
         task=plan.task,
@@ -343,6 +369,7 @@ def run_task(
         result_category=result_category,
         plan=[capability.capability for capability in plan.capabilities],
         capability_decisions=[decision.model_dump(mode="json") for decision in decisions],
+        governor_decisions=governor_decisions,
         skills_loaded=loaded_logs,
         script_executions=script_execution_logs,
         skill_requests=skill_requests,
@@ -368,6 +395,13 @@ def _is_current_run_temporary_record(record: Any, temporary_root: Path, run_id: 
         and record.lifecycle.temporary
         and record.lifecycle.run_id == run_id
     )
+
+
+def _matching_governor_decision(capability: str, governor_decisions: list[Any]) -> Any:
+    for decision in governor_decisions:
+        if decision.capability == capability:
+            return decision
+    raise RuntimeError(f"missing governor decision for requested capability: {capability}")
 
 
 def _record_trace(
