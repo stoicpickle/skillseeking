@@ -62,7 +62,8 @@ Promotion remains human-governed:
 ## Next Three Milestones
 
 1. **Lifecycle eval expansion**
-   - Expand beyond the two-row lifecycle smoke suite to cover repeated gaps, blocked candidates, duplicate candidates, validation failures, promotion gates, and explain/JSON visibility.
+   - Current progress: the lifecycle smoke suite now covers repeated requested gaps, temporary-skill success, and repair-required validation failure.
+   - Next coverage: blocked/quarantined candidates, duplicate candidates, promotion gates, and explain/JSON visibility.
    - Distinguish capability decision accuracy from lifecycle evidence accuracy.
 
 2. **Human promotion workflow design**

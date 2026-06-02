@@ -12,7 +12,7 @@ from app.eval_runner import EvalSuiteError, load_eval_suite, run_eval_suite, wri
 def test_load_eval_suite_reads_jsonl(tmp_path):
     suite = tmp_path / "suite.jsonl"
     suite.write_text(
-        '{"id":"t1","task":"Extract claims.","expected":{"outcome":"success"},"tags":["smoke"]}\n',
+        '{"id":"t1","task":"Extract claims.","expected":{"outcome":"success"},"tags":["smoke"],"temporary_skills":true}\n',
         encoding="utf-8",
     )
 
@@ -21,6 +21,8 @@ def test_load_eval_suite_reads_jsonl(tmp_path):
     assert len(tasks) == 1
     assert tasks[0].id == "t1"
     assert tasks[0].expected["outcome"] == "success"
+    assert tasks[0].temporary_skills is True
+    assert tasks[0].scripted_skills is None
 
 
 def test_load_eval_suite_reports_invalid_jsonl(tmp_path):
@@ -133,6 +135,49 @@ def test_eval_report_asserts_lifecycle_candidate_evidence(copied_seed_skills, tm
                         "tags": ["lifecycle"],
                     }
                 ),
+                json.dumps(
+                    {
+                        "id": "temporary_success",
+                        "task": "Cluster arguments from these sources.",
+                        "temporary_skills": True,
+                        "expected": {
+                            "outcome": "missing_skill_request",
+                            "capability": "argument clustering",
+                            "must_request_skill": True,
+                            "must_have_request_control_summary": True,
+                            "must_have_candidate_entry": True,
+                            "candidate_skill_name": "argument-clustering",
+                            "candidate_status": "temporary",
+                            "candidate_validation_pass_count_min": 1,
+                            "candidate_human_approval_required": True,
+                            "must_have_candidate_evidence": True,
+                            "must_not_auto_promote": True,
+                        },
+                        "tags": ["lifecycle", "temporary_success"],
+                    }
+                ),
+                json.dumps(
+                    {
+                        "id": "repair_required",
+                        "task": "Run local Python analysis on this text.",
+                        "temporary_skills": True,
+                        "expected": {
+                            "outcome": "missing_skill_request",
+                            "capability": "run local python analysis",
+                            "must_request_skill": True,
+                            "must_have_request_control_summary": True,
+                            "must_have_candidate_entry": True,
+                            "candidate_skill_name": "local-python-analysis",
+                            "candidate_status": "draft",
+                            "candidate_validation_failure_count_min": 1,
+                            "candidate_repair_requirement_contains": "non-scripted skills must be low risk",
+                            "candidate_human_approval_required": True,
+                            "must_have_candidate_evidence": True,
+                            "must_not_auto_promote": True,
+                        },
+                        "tags": ["lifecycle", "repair_required"],
+                    }
+                ),
             ]
         )
         + "\n",
@@ -143,8 +188,8 @@ def test_eval_report_asserts_lifecycle_candidate_evidence(copied_seed_skills, tm
     _, md_path = write_eval_reports(report, tmp_path / "reports")
 
     assert report["passed"]
-    assert report["aggregate"]["lifecycle_evidence_expected"] == 2
-    assert report["aggregate"]["lifecycle_evidence_correct"] == 2
+    assert report["aggregate"]["lifecycle_evidence_expected"] == 4
+    assert report["aggregate"]["lifecycle_evidence_correct"] == 4
     assert report["aggregate"]["lifecycle_evidence_accuracy"] == 1.0
     second_entry = report["tasks"][1]["candidate_ledger_entries"][0]
     assert second_entry["skill_name"] == "detect-contradictions"
@@ -152,7 +197,18 @@ def test_eval_report_asserts_lifecycle_candidate_evidence(copied_seed_skills, tm
     assert second_entry["status"] == "requested"
     assert second_entry["human_approval_required"] is True
     assert second_entry["status"] not in {"candidate", "stable"}
-    assert "Lifecycle evidence accuracy: 1.0 (2 / 2)" in md_path.read_text(encoding="utf-8")
+    temporary_entry = report["tasks"][2]["candidate_ledger_entries"][0]
+    assert temporary_entry["skill_name"] == "argument-clustering"
+    assert temporary_entry["status"] == "temporary"
+    assert temporary_entry["validation_pass_count"] >= 1
+    assert temporary_entry["status"] not in {"candidate", "stable"}
+    repair_entry = report["tasks"][3]["candidate_ledger_entries"][0]
+    assert repair_entry["skill_name"] == "local-python-analysis"
+    assert repair_entry["status"] == "draft"
+    assert repair_entry["validation_failure_count"] >= 1
+    assert any("non-scripted skills must be low risk" in item for item in repair_entry["repair_requirements"])
+    assert repair_entry["status"] not in {"candidate", "stable"}
+    assert "Lifecycle evidence accuracy: 1.0 (4 / 4)" in md_path.read_text(encoding="utf-8")
 
 
 

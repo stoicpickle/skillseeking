@@ -46,6 +46,8 @@ class EvalTask(BaseModel):
     task: str
     expected: dict[str, Any] = Field(default_factory=dict)
     tags: list[str] = Field(default_factory=list)
+    temporary_skills: bool | None = None
+    scripted_skills: bool | None = None
 
 
 def load_eval_suite(path: Path) -> list[EvalTask]:
@@ -176,8 +178,16 @@ def _run_eval_task(
         task.task,
         skills_dir=skills_dir,
         runs_dir=runs_dir,
-        create_temporary_skills=create_temporary_skills,
-        allow_scripted_skills=allow_scripted_skills,
+        create_temporary_skills=(
+            task.temporary_skills
+            if task.temporary_skills is not None
+            else create_temporary_skills
+        ),
+        allow_scripted_skills=(
+            task.scripted_skills
+            if task.scripted_skills is not None
+            else allow_scripted_skills
+        ),
     )
     run_log = result.run_log
     expected = task.expected

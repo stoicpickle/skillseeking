@@ -222,7 +222,7 @@ Run the capability-gap eval smoke suite:
 .venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals
 ```
 
-The eval writes a machine-readable JSON report and a Markdown summary. It scores task outcome, missing-skill detection, wrong skill loads, unsafe allowance, safe blocking, trace completeness, deterministic skill-request quality, governor assertions, and lifecycle candidate evidence. The lifecycle smoke suite lives at `evals/skill_lifecycle_v0.jsonl`.
+The eval writes a machine-readable JSON report and a Markdown summary. It scores task outcome, missing-skill detection, wrong skill loads, unsafe allowance, safe blocking, trace completeness, deterministic skill-request quality, governor assertions, and lifecycle candidate evidence. The lifecycle smoke suite lives at `evals/skill_lifecycle_v0.jsonl` and covers repeated gaps, temporary success, and repair-required failure.
 
 Explain any run log as a human-readable trace:
 

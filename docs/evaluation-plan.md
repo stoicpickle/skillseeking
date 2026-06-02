@@ -212,7 +212,7 @@ The first governor eval slice should extend the current 20-task capability-gap s
 
 ## Skill Candidate Ledger Evaluation
 
-Lifecycle eval assertions can verify that repeated gaps accumulate candidate evidence without enabling promotion. Supported expectation keys include:
+Lifecycle eval assertions can verify that repeated gaps, temporary validation success, and repair-required validation failure accumulate candidate evidence without enabling promotion. Eval rows can set `temporary_skills` or `scripted_skills` to override the suite-level execution mode for that task. Supported expectation keys include:
 
 - `must_have_candidate_entry`
 - `candidate_status`
@@ -230,7 +230,7 @@ Lifecycle eval assertions can verify that repeated gaps accumulate candidate evi
 - `candidate_repair_requirement_contains`
 - `candidate_promotion_requirement_contains`
 
-The first lifecycle smoke suite is `evals/skill_lifecycle_v0.jsonl`. It is intentionally small and should be expanded before any active governor behavior or human-promotion workflow is implemented.
+The lifecycle smoke suite is `evals/skill_lifecycle_v0.jsonl`. It currently covers repeated requested gaps, temporary-skill success, and repair-required validation failure. It should continue to expand toward blocked/quarantined and duplicate-candidate scenarios before any active governor behavior or human-promotion workflow is implemented.
 
 ## Success Criteria for MVP
 

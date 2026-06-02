@@ -428,7 +428,7 @@ Slices:
 | Ledger contract and persistence | complete | `runs/skill_candidate_ledger.json` records deterministic candidate entries and preserves evidence run IDs |
 | Runtime evidence recording | complete | Run logs feed missing requests, temporary outcomes, repair requirements, rejected skills, and duplicate contracts into the ledger |
 | Review surfaces | complete | `skill-agent candidates`, `health`, `explain --include-candidates`, and eval reports expose candidate evidence |
-| Lifecycle eval smoke | complete | `evals/skill_lifecycle_v0.jsonl` proves repeated gaps accumulate evidence without auto-promotion |
+| Lifecycle eval smoke | complete | `evals/skill_lifecycle_v0.jsonl` proves repeated gaps, temporary success, and repair-required failure accumulate evidence without auto-promotion |
 | Degraded ledger handling | complete | Corrupt ledger summaries do not prevent task/run-log completion; the run trace records `LEDGER_RECORD_FAILED` |
 
 Boundaries:

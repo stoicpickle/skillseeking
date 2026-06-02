@@ -231,9 +231,13 @@ Eval suites are JSONL. Blank lines and comment lines are ignored.
     "must_have_routing_decision": true,
     "trace_complete": true
   },
-  "tags": ["missing_skill", "contradiction"]
+  "tags": ["missing_skill", "contradiction"],
+  "temporary_skills": false,
+  "scripted_skills": false
 }
 ```
+
+Eval tasks may optionally set `temporary_skills` or `scripted_skills` to override the suite-level execution mode for that row. Omitted values inherit the runner/CLI defaults.
 
 Supported v0 expectations include:
 
