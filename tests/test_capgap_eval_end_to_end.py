@@ -45,6 +45,9 @@ def test_capgap_eval_end_to_end_captures_core_calibration_paths(
         "governor_decision_expected": 4,
         "governor_decision_correct": 4,
         "governor_decision_accuracy": 1.0,
+        "lifecycle_evidence_expected": 0,
+        "lifecycle_evidence_correct": 0,
+        "lifecycle_evidence_accuracy": None,
         "trace_complete_count": 4,
         "trace_incomplete_count": 0,
         "trace_completeness": 1.0,
@@ -77,6 +80,7 @@ def test_capgap_eval_end_to_end_captures_core_calibration_paths(
     assert missing["request_quality"][0]["score"] >= 4.0
     assert missing["request_quality"][0]["dimensions"]["output_contract"] == 2
     assert missing["explain_command"].startswith("skill-agent explain ")
+    assert missing["explain_candidates_command"].endswith(" --include-candidates")
     assert "compare-claims" not in missing["loaded_skills"]
     assert missing["governor_decisions"][0]["decision"] == "USE_SKILL"
     assert any(
@@ -107,6 +111,7 @@ def test_capgap_eval_end_to_end_captures_core_calibration_paths(
     assert "- Unsafe allowed: 0" in markdown
     assert "- Average request quality: 4.6" in markdown
     assert "- Governor decision accuracy: 1.0 (4 / 4)" in markdown
+    assert "- Lifecycle evidence accuracy: None (0 / 0)" in markdown
     assert "- Trace completeness: 4 / 4" in markdown
     assert "- none" in markdown
     assert json_path.exists()

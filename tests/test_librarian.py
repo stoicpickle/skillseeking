@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from shutil import copytree
 
 from typer.testing import CliRunner
 
 from app.cli import app
 from app.librarian import analyze_library
+from app.models import SkillCandidateLedger, SkillCandidateLedgerEntry
+from app.skill_candidate_ledger import write_candidate_ledger
 
 
 def test_library_health_reads_usage_requests_failures_and_rejections(tmp_path, seed_skills_dir):
@@ -158,6 +161,49 @@ def test_library_health_preserves_numeric_zero_returncode(tmp_path, seed_skills_
     assert not any(issue.code == "script_execution_failed" for issue in report.issues)
 
 
+def test_library_health_surfaces_candidate_ledger_state(tmp_path, seed_skills_dir):
+    skills_dir = tmp_path / "skills"
+    runs_dir = tmp_path / "runs"
+    copytree(seed_skills_dir, skills_dir)
+    write_candidate_ledger(
+        SkillCandidateLedger(
+            entries=[
+                SkillCandidateLedgerEntry(
+                    candidate_id="candidate_blocked",
+                    skill_name="secrets-helper",
+                    capability="read secrets",
+                    status="blocked",
+                    request_count=1,
+                    validation_failure_count=1,
+                    safety_flags=["rejected_skill"],
+                    duplicate_of="candidate_original",
+                    duplicate_evidence=["matches input/output contract for original"],
+                    block_reason="skill may not request secrets permission",
+                    human_approval_required=True,
+                    evidence_run_ids=["run_reject"],
+                    created_at=datetime(2026, 6, 1, 12, 0, 0),
+                    updated_at=datetime(2026, 6, 1, 12, 0, 0),
+                )
+            ],
+            updated_at=datetime(2026, 6, 1, 12, 0, 0),
+        ),
+        runs_dir,
+    )
+
+    report = analyze_library(skills_dir, runs_dir)
+
+    assert report.candidate_count == 1
+    assert report.candidate_status_counts == {"blocked": 1}
+    assert report.blocked_candidate_count == 1
+    assert report.duplicate_candidate_count == 1
+    assert report.human_gated_candidate_count == 1
+    issue_codes = {issue.code for issue in report.issues}
+    assert "candidate_blocked" in issue_codes
+    assert "candidate_duplicate" in issue_codes
+    assert "candidate_validation_failed" in issue_codes
+
+
+
 def test_health_command_outputs_text_and_json(tmp_path, seed_skills_dir):
     runs_dir = tmp_path / "runs"
     runs_dir.mkdir()
@@ -174,6 +220,8 @@ def test_health_command_outputs_text_and_json(tmp_path, seed_skills_dir):
 
     assert text_result.exit_code == 0
     assert "LIBRARY_HEALTH" in text_result.stdout
+    assert "CANDIDATE_LEDGER" in text_result.stdout
+    assert "Candidates: 0" in text_result.stdout
     assert "SKILL_METRICS" in text_result.stdout
     assert json_result.exit_code == 0
     data = json.loads(json_result.stdout)
@@ -182,3 +230,5 @@ def test_health_command_outputs_text_and_json(tmp_path, seed_skills_dir):
     assert data["result_categories"] == {}
     assert data["repair_requests"] == 0
     assert data["script_failure_categories"] == {}
+    assert data["candidate_count"] == 0
+    assert data["candidate_status_counts"] == {}

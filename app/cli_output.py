@@ -5,7 +5,13 @@ import json
 
 import typer
 
-from app.models import AgentRunResult, LoadedSkillLog, ScriptExecutionLog
+from app.models import (
+    AgentRunResult,
+    LoadedSkillLog,
+    ScriptExecutionLog,
+    SkillCandidateLedger,
+    SkillCandidateLedgerEntry,
+)
 from app.registry import SkillRegistry
 
 
@@ -49,6 +55,57 @@ def emit_registry_json(registry: SkillRegistry) -> None:
             sort_keys=True,
         )
     )
+
+
+def emit_candidates_json(ledger: SkillCandidateLedger, ledger_path: str) -> None:
+    entries = _sorted_candidate_entries(ledger.entries)
+    typer.echo(
+        json.dumps(
+            {
+                "ledger_path": ledger_path,
+                "schema_version": ledger.schema_version,
+                "candidate_count": len(entries),
+                "status_counts": _candidate_status_counts(entries),
+                "entries": [entry.model_dump(mode="json") for entry in entries],
+                "auto_promotion_enabled": False,
+            },
+            indent=2,
+            sort_keys=True,
+        )
+    )
+
+
+def emit_candidates_output(ledger: SkillCandidateLedger, ledger_path: str) -> None:
+    entries = _sorted_candidate_entries(ledger.entries)
+    typer.echo("SKILL_CANDIDATES")
+    typer.echo(f"Ledger: {ledger_path}")
+    typer.echo(f"Schema version: {ledger.schema_version}")
+    typer.echo(f"Candidate count: {len(entries)}")
+    typer.echo(f"Status counts: {_candidate_status_counts(entries) or '-'}")
+    typer.echo("Auto-promotion: disabled")
+    if not entries:
+        typer.echo("none")
+        return
+    for entry in entries:
+        typer.echo("")
+        typer.echo(f"Candidate: {entry.candidate_id}")
+        typer.echo(f"Skill: {entry.skill_name}")
+        typer.echo(f"Capability: {entry.capability}")
+        typer.echo(f"Status: {entry.status}")
+        typer.echo(f"Requests: {entry.request_count}")
+        typer.echo(
+            "Validation: "
+            f"passed={entry.validation_pass_count} failed={entry.validation_failure_count} "
+            f"temporary_uses={entry.successful_temporary_uses}"
+        )
+        typer.echo(f"Safety flags: {_format_list(entry.safety_flags)}")
+        typer.echo(f"Quarantine reason: {entry.quarantine_reason or '-'}")
+        typer.echo(f"Block reason: {entry.block_reason or '-'}")
+        typer.echo(f"Duplicate of: {entry.duplicate_of or '-'}")
+        typer.echo(f"Repair requirements: {_format_list(entry.repair_requirements)}")
+        typer.echo(f"Promotion requirements: {_format_list(entry.promotion_requirements)}")
+        typer.echo(f"Human approval required: {entry.human_approval_required}")
+        typer.echo(f"Evidence runs: {_format_list(entry.evidence_run_ids)}")
 
 
 def emit_run_output(result: AgentRunResult) -> None:
@@ -149,3 +206,21 @@ def _format_skill_names(skills: Iterable[LoadedSkillLog]) -> str:
     if not names:
         return "-"
     return ", ".join(names)
+
+
+def _sorted_candidate_entries(
+    entries: Iterable[SkillCandidateLedgerEntry],
+) -> list[SkillCandidateLedgerEntry]:
+    return sorted(entries, key=lambda entry: (entry.status, entry.skill_name, entry.candidate_id))
+
+
+def _candidate_status_counts(entries: Iterable[SkillCandidateLedgerEntry]) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for entry in entries:
+        counts[entry.status] = counts.get(entry.status, 0) + 1
+    return dict(sorted(counts.items()))
+
+
+def _format_list(values: Iterable[str]) -> str:
+    items = [value for value in values if value]
+    return ", ".join(items) if items else "-"

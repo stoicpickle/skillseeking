@@ -90,6 +90,72 @@ def test_eval_cli_runs_against_fixture(copied_seed_skills, tmp_path):
     assert "Trace completeness: 1 / 1" in result.stdout
 
 
+def test_eval_report_asserts_lifecycle_candidate_evidence(copied_seed_skills, tmp_path):
+    suite = tmp_path / "suite.jsonl"
+    suite.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "id": "gap_first",
+                        "task": "Extract claims and identify contradictions.",
+                        "expected": {
+                            "outcome": "missing_skill_request",
+                            "capability": "detect contradictions",
+                            "must_request_skill": True,
+                            "must_have_candidate_entry": True,
+                            "candidate_status": "requested",
+                            "min_candidate_request_count": 1,
+                            "candidate_human_approval_required": True,
+                            "must_have_candidate_evidence": True,
+                            "must_not_auto_promote": True,
+                            "candidate_promotion_requirement_contains": "Human approval",
+                        },
+                        "tags": ["lifecycle"],
+                    }
+                ),
+                json.dumps(
+                    {
+                        "id": "gap_second",
+                        "task": "Extract claims from these two sources and identify contradictions.",
+                        "expected": {
+                            "outcome": "missing_skill_request",
+                            "capability": "detect contradictions",
+                            "must_request_skill": True,
+                            "must_have_candidate_entry": True,
+                            "candidate_skill_name": "detect-contradictions",
+                            "candidate_status": "requested",
+                            "min_candidate_request_count": 2,
+                            "candidate_human_approval_required": True,
+                            "must_have_candidate_evidence": True,
+                            "must_not_auto_promote": True,
+                        },
+                        "tags": ["lifecycle"],
+                    }
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = run_eval_suite(suite, copied_seed_skills, tmp_path / "runs")
+    _, md_path = write_eval_reports(report, tmp_path / "reports")
+
+    assert report["passed"]
+    assert report["aggregate"]["lifecycle_evidence_expected"] == 2
+    assert report["aggregate"]["lifecycle_evidence_correct"] == 2
+    assert report["aggregate"]["lifecycle_evidence_accuracy"] == 1.0
+    second_entry = report["tasks"][1]["candidate_ledger_entries"][0]
+    assert second_entry["skill_name"] == "detect-contradictions"
+    assert second_entry["request_count"] == 2
+    assert second_entry["status"] == "requested"
+    assert second_entry["human_approval_required"] is True
+    assert second_entry["status"] not in {"candidate", "stable"}
+    assert "Lifecycle evidence accuracy: 1.0 (2 / 2)" in md_path.read_text(encoding="utf-8")
+
+
+
 def test_eval_report_categorizes_failures_and_prints_diagnostics(copied_seed_skills, tmp_path):
     suite = tmp_path / "suite.jsonl"
     suite.write_text(

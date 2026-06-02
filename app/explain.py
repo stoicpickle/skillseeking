@@ -4,12 +4,19 @@ import json
 from pathlib import Path
 from typing import Any
 
+from app.skill_candidate_ledger import (
+    SkillCandidateLedgerError,
+    candidate_id_for,
+    ledger_path,
+    load_candidate_ledger,
+)
+
 
 class ExplainError(ValueError):
     pass
 
 
-def explain_run_log(path: Path) -> str:
+def explain_run_log(path: Path, include_candidates: bool = False) -> str:
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
     except FileNotFoundError as exc:
@@ -57,6 +64,9 @@ def explain_run_log(path: Path) -> str:
     if not requests:
         lines.append("- none")
 
+    if include_candidates:
+        lines.extend(_candidate_ledger_lines(path, data))
+
     lines.extend(["", "SAFETY"])
     safety = [
         decision for decision in decisions if decision.get("decision") in {"ASK_HUMAN", "ABORT_UNSAFE"}
@@ -73,6 +83,53 @@ def explain_run_log(path: Path) -> str:
         lines.append("- none recorded")
 
     return "\n".join(lines) + "\n"
+
+
+def _candidate_ledger_lines(run_log_path: Path, data: dict[str, Any]) -> list[str]:
+    lines = ["", "CANDIDATE LEDGER"]
+    try:
+        ledger = load_candidate_ledger(run_log_path.parent)
+    except SkillCandidateLedgerError as exc:
+        return lines + [f"- unavailable: {exc}"]
+    path = ledger_path(run_log_path.parent)
+    lines.append(f"Ledger: {path}")
+    entries_by_id = {entry.candidate_id: entry for entry in ledger.entries}
+    run_id = str(data.get("run_id") or "")
+    matched_ids: list[str] = []
+    for request in data.get("skill_requests") or []:
+        skill_name = str(request.get("desired_skill_name") or "requested-skill")
+        capability = str(request.get("missing_capability") or skill_name)
+        matched_ids.append(candidate_id_for(skill_name, capability))
+    for entry in ledger.entries:
+        if run_id and run_id in entry.evidence_run_ids:
+            matched_ids.append(entry.candidate_id)
+    matched = [entries_by_id[candidate_id] for candidate_id in dict.fromkeys(matched_ids) if candidate_id in entries_by_id]
+    if not matched:
+        lines.append("- no matching candidate entry")
+        return lines
+    for entry in matched:
+        lines.append(f"- {entry.candidate_id}: {entry.skill_name} for {entry.capability}")
+        lines.append(f"  Status: {entry.status}")
+        lines.append(f"  Requests: {entry.request_count}")
+        lines.append(
+            "  Validation: "
+            f"passed={entry.validation_pass_count} failed={entry.validation_failure_count} "
+            f"temporary_uses={entry.successful_temporary_uses}"
+        )
+        if entry.quarantine_reason:
+            lines.append(f"  Quarantine reason: {entry.quarantine_reason}")
+        if entry.block_reason:
+            lines.append(f"  Block reason: {entry.block_reason}")
+        if entry.duplicate_of:
+            lines.append(f"  Duplicate of: {entry.duplicate_of}")
+        if entry.repair_requirements:
+            lines.append(f"  Repair requirements: {'; '.join(entry.repair_requirements)}")
+        if entry.promotion_requirements:
+            lines.append(f"  Promotion requirements: {'; '.join(entry.promotion_requirements)}")
+        lines.append(f"  Human approval required: {entry.human_approval_required}")
+        lines.append(f"  Evidence runs: {', '.join(entry.evidence_run_ids) or '-'}")
+    return lines
+
 
 
 def _decision_lines(decision: dict[str, Any]) -> list[str]:

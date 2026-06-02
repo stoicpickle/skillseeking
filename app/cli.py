@@ -7,10 +7,17 @@ import json
 import typer
 
 from app.agent_loop import run_task
-from app.cli_output import emit_run_json, emit_registry_json, emit_run_output
+from app.cli_output import (
+    emit_candidates_json,
+    emit_candidates_output,
+    emit_run_json,
+    emit_registry_json,
+    emit_run_output,
+)
 from app.eval_runner import EvalSuiteError, run_eval_suite, write_eval_reports
 from app.explain import ExplainError, explain_run_log
 from app.librarian import analyze_library
+from app.skill_candidate_ledger import SkillCandidateLedgerError, ledger_path, load_candidate_ledger
 from app.registry import SkillRegistry
 
 
@@ -107,6 +114,13 @@ def health(
     typer.echo(f"Route/load failures: {report.route_load_failures}")
     typer.echo(f"Script failure categories: {report.script_failure_categories or '-'}")
     typer.echo("")
+    typer.echo("CANDIDATE_LEDGER")
+    typer.echo(f"Candidates: {report.candidate_count}")
+    typer.echo(f"Candidate status counts: {report.candidate_status_counts or '-'}")
+    typer.echo(f"Blocked candidates: {report.blocked_candidate_count}")
+    typer.echo(f"Duplicate candidates: {report.duplicate_candidate_count}")
+    typer.echo(f"Human-gated candidates: {report.human_gated_candidate_count}")
+    typer.echo("")
     typer.echo("SKILL_METRICS")
     for metric in report.metrics:
         typer.echo(
@@ -120,6 +134,26 @@ def health(
     for issue in report.issues:
         skill = issue.skill_name or "-"
         typer.echo(f"{issue.severity} {issue.code} {skill}: {issue.message}")
+
+
+@app.command()
+def candidates(
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory containing the skill candidate ledger.")] = Path("runs"),
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the candidate ledger as JSON."),
+    ] = False,
+) -> None:
+    try:
+        ledger = load_candidate_ledger(runs_dir)
+    except SkillCandidateLedgerError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+    path = str(ledger_path(runs_dir))
+    if json_output:
+        emit_candidates_json(ledger, path)
+    else:
+        emit_candidates_output(ledger, path)
 
 
 @app.command("eval")
@@ -208,9 +242,13 @@ def explain(
             resolve_path=True,
         ),
     ],
+    include_candidates: Annotated[
+        bool,
+        typer.Option("--include-candidates", help="Include matching Skill Candidate Ledger entries."),
+    ] = False,
 ) -> None:
     try:
-        typer.echo(explain_run_log(run_log))
+        typer.echo(explain_run_log(run_log, include_candidates=include_candidates))
     except ExplainError as exc:
         typer.echo(str(exc))
         raise typer.Exit(1) from exc

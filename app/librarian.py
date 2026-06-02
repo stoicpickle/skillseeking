@@ -7,6 +7,7 @@ from typing import Any
 
 from app.models import LibraryHealthReport, SkillHealthIssue, SkillUsageMetrics
 from app.registry import SkillRegistry
+from app.skill_candidate_ledger import SkillCandidateLedgerError, ledger_path, load_candidate_ledger
 
 
 def analyze_library(
@@ -26,6 +27,60 @@ def analyze_library(
     safety_stops = 0
     human_approval_waits = 0
     route_load_failures = 0
+    candidate_count = 0
+    candidate_status_counts: dict[str, int] = defaultdict(int)
+    blocked_candidate_count = 0
+    duplicate_candidate_count = 0
+    human_gated_candidate_count = 0
+
+    try:
+        ledger = load_candidate_ledger(runs_dir)
+    except SkillCandidateLedgerError as exc:
+        ledger = None
+        issues.append(
+            SkillHealthIssue(
+                severity="warning",
+                code="candidate_ledger_unreadable",
+                skill_name=None,
+                message=str(exc),
+            )
+        )
+
+    if ledger is not None:
+        candidate_count = len(ledger.entries)
+        for entry in ledger.entries:
+            candidate_status_counts[entry.status] += 1
+            if entry.status == "blocked":
+                blocked_candidate_count += 1
+                issues.append(
+                    SkillHealthIssue(
+                        severity="warning",
+                        code="candidate_blocked",
+                        skill_name=entry.skill_name,
+                        message=entry.block_reason or entry.quarantine_reason or "Candidate is blocked.",
+                    )
+                )
+            if entry.duplicate_of:
+                duplicate_candidate_count += 1
+                issues.append(
+                    SkillHealthIssue(
+                        severity="warning",
+                        code="candidate_duplicate",
+                        skill_name=entry.skill_name,
+                        message=f"Candidate duplicates {entry.duplicate_of}: {'; '.join(entry.duplicate_evidence) or 'matching contract'}",
+                    )
+                )
+            if entry.human_approval_required:
+                human_gated_candidate_count += 1
+            if entry.validation_failure_count:
+                issues.append(
+                    SkillHealthIssue(
+                        severity="warning",
+                        code="candidate_validation_failed",
+                        skill_name=entry.skill_name,
+                        message=f"Candidate has {entry.validation_failure_count} validation failure(s) in {ledger_path(runs_dir)}.",
+                    )
+                )
 
     for rejection in registry.rejections():
         issues.append(
@@ -157,6 +212,11 @@ def analyze_library(
         human_approval_waits=human_approval_waits,
         route_load_failures=route_load_failures,
         script_failure_categories=dict(sorted(script_failure_categories.items())),
+        candidate_count=candidate_count,
+        candidate_status_counts=dict(sorted(candidate_status_counts.items())),
+        blocked_candidate_count=blocked_candidate_count,
+        duplicate_candidate_count=duplicate_candidate_count,
+        human_gated_candidate_count=human_gated_candidate_count,
     )
 
 

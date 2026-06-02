@@ -42,6 +42,59 @@ Contracts are schema-v3 and serialized with Pydantic `model_dump(mode="json")`. 
 
 `control_summary` is optional for compatibility with older request records. New `REQUEST_SKILL` artifacts include it as a copied snapshot of the matching governor decision, not as a live reference.
 
+## Skill Candidate Ledger
+
+The Skill Candidate Ledger is a mutable evidence summary stored at `runs/skill_candidate_ledger.json`. Run logs remain the immutable per-run evidence source. The ledger does not promote, install, admit, route, or score skills; it only records lifecycle evidence for human review.
+
+```json
+{
+  "schema_version": 1,
+  "updated_at": "2026-06-01T12:00:00",
+  "entries": [
+    {
+      "candidate_id": "candidate_abc123def456",
+      "skill_name": "detect-contradictions",
+      "capability": "detect contradictions",
+      "status": "requested",
+      "first_seen_run_id": "run_a",
+      "last_seen_run_id": "run_b",
+      "request_count": 2,
+      "successful_temporary_uses": 0,
+      "validation_pass_count": 0,
+      "validation_failure_count": 0,
+      "safety_flags": [],
+      "duplicate_of": null,
+      "duplicate_evidence": [],
+      "quarantine_reason": null,
+      "block_reason": null,
+      "repair_requirements": [],
+      "promotion_requirements": [
+        "Metadata validation passes",
+        "Input and output contracts are explicit",
+        "Validation examples or tests pass",
+        "Temporary use succeeds on the triggering task",
+        "Human approval is recorded before durable promotion"
+      ],
+      "human_approval_required": true,
+      "governor_summary": {
+        "governor_decision": "REQUEST_SKILL",
+        "dominant_signal": "missing_skill",
+        "approval_gate": "none"
+      },
+      "evidence_run_ids": ["run_a", "run_b"],
+      "input_schema": {"claims": "array"},
+      "output_schema": {"contradictions": "array"},
+      "created_at": "2026-06-01T12:00:00",
+      "updated_at": "2026-06-01T12:00:00"
+    }
+  ]
+}
+```
+
+Allowed candidate statuses are `requested`, `draft`, `temporary`, `candidate`, `stable`, `deprecated`, and `blocked`. The first runtime slice writes `requested`, `draft`, `temporary`, and `blocked` only. `candidate`, `stable`, and `deprecated` remain human-governed future states.
+
+Ledger updates currently record missing-skill requests, temporary draft validation outcomes, successful temporary loads, repair requirements, rejected/quarantined skills, duplicate input/output contracts, copied governor context, evidence run IDs, and promotion requirements. `human_approval_required` means durable promotion remains gated; it does not mean temporary one-run use is blocked.
+
 ## Capability Decision
 
 ```json

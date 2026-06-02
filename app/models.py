@@ -9,6 +9,15 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 SkillStatus = Literal["draft", "temporary", "candidate", "stable", "deprecated", "blocked"]
+SkillCandidateStatus = Literal[
+    "requested",
+    "draft",
+    "temporary",
+    "candidate",
+    "stable",
+    "deprecated",
+    "blocked",
+]
 RiskLevel = Literal["low", "medium", "high"]
 CapabilityDecisionType = Literal["USE_SKILL", "REQUEST_SKILL", "ASK_HUMAN", "ABORT_UNSAFE"]
 Reversibility = Literal["reversible", "partially_reversible", "irreversible", "unknown"]
@@ -319,6 +328,43 @@ class ExecutionSummary(BaseModel):
     result_category: RunResultCategory = "success"
 
 
+class SkillCandidateLedgerEntry(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_id: str
+    skill_name: str
+    capability: str
+    status: SkillCandidateStatus = "requested"
+    first_seen_run_id: str | None = None
+    last_seen_run_id: str | None = None
+    request_count: int = 0
+    successful_temporary_uses: int = 0
+    validation_pass_count: int = 0
+    validation_failure_count: int = 0
+    safety_flags: list[str] = Field(default_factory=list)
+    duplicate_of: str | None = None
+    duplicate_evidence: list[str] = Field(default_factory=list)
+    quarantine_reason: str | None = None
+    block_reason: str | None = None
+    repair_requirements: list[str] = Field(default_factory=list)
+    promotion_requirements: list[str] = Field(default_factory=list)
+    human_approval_required: bool = True
+    governor_summary: dict[str, Any] = Field(default_factory=dict)
+    evidence_run_ids: list[str] = Field(default_factory=list)
+    input_schema: dict[str, str] = Field(default_factory=dict)
+    output_schema: dict[str, str] = Field(default_factory=dict)
+    created_at: datetime = Field(default_factory=datetime.now)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+
+class SkillCandidateLedger(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: int = 1
+    entries: list[SkillCandidateLedgerEntry] = Field(default_factory=list)
+    updated_at: datetime = Field(default_factory=datetime.now)
+
+
 class RunLog(BaseModel):
     schema_version: int = SCHEMA_VERSION
     run_id: str = Field(default_factory=new_default_run_id)
@@ -388,3 +434,8 @@ class LibraryHealthReport(BaseModel):
     human_approval_waits: int = 0
     route_load_failures: int = 0
     script_failure_categories: dict[str, int] = Field(default_factory=dict)
+    candidate_count: int = 0
+    candidate_status_counts: dict[str, int] = Field(default_factory=dict)
+    blocked_candidate_count: int = 0
+    duplicate_candidate_count: int = 0
+    human_gated_candidate_count: int = 0
