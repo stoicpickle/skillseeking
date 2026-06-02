@@ -127,6 +127,12 @@ def _candidate_ledger_lines(run_log_path: Path, data: dict[str, Any]) -> list[st
         if entry.promotion_requirements:
             lines.append(f"  Promotion requirements: {'; '.join(entry.promotion_requirements)}")
         lines.append(f"  Promotion approval required: {entry.human_approval_required}")
+        if entry.promotion_approved_by:
+            lines.append(f"  Promotion approved by: {entry.promotion_approved_by}")
+        if entry.promotion_approved_at:
+            lines.append(f"  Promotion approved at: {entry.promotion_approved_at.isoformat()}")
+        if entry.promotion_approval_notes:
+            lines.append(f"  Promotion approval notes: {entry.promotion_approval_notes}")
         lines.append(f"  Evidence runs: {', '.join(entry.evidence_run_ids) or '-'}")
     return lines
 

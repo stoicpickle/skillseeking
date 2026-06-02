@@ -76,6 +76,9 @@ The Skill Candidate Ledger is a mutable evidence summary stored at `runs/skill_c
         "Human approval is recorded before durable promotion"
       ],
       "human_approval_required": true,
+      "promotion_approved_by": null,
+      "promotion_approved_at": null,
+      "promotion_approval_notes": null,
       "governor_summary": {
         "governor_decision": "REQUEST_SKILL",
         "dominant_signal": "missing_skill",
@@ -91,9 +94,9 @@ The Skill Candidate Ledger is a mutable evidence summary stored at `runs/skill_c
 }
 ```
 
-Allowed candidate statuses are `requested`, `draft`, `temporary`, `candidate`, `stable`, `deprecated`, and `blocked`. The first runtime slice writes `requested`, `draft`, `temporary`, and `blocked` only. `candidate`, `stable`, and `deprecated` remain human-governed future states.
+Allowed candidate statuses are `requested`, `draft`, `temporary`, `candidate`, `stable`, `deprecated`, and `blocked`. Runtime evidence recording writes `requested`, `draft`, `temporary`, and `blocked`. The explicit human promotion workflow may move an eligible `temporary` entry to ledger `candidate` status after reviewer/notes approval, but it still does not copy, install, admit, route, or score a durable skill. `stable` and `deprecated` remain future states.
 
-Ledger updates currently record missing-skill requests, temporary draft validation outcomes, successful temporary loads, repair requirements, rejected/quarantined skills, duplicate input/output contracts, copied governor context, evidence run IDs, and promotion requirements. `human_approval_required` means durable promotion remains gated; it does not mean temporary one-run use is blocked.
+Ledger updates currently record missing-skill requests, temporary draft validation outcomes, successful temporary loads, repair requirements, rejected/quarantined skills, duplicate input/output contracts, copied governor context, evidence run IDs, and promotion requirements. `human_approval_required` means durable promotion remains gated; it does not mean temporary one-run use is blocked. When `promote-candidate` records `promotion_approved_by`, `promotion_approved_at`, and `promotion_approval_notes`, the ledger entry can become `candidate` evidence, but no durable registry mutation occurs.
 
 ## Capability Decision
 

@@ -83,6 +83,54 @@ def record_run_in_candidate_ledger(run_log: RunLog, runs_dir: Path) -> Path | No
         return write_candidate_ledger(ledger, runs_dir)
 
 
+def approve_candidate_promotion(
+    runs_dir: Path,
+    candidate_id: str,
+    reviewer: str,
+    notes: str,
+) -> SkillCandidateLedgerEntry:
+    reviewer = reviewer.strip()
+    notes = notes.strip()
+    if not reviewer:
+        raise SkillCandidateLedgerError("promotion reviewer is required")
+    if not notes:
+        raise SkillCandidateLedgerError("promotion notes are required")
+
+    with _ledger_lock(runs_dir):
+        ledger = load_candidate_ledger(runs_dir)
+        entry = next((item for item in ledger.entries if item.candidate_id == candidate_id), None)
+        if entry is None:
+            raise SkillCandidateLedgerError(f"candidate not found: {candidate_id}")
+        _validate_promotion_eligibility(entry)
+        now = datetime.now()
+        entry.status = "candidate"
+        entry.human_approval_required = False
+        entry.promotion_approved_by = reviewer
+        entry.promotion_approved_at = now
+        entry.promotion_approval_notes = notes
+        entry.updated_at = now
+        ledger.updated_at = now
+        write_candidate_ledger(ledger, runs_dir)
+        return entry
+
+
+def _validate_promotion_eligibility(entry: SkillCandidateLedgerEntry) -> None:
+    if entry.status == "blocked":
+        raise SkillCandidateLedgerError("blocked candidates cannot be promoted")
+    if entry.quarantine_reason or entry.block_reason:
+        raise SkillCandidateLedgerError("quarantined or blocked candidates cannot be promoted")
+    if entry.duplicate_of:
+        raise SkillCandidateLedgerError("duplicate candidates require manual merge before promotion")
+    if entry.status != "temporary":
+        raise SkillCandidateLedgerError("only temporary candidates can be promoted in this workflow")
+    if entry.validation_pass_count < 1:
+        raise SkillCandidateLedgerError("candidate promotion requires at least one validation pass")
+    if entry.successful_temporary_uses < 1:
+        raise SkillCandidateLedgerError("candidate promotion requires at least one successful temporary use")
+    if entry.validation_failure_count > 0 or entry.repair_requirements:
+        raise SkillCandidateLedgerError("candidate promotion requires unresolved repair evidence to be cleared")
+
+
 def update_candidate_ledger_from_run(ledger: SkillCandidateLedger, run_log: RunLog) -> bool:
     changed = False
     now = run_log.created_at

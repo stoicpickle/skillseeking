@@ -7,14 +7,16 @@ from datetime import datetime
 import pytest
 
 from app.agent_loop import run_task
-from app.models import RunLog
+from app.models import RunLog, SkillCandidateLedger, SkillCandidateLedgerEntry
 from app.skill_candidate_ledger import (
     LOCK_FILENAME,
     SkillCandidateLedgerError,
+    approve_candidate_promotion,
     candidate_id_for,
     ledger_path,
     load_candidate_ledger,
     record_run_in_candidate_ledger,
+    write_candidate_ledger,
 )
 
 
@@ -355,3 +357,54 @@ def test_agent_loop_preserves_run_when_candidate_ledger_is_corrupt(copied_seed_s
     assert "LEDGER_RECORD_FAILED" in result.run_log.trace
     assert result.run_log.trace_events[-1].stage == "LEDGER_RECORD_FAILED"
     assert "invalid skill candidate ledger" in result.run_log.trace_events[-1].details["error"]
+
+
+def _promotable_entry() -> SkillCandidateLedgerEntry:
+    return SkillCandidateLedgerEntry(
+        candidate_id="candidate_promotable",
+        skill_name="argument-clustering",
+        capability="argument clustering",
+        status="temporary",
+        request_count=1,
+        successful_temporary_uses=1,
+        validation_pass_count=1,
+        promotion_requirements=["Human approval is recorded before durable promotion"],
+        evidence_run_ids=["run_temp"],
+    )
+
+
+def test_approve_candidate_promotion_records_human_approval_without_installing(tmp_path):
+    runs_dir = tmp_path / "runs"
+    write_candidate_ledger(SkillCandidateLedger(entries=[_promotable_entry()]), runs_dir)
+
+    entry = approve_candidate_promotion(
+        runs_dir,
+        "candidate_promotable",
+        reviewer="Ada",
+        notes="Validated temp use and reviewed promotion evidence.",
+    )
+
+    assert entry.status == "candidate"
+    assert not entry.human_approval_required
+    assert entry.promotion_approved_by == "Ada"
+    assert entry.promotion_approved_at is not None
+    assert entry.promotion_approval_notes == "Validated temp use and reviewed promotion evidence."
+    persisted = load_candidate_ledger(runs_dir).entries[0]
+    assert persisted.status == "candidate"
+    assert persisted.promotion_approved_by == "Ada"
+
+
+def test_approve_candidate_promotion_rejects_requested_or_blocked_entries(tmp_path):
+    runs_dir = tmp_path / "runs"
+    requested = _promotable_entry()
+    requested.status = "requested"
+    blocked = _promotable_entry()
+    blocked.candidate_id = "candidate_blocked"
+    blocked.status = "blocked"
+    blocked.block_reason = "unsafe"
+    write_candidate_ledger(SkillCandidateLedger(entries=[requested, blocked]), runs_dir)
+
+    with pytest.raises(SkillCandidateLedgerError, match="only temporary candidates"):
+        approve_candidate_promotion(runs_dir, "candidate_promotable", "Ada", "Reviewed")
+    with pytest.raises(SkillCandidateLedgerError, match="blocked candidates"):
+        approve_candidate_promotion(runs_dir, "candidate_blocked", "Ada", "Reviewed")

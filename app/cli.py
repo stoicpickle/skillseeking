@@ -17,7 +17,12 @@ from app.cli_output import (
 from app.eval_runner import EvalSuiteError, run_eval_suite, write_eval_reports
 from app.explain import ExplainError, explain_run_log
 from app.librarian import analyze_library
-from app.skill_candidate_ledger import SkillCandidateLedgerError, ledger_path, load_candidate_ledger
+from app.skill_candidate_ledger import (
+    SkillCandidateLedgerError,
+    approve_candidate_promotion,
+    ledger_path,
+    load_candidate_ledger,
+)
 from app.registry import SkillRegistry
 
 
@@ -154,6 +159,40 @@ def candidates(
         emit_candidates_json(ledger, path)
     else:
         emit_candidates_output(ledger, path)
+
+
+@app.command("promote-candidate")
+def promote_candidate(
+    candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to approve for candidate status.")],
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory containing the skill candidate ledger.")] = Path("runs"),
+    reviewer: Annotated[str, typer.Option("--reviewer", help="Human reviewer approving promotion.")] = "",
+    notes: Annotated[str, typer.Option("--notes", help="Human review notes explaining why promotion is approved.")] = "",
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the promoted candidate entry as JSON."),
+    ] = False,
+) -> None:
+    try:
+        entry = approve_candidate_promotion(
+            runs_dir=runs_dir,
+            candidate_id=candidate_id,
+            reviewer=reviewer,
+            notes=notes,
+        )
+    except SkillCandidateLedgerError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        typer.echo(json.dumps(entry.model_dump(mode="json"), indent=2, sort_keys=True))
+    else:
+        typer.echo("CANDIDATE_PROMOTED")
+        typer.echo(f"Candidate: {entry.candidate_id}")
+        typer.echo(f"Skill: {entry.skill_name}")
+        typer.echo(f"Status: {entry.status}")
+        typer.echo("Durable skill installed: false")
+        typer.echo("Auto-promotion: disabled")
+        typer.echo(f"Promotion approved by: {entry.promotion_approved_by}")
 
 
 @app.command("eval")

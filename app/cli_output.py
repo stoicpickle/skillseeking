@@ -105,6 +105,9 @@ def emit_candidates_output(ledger: SkillCandidateLedger, ledger_path: str) -> No
         typer.echo(f"Repair requirements: {_format_list(entry.repair_requirements)}")
         typer.echo(f"Promotion requirements: {_format_list(entry.promotion_requirements)}")
         typer.echo(f"Promotion approval required: {entry.human_approval_required}")
+        typer.echo(f"Promotion approved by: {entry.promotion_approved_by or '-'}")
+        typer.echo(f"Promotion approved at: {entry.promotion_approved_at.isoformat() if entry.promotion_approved_at else '-'}")
+        typer.echo(f"Promotion approval notes: {entry.promotion_approval_notes or '-'}")
         typer.echo(f"Evidence runs: {_format_list(entry.evidence_run_ids)}")
 
 

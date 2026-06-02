@@ -349,6 +349,9 @@ class SkillCandidateLedgerEntry(BaseModel):
     repair_requirements: list[str] = Field(default_factory=list)
     promotion_requirements: list[str] = Field(default_factory=list)
     human_approval_required: bool = True
+    promotion_approved_by: str | None = None
+    promotion_approved_at: datetime | None = None
+    promotion_approval_notes: str | None = None
     governor_summary: dict[str, Any] = Field(default_factory=dict)
     evidence_run_ids: list[str] = Field(default_factory=list)
     input_schema: dict[str, str] = Field(default_factory=dict)

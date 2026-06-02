@@ -67,8 +67,9 @@ Promotion remains human-governed:
    - Distinguish capability decision accuracy from lifecycle evidence accuracy.
 
 2. **Human promotion workflow design**
-   - Define the explicit review command/process for moving a ledger entry toward durable `candidate` status.
-   - Keep promotion and permission widening human-gated and evidence-backed.
+   - Current progress: `promote-candidate` records reviewer/notes approval and can move eligible temporary ledger entries to `candidate` evidence status.
+   - Next coverage: durable copy/admission design, candidate-to-stable workflow, and promotion review queues.
+   - Keep permission widening human-gated and evidence-backed.
 
 3. **Lifecycle review queues and health expansion**
    - Surface repeated-demand, repair-needed, blocked, duplicate, and promotion-ready review queues.
@@ -118,6 +119,7 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-01: Consolidated near-term roadmap into this document before runtime Skill Candidate Ledger work.
 - 2026-06-01: Named **Skill Candidate Ledger** as the next runtime milestone.
 - 2026-06-02: Skill Candidate Ledger is landed; next work is lifecycle eval expansion, human promotion workflow design, and lifecycle review queues.
+- 2026-06-02: Added first human promotion workflow: reviewer/notes approval can mark eligible temporary ledger entries as `candidate` evidence without durable install or auto-promotion.
 - 2026-06-01: Reaffirmed that auto-promotion and permission widening remain out of scope without human approval.
 - 2026-06-01: Required full test, smoke eval, and v0 eval baseline before runtime ledger changes.
 - 2026-06-01: Recorded passing baseline: full tests `107 passed`, smoke eval `4/4`, and v0 eval `20/20`.

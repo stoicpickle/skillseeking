@@ -178,3 +178,86 @@ def test_explain_malformed_trace_gives_useful_error(tmp_path):
 
     assert result.exit_code != 0
     assert "Run log is not valid JSON" in result.stdout
+
+
+def test_promote_candidate_command_records_human_approval(copied_seed_skills, tmp_path):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    run_result = runner.invoke(
+        app,
+        [
+            "run",
+            "Cluster arguments from these sources.",
+            "--temporary-skills",
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--runs-dir",
+            str(runs_dir),
+        ],
+    )
+    assert run_result.exit_code == 0
+    candidates = runner.invoke(app, ["candidates", "--runs-dir", str(runs_dir), "--json"])
+    candidate_id = json.loads(candidates.stdout)["entries"][0]["candidate_id"]
+
+    promote = runner.invoke(
+        app,
+        [
+            "promote-candidate",
+            candidate_id,
+            "--runs-dir",
+            str(runs_dir),
+            "--reviewer",
+            "Ada",
+            "--notes",
+            "Reviewed evidence and approved candidate ledger status.",
+            "--json",
+        ],
+    )
+
+    assert promote.exit_code == 0
+    promoted = json.loads(promote.stdout)
+    assert promoted["status"] == "candidate"
+    assert promoted["promotion_approved_by"] == "Ada"
+    assert promoted["human_approval_required"] is False
+
+    text_result = runner.invoke(app, ["candidates", "--runs-dir", str(runs_dir)])
+    assert "Status: candidate" in text_result.stdout
+    assert "Promotion approved by: Ada" in text_result.stdout
+    assert "Durable skill installed" not in text_result.stdout
+
+
+def test_promote_candidate_command_rejects_unready_candidate(copied_seed_skills, tmp_path):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    run_result = runner.invoke(
+        app,
+        [
+            "run",
+            "Extract claims and identify contradictions.",
+            "--no-temporary-skills",
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--runs-dir",
+            str(runs_dir),
+        ],
+    )
+    assert run_result.exit_code == 1
+    candidates = runner.invoke(app, ["candidates", "--runs-dir", str(runs_dir), "--json"])
+    candidate_id = json.loads(candidates.stdout)["entries"][0]["candidate_id"]
+
+    promote = runner.invoke(
+        app,
+        [
+            "promote-candidate",
+            candidate_id,
+            "--runs-dir",
+            str(runs_dir),
+            "--reviewer",
+            "Ada",
+            "--notes",
+            "Reviewed",
+        ],
+    )
+
+    assert promote.exit_code == 1
+    assert "only temporary candidates can be promoted" in promote.stdout

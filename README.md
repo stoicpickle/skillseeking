@@ -204,9 +204,10 @@ Inspect Skill Candidate Ledger evidence after missing-skill or temporary-skill r
 ```bash
 .venv/bin/skill-agent candidates
 .venv/bin/skill-agent candidates --json
+.venv/bin/skill-agent promote-candidate candidate_<id> --reviewer "Your Name" --notes "Reviewed temporary evidence"
 ```
 
-Candidate entries are evidence for human review only. Auto-promotion is disabled, and `Promotion approval required` refers to durable skill promotion, not current-run execution.
+Candidate entries are evidence for human review only. Auto-promotion is disabled, and `Promotion approval required` refers to durable skill promotion, not current-run execution. `promote-candidate` records human approval and moves an eligible ledger entry to `candidate` status; it does not copy or install a durable skill.
 
 Run the M6 malicious-skill rejection demo:
 
