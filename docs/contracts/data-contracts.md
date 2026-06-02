@@ -235,7 +235,12 @@ Eval suites are JSONL. Blank lines and comment lines are ignored.
 }
 ```
 
-Supported v0 expectations include `outcome`, `capability`, `must_request_skill`, `must_load_skill`, `must_not_load_skill`, `must_not_request_skill`, `min_request_quality`, `must_have_routing_decision`, `must_block_adversarial`, and `trace_complete`.
+Supported v0 expectations include:
+
+- Core outcome/routing: `outcome`, `capability`, `must_request_skill`, `must_load_skill`, `must_not_load_skill`, `must_not_request_skill`, `min_request_quality`, `must_have_routing_decision`, `must_block_adversarial`, and `trace_complete`.
+- Skill request control summaries: `must_have_request_control_summary`.
+- Governor assertions: `governor_decision`, `governor_risk_level`, `governor_approval_required`, and `governor_dominant_signal`.
+- Skill Candidate Ledger assertions: `candidate_id`, `candidate_skill_name`, `candidate_capability`, `must_have_candidate_entry`, `candidate_status`, `min_candidate_request_count`, `candidate_human_approval_required`, `must_have_candidate_evidence`, `must_not_auto_promote`, `candidate_validation_pass_count_min`, `candidate_validation_failure_count_min`, `candidate_duplicate_of_present`, `candidate_block_reason_contains`, `candidate_quarantine_reason_contains`, `candidate_repair_requirement_contains`, and `candidate_promotion_requirement_contains`.
 
 ## Eval Report
 
