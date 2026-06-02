@@ -104,7 +104,7 @@ def emit_candidates_output(ledger: SkillCandidateLedger, ledger_path: str) -> No
         typer.echo(f"Duplicate of: {entry.duplicate_of or '-'}")
         typer.echo(f"Repair requirements: {_format_list(entry.repair_requirements)}")
         typer.echo(f"Promotion requirements: {_format_list(entry.promotion_requirements)}")
-        typer.echo(f"Human approval required: {entry.human_approval_required}")
+        typer.echo(f"Promotion approval required: {entry.human_approval_required}")
         typer.echo(f"Evidence runs: {_format_list(entry.evidence_run_ids)}")
 
 

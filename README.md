@@ -189,6 +189,7 @@ Inspect machine-readable surfaces:
 .venv/bin/skill-agent run "Cluster arguments from these sources." --json
 .venv/bin/skill-agent registry --json
 .venv/bin/skill-agent health --json
+.venv/bin/skill-agent candidates --json
 ```
 
 Run the M5 library health report:
@@ -197,6 +198,15 @@ Run the M5 library health report:
 .venv/bin/skill-agent health
 .venv/bin/skill-agent health --json
 ```
+
+Inspect Skill Candidate Ledger evidence after missing-skill or temporary-skill runs:
+
+```bash
+.venv/bin/skill-agent candidates
+.venv/bin/skill-agent candidates --json
+```
+
+Candidate entries are evidence for human review only. Auto-promotion is disabled, and `Promotion approval required` refers to durable skill promotion, not current-run execution.
 
 Run the M6 malicious-skill rejection demo:
 
@@ -212,15 +222,16 @@ Run the capability-gap eval smoke suite:
 .venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals
 ```
 
-The eval writes a machine-readable JSON report and a Markdown summary. It scores task outcome, missing-skill detection, wrong skill loads, unsafe allowance, safe blocking, trace completeness, and deterministic skill-request quality.
+The eval writes a machine-readable JSON report and a Markdown summary. It scores task outcome, missing-skill detection, wrong skill loads, unsafe allowance, safe blocking, trace completeness, deterministic skill-request quality, governor assertions, and lifecycle candidate evidence. The lifecycle smoke suite lives at `evals/skill_lifecycle_v0.jsonl`.
 
 Explain any run log as a human-readable trace:
 
 ```bash
 .venv/bin/skill-agent explain runs/run_<timestamp>_<run_id>.json
+.venv/bin/skill-agent explain runs/run_<timestamp>_<run_id>.json --include-candidates
 ```
 
-The explainer summarizes the task, planned capabilities, skills considered, skills loaded or rejected, missing-skill requests, safety stops, and trace stages.
+The explainer summarizes the task, planned capabilities, skills considered, skills loaded or rejected, missing-skill requests, safety stops, trace stages, and optionally matching candidate-ledger evidence.
 
 Run tests:
 

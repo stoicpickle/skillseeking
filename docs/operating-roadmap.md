@@ -19,6 +19,8 @@ The v0 surface is implemented and proven through the completed milestones in the
 - Skill-library health reporting from local metadata and run logs.
 - Malicious or suspicious skill rejection before routing or loading.
 - Canonical demos, acceptance harnesses, gauntlet demo, eval harness, and 20-task capability-gap calibration.
+- Skill Candidate Ledger evidence tracking for repeated gaps, temporary outcomes, repair requirements, blocked/quarantined skills, duplicate contracts, and promotion requirements.
+- Candidate review surfaces through `skill-agent candidates`, `skill-agent candidates --json`, `skill-agent health`, and `skill-agent explain --include-candidates`.
 
 The current product proof is a CLI-first prototype, not a production agent framework. The public phase framing remains in [Roadmap](roadmap.md): static skill loader -> skill request mode -> Markdown-only Skillsmith -> scripted skills -> SkillOps.
 
@@ -48,7 +50,7 @@ The lifecycle vocabulary is defined in [Skill Lifecycle](skill-lifecycle.md):
 requested -> draft -> temporary -> candidate -> stable -> deprecated -> blocked
 ```
 
-Current runtime behavior covers `requested`, `draft`, `temporary`, and `blocked`-style rejection/quarantine evidence. The next runtime milestone is **Skill Candidate Ledger**: a durable evidence record for repeated gaps, candidate evidence, validation outcomes, duplicate/quarantine/block reasons, and promotion requirements.
+Current runtime behavior covers `requested`, `draft`, `temporary`, and `blocked`-style rejection/quarantine evidence through the landed **Skill Candidate Ledger**: a durable summary record for repeated gaps, candidate evidence, validation outcomes, duplicate/quarantine/block reasons, and promotion requirements. Run logs remain the immutable evidence source; the ledger is rebuildable summary evidence and should not control execution.
 
 Promotion remains human-governed:
 
@@ -59,19 +61,17 @@ Promotion remains human-governed:
 
 ## Next Three Milestones
 
-1. **Skill Candidate Ledger**
-   - Record repeated capability gaps and lifecycle evidence.
-   - Preserve evidence run IDs and validation outcomes.
-   - Make duplicate, quarantine, block, and promotion requirements inspectable.
-   - Keep all promotion and permission widening human-gated.
-
-2. **Lifecycle visibility in CLI, explain, and health surfaces**
-   - Show candidate status, request counts, validation evidence, safety flags, quarantine/block reasons, and human approval requirements.
-   - Keep output stable enough for evals and future UI/API consumers.
-
-3. **Lifecycle eval expansion**
-   - Add eval coverage for repeated gaps, blocked candidates, duplicate candidates, validation failures, promotion gates, and explain/JSON visibility.
+1. **Lifecycle eval expansion**
+   - Expand beyond the two-row lifecycle smoke suite to cover repeated gaps, blocked candidates, duplicate candidates, validation failures, promotion gates, and explain/JSON visibility.
    - Distinguish capability decision accuracy from lifecycle evidence accuracy.
+
+2. **Human promotion workflow design**
+   - Define the explicit review command/process for moving a ledger entry toward durable `candidate` status.
+   - Keep promotion and permission widening human-gated and evidence-backed.
+
+3. **Lifecycle review queues and health expansion**
+   - Surface repeated-demand, repair-needed, blocked, duplicate, and promotion-ready review queues.
+   - Keep all queues advisory; do not let them steer routing or governor behavior yet.
 
 ## Eval and Validation Gates
 
@@ -116,6 +116,7 @@ The following are explicitly out of scope for the next runtime milestone:
 
 - 2026-06-01: Consolidated near-term roadmap into this document before runtime Skill Candidate Ledger work.
 - 2026-06-01: Named **Skill Candidate Ledger** as the next runtime milestone.
+- 2026-06-02: Skill Candidate Ledger is landed; next work is lifecycle eval expansion, human promotion workflow design, and lifecycle review queues.
 - 2026-06-01: Reaffirmed that auto-promotion and permission widening remain out of scope without human approval.
 - 2026-06-01: Required full test, smoke eval, and v0 eval baseline before runtime ledger changes.
 - 2026-06-01: Recorded passing baseline: full tests `107 passed`, smoke eval `4/4`, and v0 eval `20/20`.

@@ -64,7 +64,8 @@ def test_explain_missing_skill_trace(copied_seed_skills, tmp_path):
     assert candidate_result.exit_code == 0
     assert "CANDIDATE LEDGER" in candidate_result.stdout
     assert "Status: requested" in candidate_result.stdout
-    assert "Human approval required: True" in candidate_result.stdout
+    assert "Promotion approval required: True" in candidate_result.stdout
+    assert "Human approval required" not in candidate_result.stdout
 
 
 def test_candidates_command_outputs_human_and_json(copied_seed_skills, tmp_path):
@@ -92,6 +93,8 @@ def test_candidates_command_outputs_human_and_json(copied_seed_skills, tmp_path)
     assert "Auto-promotion: disabled" in text_result.stdout
     assert "Skill: detect-contradictions" in text_result.stdout
     assert "Requests: 1" in text_result.stdout
+    assert "Promotion approval required: True" in text_result.stdout
+    assert "Human approval required" not in text_result.stdout
     assert json_result.exit_code == 0
     data = json.loads(json_result.stdout)
     assert data["candidate_count"] == 1

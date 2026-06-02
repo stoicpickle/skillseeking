@@ -210,6 +210,28 @@ The homeostatic governor adds a control assertion to each capability decision. E
 
 The first governor eval slice should extend the current 20-task capability-gap suite without changing the suite's purpose. The suite remains the gate before new routing or planning features. Governor assertions simply make the reason for each route explicit and testable.
 
+## Skill Candidate Ledger Evaluation
+
+Lifecycle eval assertions can verify that repeated gaps accumulate candidate evidence without enabling promotion. Supported expectation keys include:
+
+- `must_have_candidate_entry`
+- `candidate_status`
+- `candidate_skill_name`
+- `candidate_capability`
+- `min_candidate_request_count`
+- `candidate_human_approval_required`
+- `must_have_candidate_evidence`
+- `must_not_auto_promote`
+- `candidate_validation_pass_count_min`
+- `candidate_validation_failure_count_min`
+- `candidate_duplicate_of_present`
+- `candidate_block_reason_contains`
+- `candidate_quarantine_reason_contains`
+- `candidate_repair_requirement_contains`
+- `candidate_promotion_requirement_contains`
+
+The first lifecycle smoke suite is `evals/skill_lifecycle_v0.jsonl`. It is intentionally small and should be expanded before any active governor behavior or human-promotion workflow is implemented.
+
 ## Success Criteria for MVP
 
 The MVP is working if:

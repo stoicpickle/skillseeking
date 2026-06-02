@@ -126,7 +126,7 @@ def _candidate_ledger_lines(run_log_path: Path, data: dict[str, Any]) -> list[st
             lines.append(f"  Repair requirements: {'; '.join(entry.repair_requirements)}")
         if entry.promotion_requirements:
             lines.append(f"  Promotion requirements: {'; '.join(entry.promotion_requirements)}")
-        lines.append(f"  Human approval required: {entry.human_approval_required}")
+        lines.append(f"  Promotion approval required: {entry.human_approval_required}")
         lines.append(f"  Evidence runs: {', '.join(entry.evidence_run_ids) or '-'}")
     return lines
 

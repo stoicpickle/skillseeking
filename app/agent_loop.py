@@ -381,7 +381,19 @@ def run_task(
         execution_summary=execution_summary,
     )
     path = write_run_log(run_log, runs_dir)
-    record_run_in_candidate_ledger(run_log, runs_dir)
+    try:
+        record_run_in_candidate_ledger(run_log, runs_dir)
+    except Exception as exc:
+        _record_trace(
+            trace,
+            trace_events,
+            "LEDGER_RECORD_FAILED",
+            message="Skill Candidate Ledger update failed; run log remains source evidence.",
+            error=str(exc),
+        )
+        run_log.trace = trace
+        run_log.trace_events = trace_events
+        path = write_run_log(run_log, runs_dir)
     return AgentRunResult(run_log=run_log, run_log_path=path, exit_code=exit_code)
 
 

@@ -334,3 +334,24 @@ def test_agent_loop_records_missing_skill_request_in_ledger(copied_seed_skills, 
     assert entry.capability == "detect contradictions"
     assert entry.request_count == 1
     assert entry.evidence_run_ids == [result.run_log.run_id]
+
+
+def test_agent_loop_preserves_run_when_candidate_ledger_is_corrupt(copied_seed_skills, tmp_path):
+    runs_dir = tmp_path / "runs"
+    runs_dir.mkdir()
+    corrupt_ledger = ledger_path(runs_dir)
+    corrupt_ledger.write_text("{not valid json", encoding="utf-8")
+
+    result = run_task(
+        "Extract claims from these two sources and identify contradictions.",
+        copied_seed_skills,
+        runs_dir,
+        create_temporary_skills=False,
+    )
+
+    assert result.exit_code == 1
+    assert result.run_log_path.exists()
+    assert corrupt_ledger.read_text(encoding="utf-8") == "{not valid json"
+    assert "LEDGER_RECORD_FAILED" in result.run_log.trace
+    assert result.run_log.trace_events[-1].stage == "LEDGER_RECORD_FAILED"
+    assert "invalid skill candidate ledger" in result.run_log.trace_events[-1].details["error"]

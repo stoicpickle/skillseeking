@@ -159,6 +159,7 @@ Slices:
 | Skill Gauntlet demo | complete | One scripted showcase combines safe loading, malicious rejection, temporary skill loading, repair request, and run-log proof |
 | Capability-Gap Eval Harness | complete | JSONL eval suites run through the real loop with reports and trace explain output |
 | Capability-Gap Calibration | complete | Twenty-task suite tracks classification, safety, approval, trace completeness, and failure taxonomy |
+| Skill Candidate Ledger | complete | Repeated gaps, temporary outcomes, repair requirements, rejected skills, duplicate contracts, and promotion requirements are recorded and surfaced without auto-promotion |
 
 ## Current First Slice
 
@@ -411,3 +412,27 @@ Slices:
 | Failure taxonomy | complete | Failed eval tasks emit categories such as `wrong_route`, `missing_skill_not_detected`, `approval_not_requested`, and `trace_incomplete` |
 | Diagnostic reports | complete | Markdown reports show summary metrics, failure categories, per-failure diagnostics, suggested next action, and `skill-agent explain` command |
 | Calibration fix loop | complete | The first 20-task run exposed `approval_not_requested` for "read local files"; classifier coverage now catches that phrase |
+
+
+## Milestone 14: Skill Candidate Ledger
+
+Status: complete
+
+Goal:
+Turn repeated capability gaps and temporary-skill outcomes into durable, human-reviewable lifecycle evidence without changing routing, promotion, or governor behavior.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Ledger contract and persistence | complete | `runs/skill_candidate_ledger.json` records deterministic candidate entries and preserves evidence run IDs |
+| Runtime evidence recording | complete | Run logs feed missing requests, temporary outcomes, repair requirements, rejected skills, and duplicate contracts into the ledger |
+| Review surfaces | complete | `skill-agent candidates`, `health`, `explain --include-candidates`, and eval reports expose candidate evidence |
+| Lifecycle eval smoke | complete | `evals/skill_lifecycle_v0.jsonl` proves repeated gaps accumulate evidence without auto-promotion |
+| Degraded ledger handling | complete | Corrupt ledger summaries do not prevent task/run-log completion; the run trace records `LEDGER_RECORD_FAILED` |
+
+Boundaries:
+
+- No generated or temporary skill is durably promoted.
+- Ledger `human_approval_required` means promotion approval, not current-run approval.
+- Governor behavior remains observational.

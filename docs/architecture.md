@@ -80,18 +80,20 @@ For every required capability, it decides:
 ```text
 - USE_SKILL
 - REQUEST_SKILL
-- CREATE_TEMP_SKILL
 - ASK_HUMAN
 - ABORT_UNSAFE
 ```
 
 The checker should explicitly distinguish:
 
-- Missing skill.
+- Existing skill use.
+- Missing skill request.
 - Missing data.
 - Insufficient confidence.
 - Unsafe operation.
 - Permission needed.
+
+Temporary skill drafting is represented as run-scoped evidence on missing-skill requests, not as a separate durable capability decision type.
 
 ### Homeostatic Governor
 
