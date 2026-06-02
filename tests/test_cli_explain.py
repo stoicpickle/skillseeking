@@ -92,6 +92,8 @@ def test_candidates_command_outputs_human_and_json(copied_seed_skills, tmp_path)
     assert "SKILL_CANDIDATES" in text_result.stdout
     assert "Auto-promotion: disabled" in text_result.stdout
     assert "Skill: detect-contradictions" in text_result.stdout
+    assert "Review queue counts: -" in text_result.stdout
+    assert "Review queues: -" in text_result.stdout
     assert "Requests: 1" in text_result.stdout
     assert "Promotion approval required: True" in text_result.stdout
     assert "Human approval required" not in text_result.stdout
@@ -100,10 +102,13 @@ def test_candidates_command_outputs_human_and_json(copied_seed_skills, tmp_path)
     assert data["candidate_count"] == 1
     assert data["auto_promotion_enabled"] is False
     assert data["status_counts"] == {"requested": 1}
+    assert data["review_queue_counts"] == {}
+    assert data["review_queues"] == {}
     entry = data["entries"][0]
     assert entry["skill_name"] == "detect-contradictions"
     assert entry["capability"] == "detect contradictions"
     assert entry["status"] == "requested"
+    assert entry["review_queues"] == []
     assert entry["human_approval_required"] is True
 
 
@@ -197,7 +202,10 @@ def test_promote_candidate_command_records_human_approval(copied_seed_skills, tm
     )
     assert run_result.exit_code == 0
     candidates = runner.invoke(app, ["candidates", "--runs-dir", str(runs_dir), "--json"])
-    candidate_id = json.loads(candidates.stdout)["entries"][0]["candidate_id"]
+    candidate_data = json.loads(candidates.stdout)
+    assert candidate_data["review_queue_counts"] == {"promotion_ready": 1}
+    assert candidate_data["entries"][0]["review_queues"] == ["promotion_ready"]
+    candidate_id = candidate_data["entries"][0]["candidate_id"]
 
     promote = runner.invoke(
         app,

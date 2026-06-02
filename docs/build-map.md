@@ -160,6 +160,7 @@ Slices:
 | Capability-Gap Eval Harness | complete | JSONL eval suites run through the real loop with reports and trace explain output |
 | Capability-Gap Calibration | complete | Twenty-task suite tracks classification, safety, approval, trace completeness, and failure taxonomy |
 | Skill Candidate Ledger | complete | Repeated gaps, temporary outcomes, repair requirements, rejected skills, duplicate contracts, and promotion requirements are recorded and surfaced without auto-promotion |
+| Lifecycle review queues and health expansion | complete | Candidate and health surfaces derive advisory promotion-ready, repair-needed, blocked/quarantined, duplicate, and repeated-gap review queues without steering execution |
 
 ## Current First Slice
 

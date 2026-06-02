@@ -555,3 +555,21 @@ Boundaries:
 
 - The summary is a copied snapshot, not a live reference to governor records.
 - This slice does not add governor-influenced routing, promotion, quarantine, approval handling, or new CLI commands.
+
+## 2026-06-02 Lifecycle Review Queues and Health Expansion
+
+Implemented advisory review queues on top of the Skill Candidate Ledger.
+
+Added:
+
+- Derived candidate review queues: `promotion_ready`, `repair_needed`, `blocked_or_quarantined`, `duplicate_merge_needed`, and `repeated_requested_gap`.
+- Queue counts and per-entry queue names in `skill-agent candidates` and `skill-agent candidates --json`.
+- Queue counts in `skill-agent health` and health JSON.
+- Eval support for `candidate_review_queue` expectations.
+- Expanded lifecycle eval rows for repeated-gap, promotion-ready, and repair-needed queue proof.
+- Focused tests for blocked/quarantined and duplicate queue classification with fixture-backed ledger evidence.
+
+Boundaries:
+
+- Queues are advisory read-time summaries.
+- Queues do not mutate the ledger schema, route skills, promote candidates, install durable skills, widen permissions, or change governor decisions.

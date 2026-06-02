@@ -230,7 +230,15 @@ Lifecycle eval assertions can verify that repeated gaps, temporary validation su
 - `candidate_repair_requirement_contains`
 - `candidate_promotion_requirement_contains`
 
-The lifecycle smoke suite is `evals/skill_lifecycle_v0.jsonl`. It currently covers repeated requested gaps, temporary-skill success, and repair-required validation failure. It should continue to expand toward blocked/quarantined and duplicate-candidate scenarios before any active governor behavior or human-promotion workflow is implemented.
+The lifecycle smoke suite is `evals/skill_lifecycle_v0.jsonl`. It currently covers repeated requested gaps, temporary-skill success, repair-required validation failure, and advisory review queue expectations. It should continue to expand toward more blocked/quarantined and duplicate-candidate scenarios before any active governor behavior or durable candidate-to-stable workflow is implemented.
+
+Lifecycle evals can also assert advisory review queue membership with `candidate_review_queue`. Checked-in lifecycle rows cover:
+
+- `repeated_requested_gap` for repeated demand without temporary evidence,
+- `promotion_ready` for validated temporary use that still needs human promotion review,
+- `repair_needed` for failed temporary validation.
+
+Blocked/quarantined and duplicate queue behavior is covered with focused fixture tests because those scenarios require intentionally rejected or colliding local skill fixtures. Review queues are evidence surfaces only; they do not change routing, governor behavior, promotion, or registry admission.
 
 ## Success Criteria for MVP
 

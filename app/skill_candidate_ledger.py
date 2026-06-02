@@ -12,6 +12,8 @@ from pathlib import Path
 from typing import Any, Iterator
 
 from app.models import (
+    CandidateReviewQueueItem,
+    CandidateReviewQueueName,
     RunLog,
     SkillCandidateLedger,
     SkillCandidateLedgerEntry,
@@ -114,6 +116,49 @@ def approve_candidate_promotion(
         return entry
 
 
+def candidate_review_queues(
+    ledger: SkillCandidateLedger,
+) -> dict[CandidateReviewQueueName, list[CandidateReviewQueueItem]]:
+    queues: dict[CandidateReviewQueueName, list[CandidateReviewQueueItem]] = {
+        "promotion_ready": [],
+        "repair_needed": [],
+        "blocked_or_quarantined": [],
+        "duplicate_merge_needed": [],
+        "repeated_requested_gap": [],
+    }
+    for entry in ledger.entries:
+        for queue, reason in _review_queue_reasons(entry).items():
+            queues[queue].append(
+                CandidateReviewQueueItem(
+                    queue=queue,
+                    candidate_id=entry.candidate_id,
+                    skill_name=entry.skill_name,
+                    capability=entry.capability,
+                    status=entry.status,
+                    reason=reason,
+                    evidence_run_ids=list(entry.evidence_run_ids),
+                )
+            )
+    return {
+        queue: sorted(items, key=lambda item: item.candidate_id)
+        for queue, items in queues.items()
+    }
+
+
+def candidate_review_queue_counts(
+    ledger: SkillCandidateLedger,
+) -> dict[CandidateReviewQueueName, int]:
+    return {
+        queue: len(items)
+        for queue, items in candidate_review_queues(ledger).items()
+        if items
+    }
+
+
+def candidate_review_queue_names(entry: SkillCandidateLedgerEntry) -> list[CandidateReviewQueueName]:
+    return list(_review_queue_reasons(entry))
+
+
 def _validate_promotion_eligibility(entry: SkillCandidateLedgerEntry) -> None:
     if entry.status == "blocked":
         raise SkillCandidateLedgerError("blocked candidates cannot be promoted")
@@ -129,6 +174,57 @@ def _validate_promotion_eligibility(entry: SkillCandidateLedgerEntry) -> None:
         raise SkillCandidateLedgerError("candidate promotion requires at least one successful temporary use")
     if entry.validation_failure_count > 0 or entry.repair_requirements:
         raise SkillCandidateLedgerError("candidate promotion requires unresolved repair evidence to be cleared")
+
+
+def _review_queue_reasons(
+    entry: SkillCandidateLedgerEntry,
+) -> dict[CandidateReviewQueueName, str]:
+    reasons: dict[CandidateReviewQueueName, str] = {}
+    blocked_reason = entry.block_reason or entry.quarantine_reason
+    if entry.status == "blocked" or blocked_reason:
+        reasons["blocked_or_quarantined"] = blocked_reason or "Candidate is blocked."
+    if entry.duplicate_of:
+        reasons["duplicate_merge_needed"] = f"Duplicates {entry.duplicate_of}."
+    if entry.validation_failure_count > 0 or entry.repair_requirements:
+        reasons["repair_needed"] = _repair_queue_reason(entry)
+    if _is_promotion_ready(entry):
+        reasons["promotion_ready"] = "Temporary evidence is ready for human promotion review."
+    if _is_repeated_requested_gap(entry):
+        reasons["repeated_requested_gap"] = (
+            f"Requested {entry.request_count} times without temporary evidence."
+        )
+    return reasons
+
+
+def _is_promotion_ready(entry: SkillCandidateLedgerEntry) -> bool:
+    return (
+        entry.status == "temporary"
+        and entry.human_approval_required
+        and entry.validation_pass_count >= 1
+        and entry.successful_temporary_uses >= 1
+        and entry.validation_failure_count == 0
+        and not entry.repair_requirements
+        and not entry.block_reason
+        and not entry.quarantine_reason
+        and not entry.duplicate_of
+    )
+
+
+def _is_repeated_requested_gap(entry: SkillCandidateLedgerEntry) -> bool:
+    return (
+        entry.status == "requested"
+        and entry.request_count >= 2
+        and not entry.block_reason
+        and not entry.quarantine_reason
+        and not entry.duplicate_of
+        and not entry.repair_requirements
+    )
+
+
+def _repair_queue_reason(entry: SkillCandidateLedgerEntry) -> str:
+    if entry.repair_requirements:
+        return entry.repair_requirements[0]
+    return f"Candidate has {entry.validation_failure_count} validation failure(s)."
 
 
 def update_candidate_ledger_from_run(ledger: SkillCandidateLedger, run_log: RunLog) -> bool:

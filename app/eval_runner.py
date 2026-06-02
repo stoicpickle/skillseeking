@@ -12,6 +12,7 @@ from app.request_quality import score_skill_request
 from app.skill_candidate_ledger import (
     SkillCandidateLedgerError,
     candidate_id_for,
+    candidate_review_queue_names,
     load_candidate_ledger,
 )
 
@@ -673,7 +674,7 @@ def _candidate_ledger_entries_for_task(
         ledger = load_candidate_ledger(runs_dir)
     except SkillCandidateLedgerError:
         return []
-    entries = [entry.model_dump(mode="json") for entry in ledger.entries]
+    entries = [_entry_with_review_queues(entry) for entry in ledger.entries]
     matched = _matching_candidate_entries(expected, entries, skill_requests, run_id)
     return sorted(matched, key=lambda entry: entry.get("candidate_id", ""))
 
@@ -736,6 +737,7 @@ def _has_candidate_ledger_expectation(expected: dict[str, Any]) -> bool:
             "candidate_quarantine_reason_contains",
             "candidate_repair_requirement_contains",
             "candidate_promotion_requirement_contains",
+            "candidate_review_queue",
         }
     )
 
@@ -797,6 +799,19 @@ def _candidate_ledger_expectation_issues(
     if expected.get("candidate_duplicate_of_present") and not any(entry.get("duplicate_of") for entry in entries):
         issues.append("expected duplicate candidate evidence")
 
+    expected_queue = expected.get("candidate_review_queue")
+    if expected_queue and not any(
+        expected_queue in (entry.get("review_queues") or []) for entry in entries
+    ):
+        queues = sorted(
+            {
+                queue
+                for entry in entries
+                for queue in (entry.get("review_queues") or [])
+            }
+        )
+        issues.append(f"expected candidate review queue {expected_queue}, got {queues or '-'}")
+
     _contains_issue(
         issues,
         entries,
@@ -826,6 +841,12 @@ def _candidate_ledger_expectation_issues(
         "candidate promotion requirement",
     )
     return issues
+
+
+def _entry_with_review_queues(entry: Any) -> dict[str, Any]:
+    data = entry.model_dump(mode="json")
+    data["review_queues"] = candidate_review_queue_names(entry)
+    return data
 
 
 def _contains_issue(

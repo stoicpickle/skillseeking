@@ -125,6 +125,7 @@ def health(
     typer.echo(f"Blocked candidates: {report.blocked_candidate_count}")
     typer.echo(f"Duplicate candidates: {report.duplicate_candidate_count}")
     typer.echo(f"Human-gated candidates: {report.human_gated_candidate_count}")
+    typer.echo(f"Review queue counts: {report.candidate_review_queue_counts or '-'}")
     typer.echo("")
     typer.echo("SKILL_METRICS")
     for metric in report.metrics:

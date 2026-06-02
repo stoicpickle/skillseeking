@@ -209,6 +209,16 @@ Inspect Skill Candidate Ledger evidence after missing-skill or temporary-skill r
 
 Candidate entries are evidence for human review only. Auto-promotion is disabled, and `Promotion approval required` refers to durable skill promotion, not current-run execution. `promote-candidate` records human approval and moves an eligible ledger entry to `candidate` status; it does not copy or install a durable skill.
 
+`skill-agent candidates` and `skill-agent health` also derive advisory review queues from the ledger:
+
+- `promotion_ready`
+- `repair_needed`
+- `blocked_or_quarantined`
+- `duplicate_merge_needed`
+- `repeated_requested_gap`
+
+These queues are review aids only. They do not steer routing, promote skills, widen permissions, or change governor decisions.
+
 Run the M6 malicious-skill rejection demo:
 
 ```bash
@@ -223,7 +233,7 @@ Run the capability-gap eval smoke suite:
 .venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals
 ```
 
-The eval writes a machine-readable JSON report and a Markdown summary. It scores task outcome, missing-skill detection, wrong skill loads, unsafe allowance, safe blocking, trace completeness, deterministic skill-request quality, governor assertions, and lifecycle candidate evidence. The lifecycle smoke suite lives at `evals/skill_lifecycle_v0.jsonl` and covers repeated gaps, temporary success, and repair-required failure.
+The eval writes a machine-readable JSON report and a Markdown summary. It scores task outcome, missing-skill detection, wrong skill loads, unsafe allowance, safe blocking, trace completeness, deterministic skill-request quality, governor assertions, and lifecycle candidate evidence. The lifecycle smoke suite lives at `evals/skill_lifecycle_v0.jsonl` and covers repeated gaps, temporary success, repair-required failure, and advisory review queue expectations.
 
 Explain any run log as a human-readable trace:
 

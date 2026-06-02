@@ -13,6 +13,11 @@ from app.models import (
     SkillCandidateLedgerEntry,
 )
 from app.registry import SkillRegistry
+from app.skill_candidate_ledger import (
+    candidate_review_queue_counts,
+    candidate_review_queue_names,
+    candidate_review_queues,
+)
 
 
 def emit_run_json(result: AgentRunResult) -> None:
@@ -59,6 +64,7 @@ def emit_registry_json(registry: SkillRegistry) -> None:
 
 def emit_candidates_json(ledger: SkillCandidateLedger, ledger_path: str) -> None:
     entries = _sorted_candidate_entries(ledger.entries)
+    review_queues = candidate_review_queues(ledger)
     typer.echo(
         json.dumps(
             {
@@ -66,7 +72,19 @@ def emit_candidates_json(ledger: SkillCandidateLedger, ledger_path: str) -> None
                 "schema_version": ledger.schema_version,
                 "candidate_count": len(entries),
                 "status_counts": _candidate_status_counts(entries),
-                "entries": [entry.model_dump(mode="json") for entry in entries],
+                "review_queue_counts": candidate_review_queue_counts(ledger),
+                "review_queues": {
+                    queue: [item.model_dump(mode="json") for item in items]
+                    for queue, items in review_queues.items()
+                    if items
+                },
+                "entries": [
+                    {
+                        **entry.model_dump(mode="json"),
+                        "review_queues": candidate_review_queue_names(entry),
+                    }
+                    for entry in entries
+                ],
                 "auto_promotion_enabled": False,
             },
             indent=2,
@@ -82,6 +100,7 @@ def emit_candidates_output(ledger: SkillCandidateLedger, ledger_path: str) -> No
     typer.echo(f"Schema version: {ledger.schema_version}")
     typer.echo(f"Candidate count: {len(entries)}")
     typer.echo(f"Status counts: {_candidate_status_counts(entries) or '-'}")
+    typer.echo(f"Review queue counts: {candidate_review_queue_counts(ledger) or '-'}")
     typer.echo("Auto-promotion: disabled")
     if not entries:
         typer.echo("none")
@@ -92,6 +111,7 @@ def emit_candidates_output(ledger: SkillCandidateLedger, ledger_path: str) -> No
         typer.echo(f"Skill: {entry.skill_name}")
         typer.echo(f"Capability: {entry.capability}")
         typer.echo(f"Status: {entry.status}")
+        typer.echo(f"Review queues: {_format_list(candidate_review_queue_names(entry))}")
         typer.echo(f"Requests: {entry.request_count}")
         typer.echo(
             "Validation: "

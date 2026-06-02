@@ -87,6 +87,18 @@ Any state to blocked:
 - Repeated user corrections for the same behavior.
 - Dependency or environment drift makes the skill unreliable.
 
+## Advisory Review Queues
+
+Review queues are derived from ledger evidence and are not lifecycle states.
+
+- `promotion_ready`: temporary evidence is ready for human promotion review.
+- `repair_needed`: validation failures or repair requirements need attention.
+- `blocked_or_quarantined`: safety or validator evidence blocks use.
+- `duplicate_merge_needed`: input/output contracts overlap another candidate.
+- `repeated_requested_gap`: repeated demand exists without temporary evidence.
+
+Queues are advisory only. They do not promote, install, route, score, admit, or modify skills.
+
 ## Skill Record Fields
 
 Every skill should track:
@@ -110,4 +122,3 @@ Every skill should track:
 - Last tested.
 - Known limitations.
 - Replacement skill, if deprecated.
-

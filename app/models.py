@@ -18,6 +18,13 @@ SkillCandidateStatus = Literal[
     "deprecated",
     "blocked",
 ]
+CandidateReviewQueueName = Literal[
+    "promotion_ready",
+    "repair_needed",
+    "blocked_or_quarantined",
+    "duplicate_merge_needed",
+    "repeated_requested_gap",
+]
 RiskLevel = Literal["low", "medium", "high"]
 CapabilityDecisionType = Literal["USE_SKILL", "REQUEST_SKILL", "ASK_HUMAN", "ABORT_UNSAFE"]
 Reversibility = Literal["reversible", "partially_reversible", "irreversible", "unknown"]
@@ -368,6 +375,18 @@ class SkillCandidateLedger(BaseModel):
     updated_at: datetime = Field(default_factory=datetime.now)
 
 
+class CandidateReviewQueueItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    queue: CandidateReviewQueueName
+    candidate_id: str
+    skill_name: str
+    capability: str
+    status: SkillCandidateStatus
+    reason: str
+    evidence_run_ids: list[str] = Field(default_factory=list)
+
+
 class RunLog(BaseModel):
     schema_version: int = SCHEMA_VERSION
     run_id: str = Field(default_factory=new_default_run_id)
@@ -442,3 +461,4 @@ class LibraryHealthReport(BaseModel):
     blocked_candidate_count: int = 0
     duplicate_candidate_count: int = 0
     human_gated_candidate_count: int = 0
+    candidate_review_queue_counts: dict[str, int] = Field(default_factory=dict)

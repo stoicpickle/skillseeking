@@ -13,6 +13,9 @@ from app.skill_candidate_ledger import (
     SkillCandidateLedgerError,
     approve_candidate_promotion,
     candidate_id_for,
+    candidate_review_queue_counts,
+    candidate_review_queue_names,
+    candidate_review_queues,
     ledger_path,
     load_candidate_ledger,
     record_run_in_candidate_ledger,
@@ -253,6 +256,84 @@ def test_duplicate_candidate_contracts_are_flagged_without_deleting_entries(tmp_
     assert duplicates[0].duplicate_evidence == [
         f"matches input/output contract for {original.skill_name}"
     ]
+
+
+def test_candidate_review_queues_classify_advisory_work(tmp_path):
+    ledger = SkillCandidateLedger(
+        entries=[
+            SkillCandidateLedgerEntry(
+                candidate_id="candidate_repeated",
+                skill_name="detect-contradictions",
+                capability="detect contradictions",
+                status="requested",
+                request_count=2,
+                evidence_run_ids=["run_a", "run_b"],
+            ),
+            SkillCandidateLedgerEntry(
+                candidate_id="candidate_ready",
+                skill_name="argument-clustering",
+                capability="argument clustering",
+                status="temporary",
+                request_count=1,
+                validation_pass_count=1,
+                successful_temporary_uses=1,
+                human_approval_required=True,
+                evidence_run_ids=["run_temp"],
+            ),
+            SkillCandidateLedgerEntry(
+                candidate_id="candidate_repair",
+                skill_name="local-python-analysis",
+                capability="run local python analysis",
+                status="draft",
+                validation_failure_count=1,
+                repair_requirements=["repair required: non-scripted skills must be low risk"],
+                evidence_run_ids=["run_repair"],
+            ),
+            SkillCandidateLedgerEntry(
+                candidate_id="candidate_blocked",
+                skill_name="secrets-helper",
+                capability="read secrets",
+                status="blocked",
+                block_reason="skill may not request secrets permission",
+                evidence_run_ids=["run_blocked"],
+            ),
+            SkillCandidateLedgerEntry(
+                candidate_id="candidate_duplicate",
+                skill_name="source-summary",
+                capability="source summary",
+                status="requested",
+                duplicate_of="candidate_original",
+                duplicate_evidence=["matches input/output contract for summarize-source"],
+                evidence_run_ids=["run_dup"],
+            ),
+        ]
+    )
+
+    queues = candidate_review_queues(ledger)
+
+    assert [item.candidate_id for item in queues["repeated_requested_gap"]] == [
+        "candidate_repeated"
+    ]
+    assert [item.candidate_id for item in queues["promotion_ready"]] == [
+        "candidate_ready"
+    ]
+    assert [item.candidate_id for item in queues["repair_needed"]] == [
+        "candidate_repair"
+    ]
+    assert [item.candidate_id for item in queues["blocked_or_quarantined"]] == [
+        "candidate_blocked"
+    ]
+    assert [item.candidate_id for item in queues["duplicate_merge_needed"]] == [
+        "candidate_duplicate"
+    ]
+    assert candidate_review_queue_counts(ledger) == {
+        "blocked_or_quarantined": 1,
+        "duplicate_merge_needed": 1,
+        "promotion_ready": 1,
+        "repair_needed": 1,
+        "repeated_requested_gap": 1,
+    }
+    assert candidate_review_queue_names(ledger.entries[1]) == ["promotion_ready"]
 
 
 def test_replaying_duplicate_run_does_not_rewrite_ledger(tmp_path):

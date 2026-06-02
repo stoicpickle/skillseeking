@@ -21,6 +21,7 @@ The v0 surface is implemented and proven through the completed milestones in the
 - Canonical demos, acceptance harnesses, gauntlet demo, eval harness, and 20-task capability-gap calibration.
 - Skill Candidate Ledger evidence tracking for repeated gaps, temporary outcomes, repair requirements, blocked/quarantined skills, duplicate contracts, and promotion requirements.
 - Candidate review surfaces through `skill-agent candidates`, `skill-agent candidates --json`, `skill-agent health`, and `skill-agent explain --include-candidates`.
+- Advisory lifecycle review queues for promotion-ready, repair-needed, blocked/quarantined, duplicate-merge-needed, and repeated-requested-gap candidate records.
 
 The current product proof is a CLI-first prototype, not a production agent framework. The public phase framing remains in [Roadmap](roadmap.md): static skill loader -> skill request mode -> Markdown-only Skillsmith -> scripted skills -> SkillOps.
 
@@ -72,8 +73,9 @@ Promotion remains human-governed:
    - Keep permission widening human-gated and evidence-backed.
 
 3. **Lifecycle review queues and health expansion**
-   - Surface repeated-demand, repair-needed, blocked, duplicate, and promotion-ready review queues.
-   - Keep all queues advisory; do not let them steer routing or governor behavior yet.
+   - Current progress: `skill-agent candidates`, `skill-agent candidates --json`, `skill-agent health`, and health JSON now surface derived advisory review queue evidence.
+   - Next coverage: more blocked/quarantined and duplicate eval rows using explicit fixture setup, plus durable candidate-to-stable workflow design.
+   - Keep all queues advisory; do not let them steer routing, promotion, registry admission, or governor behavior.
 
 ## Eval and Validation Gates
 
@@ -120,6 +122,7 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-01: Named **Skill Candidate Ledger** as the next runtime milestone.
 - 2026-06-02: Skill Candidate Ledger is landed; next work is lifecycle eval expansion, human promotion workflow design, and lifecycle review queues.
 - 2026-06-02: Added first human promotion workflow: reviewer/notes approval can mark eligible temporary ledger entries as `candidate` evidence without durable install or auto-promotion.
+- 2026-06-02: Added advisory lifecycle review queues and health expansion for promotion-ready, repair-needed, blocked/quarantined, duplicate, and repeated-requested candidate evidence.
 - 2026-06-01: Reaffirmed that auto-promotion and permission widening remain out of scope without human approval.
 - 2026-06-01: Required full test, smoke eval, and v0 eval baseline before runtime ledger changes.
 - 2026-06-01: Recorded passing baseline: full tests `107 passed`, smoke eval `4/4`, and v0 eval `20/20`.

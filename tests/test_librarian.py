@@ -197,6 +197,11 @@ def test_library_health_surfaces_candidate_ledger_state(tmp_path, seed_skills_di
     assert report.blocked_candidate_count == 1
     assert report.duplicate_candidate_count == 1
     assert report.human_gated_candidate_count == 1
+    assert report.candidate_review_queue_counts == {
+        "blocked_or_quarantined": 1,
+        "duplicate_merge_needed": 1,
+        "repair_needed": 1,
+    }
     issue_codes = {issue.code for issue in report.issues}
     assert "candidate_blocked" in issue_codes
     assert "candidate_duplicate" in issue_codes
@@ -222,6 +227,7 @@ def test_health_command_outputs_text_and_json(tmp_path, seed_skills_dir):
     assert "LIBRARY_HEALTH" in text_result.stdout
     assert "CANDIDATE_LEDGER" in text_result.stdout
     assert "Candidates: 0" in text_result.stdout
+    assert "Review queue counts: -" in text_result.stdout
     assert "SKILL_METRICS" in text_result.stdout
     assert json_result.exit_code == 0
     data = json.loads(json_result.stdout)
@@ -232,3 +238,4 @@ def test_health_command_outputs_text_and_json(tmp_path, seed_skills_dir):
     assert data["script_failure_categories"] == {}
     assert data["candidate_count"] == 0
     assert data["candidate_status_counts"] == {}
+    assert data["candidate_review_queue_counts"] == {}

@@ -98,6 +98,16 @@ Allowed candidate statuses are `requested`, `draft`, `temporary`, `candidate`, `
 
 Ledger updates currently record missing-skill requests, temporary draft validation outcomes, successful temporary loads, repair requirements, rejected/quarantined skills, duplicate input/output contracts, copied governor context, evidence run IDs, and promotion requirements. `human_approval_required` means durable promotion remains gated; it does not mean temporary one-run use is blocked. When `promote-candidate` records `promotion_approved_by`, `promotion_approved_at`, and `promotion_approval_notes`, the ledger entry can become `candidate` evidence, but no durable registry mutation occurs.
 
+Candidate review queues are derived read-time summaries, not persisted lifecycle state. Current queue names are:
+
+- `promotion_ready`
+- `repair_needed`
+- `blocked_or_quarantined`
+- `duplicate_merge_needed`
+- `repeated_requested_gap`
+
+Candidate output and health output may include queue counts and per-entry queue names. Queues are advisory only; they do not promote, copy, install, route, score, or admit skills.
+
 ## Capability Decision
 
 ```json

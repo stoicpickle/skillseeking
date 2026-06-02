@@ -7,7 +7,12 @@ from typing import Any
 
 from app.models import LibraryHealthReport, SkillHealthIssue, SkillUsageMetrics
 from app.registry import SkillRegistry
-from app.skill_candidate_ledger import SkillCandidateLedgerError, ledger_path, load_candidate_ledger
+from app.skill_candidate_ledger import (
+    SkillCandidateLedgerError,
+    candidate_review_queue_counts,
+    ledger_path,
+    load_candidate_ledger,
+)
 
 
 def analyze_library(
@@ -32,6 +37,7 @@ def analyze_library(
     blocked_candidate_count = 0
     duplicate_candidate_count = 0
     human_gated_candidate_count = 0
+    review_queue_counts: dict[str, int] = {}
 
     try:
         ledger = load_candidate_ledger(runs_dir)
@@ -48,6 +54,7 @@ def analyze_library(
 
     if ledger is not None:
         candidate_count = len(ledger.entries)
+        review_queue_counts = dict(candidate_review_queue_counts(ledger))
         for entry in ledger.entries:
             candidate_status_counts[entry.status] += 1
             if entry.status == "blocked":
@@ -217,6 +224,7 @@ def analyze_library(
         blocked_candidate_count=blocked_candidate_count,
         duplicate_candidate_count=duplicate_candidate_count,
         human_gated_candidate_count=human_gated_candidate_count,
+        candidate_review_queue_counts=dict(sorted(review_queue_counts.items())),
     )
 
 
