@@ -208,6 +208,7 @@ Inspect Skill Candidate Ledger evidence after missing-skill or temporary-skill r
 .venv/bin/skill-agent admission-plan candidate_<id> --runs-dir runs --skills-dir skills
 .venv/bin/skill-agent admit-candidate candidate_<id> --runs-dir runs --skills-dir skills --dry-run
 .venv/bin/skill-agent admit-candidate candidate_<id> --runs-dir runs --skills-dir skills --dry-run --collision-policy allow_replace_with_approval
+.venv/bin/skill-agent admit-candidate candidate_<id> --runs-dir runs --skills-dir skills --dry-run --prepare-write-evidence --expected-source-sha256 <sha256>
 ```
 
 Candidate entries are evidence for human review only. Auto-promotion is disabled, and `Promotion approval required` refers to durable skill promotion, not current-run execution. `promote-candidate` records human approval and moves an eligible ledger entry to `candidate` status; it does not copy or install a durable skill.
@@ -224,7 +225,7 @@ These queues are review aids only. They do not steer routing, promote skills, wi
 
 `admission-plan` is also a dry run. It inspects ledger evidence, run logs, source temporary `SKILL.md` artifacts, and durable registry collisions to decide whether a candidate is ready for human durable admission review. It does not copy, install, promote, or mutate anything.
 
-`admit-candidate --dry-run` previews the future durable admission mutation contract. It reports a nested write plan with the selected source artifact, source SHA-256 fingerprint, target durable `skills/<name>/SKILL.md` path, future source snapshot path, collision policy, permission policy, missing human review records, blockers, and mutation flags. `--collision-policy block_existing` is the default; `--collision-policy allow_replace_with_approval` can preview a same-name replacement only when append-only human review evidence exists. `--permission-approval-id <resolution-id>` can name separate permission approval evidence for the dry-run write plan. `--no-dry-run` is intentionally rejected; no durable copy/install write mode exists yet.
+`admit-candidate --dry-run` previews the future durable admission mutation contract. It reports a nested write plan with the selected source artifact, source SHA-256 fingerprint, target durable `skills/<name>/SKILL.md` path, future source snapshot path, destination staging path, collision policy, permission policy, missing human review records, blockers, and mutation flags. `--collision-policy block_existing` is the default; `--collision-policy allow_replace_with_approval` can preview a same-name replacement only when append-only human review evidence exists. `--permission-approval-id <resolution-id>` can name separate permission approval evidence for the dry-run write plan. `--prepare-write-evidence` retains a matching source snapshot and staged destination copy under `runs/` only after the dry-run plan is otherwise unblocked; `--expected-source-sha256 <sha256>` blocks that preparation if the source changed. `--no-dry-run` is intentionally rejected; no durable copy/install write mode exists yet.
 
 Run the M6 malicious-skill rejection demo:
 

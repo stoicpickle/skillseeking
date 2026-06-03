@@ -70,8 +70,8 @@ Promotion remains human-governed:
    - Keep queues advisory; do not let them steer routing, promotion, registry admission, or governor behavior.
 
 2. **Human promotion workflow design**
-   - Current progress: `promote-candidate` records reviewer/notes approval and can move eligible temporary ledger entries to `candidate` evidence status; `admission-plan` can inspect durable review readiness without mutating durable skills; durable admission workflow design defines the required proof gates; `admit-candidate --dry-run` previews source fingerprint, target path, source snapshot retention path, collision policy, permission approval evidence, write blockers, and required approval records while rejecting write mode. The no-write durable admission acceptance harness now verifies those gates before any future snapshot/copy implementation.
-   - Next coverage: future write-mode dry-run implementation checks for retained snapshots and destination copy staging, candidate-to-stable workflow, and promotion review queues.
+   - Current progress: `promote-candidate` records reviewer/notes approval and can move eligible temporary ledger entries to `candidate` evidence status; `admission-plan` can inspect durable review readiness without mutating durable skills; durable admission workflow design defines the required proof gates; `admit-candidate --dry-run` previews source fingerprint, target path, source snapshot retention path, collision policy, permission approval evidence, write blockers, and required approval records while rejecting write mode. The no-write durable admission acceptance harness verifies those gates, and `--prepare-write-evidence` now retains matching source snapshots plus destination staging evidence under `runs/` without writing durable `skills/`.
+   - Next coverage: candidate-to-stable workflow design, promotion review queues, and a separate human-approved write-mode gate after staged evidence is proven.
    - Keep permission widening human-gated and evidence-backed.
 
 3. **Lifecycle review queues and health expansion**
@@ -166,6 +166,7 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-03: Added `admit-candidate --dry-run` durable admission mutation preview; target path/source hash are inspectable, but `--no-dry-run` is rejected and no durable files or ledgers are mutated.
 - 2026-06-03: Extended `admit-candidate --dry-run` with a durable write-plan contract for collision policy, destination paths, source snapshot retention, permission approval evidence, and historical-evidence immutability before any real copy/install mode exists.
 - 2026-06-03: Added a no-write durable admission acceptance harness proving source hash drift, snapshot path planning, collision approval, permission approval, destination planning, and no mutation before enabling real copy/install behavior.
+- 2026-06-03: Added opt-in dry-run write evidence preparation; `--prepare-write-evidence` verifies the source hash, retains a run-scoped snapshot, stages the exact destination copy under `runs/admission_staging/`, and still does not copy/install into durable `skills/`.
 - 2026-06-01: Reaffirmed that auto-promotion and permission widening remain out of scope without human approval.
 - 2026-06-01: Required full test, smoke eval, and v0 eval baseline before runtime ledger changes.
 - 2026-06-01: Recorded passing baseline: full tests `107 passed`, smoke eval `4/4`, and v0 eval `20/20`.

@@ -387,6 +387,20 @@ def admit_candidate(
             help="Optional resolved input request resolution ID authorizing permission widening for the dry-run write plan.",
         ),
     ] = "",
+    prepare_write_evidence: Annotated[
+        bool,
+        typer.Option(
+            "--prepare-write-evidence/--no-prepare-write-evidence",
+            help="Create run-scoped snapshot and destination staging evidence for the dry-run plan.",
+        ),
+    ] = False,
+    expected_source_sha256: Annotated[
+        str,
+        typer.Option(
+            "--expected-source-sha256",
+            help="Optional expected source SHA-256; mismatches block evidence preparation.",
+        ),
+    ] = "",
     json_output: Annotated[
         bool,
         typer.Option("--json", help="Print the durable admission preview as JSON."),
@@ -400,6 +414,8 @@ def admit_candidate(
             dry_run=dry_run,
             collision_policy=collision_policy,
             permission_approval_id=permission_approval_id or None,
+            prepare_write_evidence=prepare_write_evidence,
+            expected_source_sha256=expected_source_sha256 or None,
         )
     except AdmissionPlanError as exc:
         typer.echo(str(exc))

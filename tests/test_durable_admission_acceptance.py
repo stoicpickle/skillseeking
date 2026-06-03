@@ -41,6 +41,21 @@ def test_acceptance_write_plan_verifies_destination_snapshot_hash_and_no_writes(
         runs_dir / "admission_snapshots" / candidate_id / result["source_sha256"] / "SKILL.md"
     )
     assert result["write_plan"]["snapshot_sha256"] == result["source_sha256"]
+    assert result["write_plan"]["prepare_write_evidence"] is False
+    assert result["write_plan"]["expected_source_sha256"] is None
+    assert result["write_plan"]["source_hash_verified"] is True
+    assert result["write_plan"]["source_snapshot_retained"] is False
+    assert result["write_plan"]["destination_stage_skill_path"] == str(
+        runs_dir
+        / "admission_staging"
+        / candidate_id
+        / result["source_sha256"]
+        / "skills"
+        / "argument-clustering"
+        / "SKILL.md"
+    )
+    assert result["write_plan"]["destination_stage_sha256"] is None
+    assert result["write_plan"]["destination_stage_created"] is False
     assert result["write_plan"]["blockers"] == []
     _assert_no_admission_mutation(result)
     assert _snapshot_tree(copied_seed_skills) == durable_before
@@ -62,6 +77,213 @@ def test_acceptance_write_plan_verifies_destination_snapshot_hash_and_no_writes(
 
     assert write_result.exit_code == 1
     assert "durable admission mutation is not implemented" in write_result.stdout
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+
+
+def test_acceptance_prepare_write_evidence_retains_snapshot_and_stages_destination(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path, _ = _prepare_reviewed_candidate(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+    )
+    source_sha256 = _sha256(source_path)
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+
+    first = _admit_candidate_json(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-write-evidence",
+        "--expected-source-sha256",
+        source_sha256,
+    )
+
+    snapshot_path = (
+        runs_dir / "admission_snapshots" / candidate_id / source_sha256 / "SKILL.md"
+    )
+    stage_path = (
+        runs_dir
+        / "admission_staging"
+        / candidate_id
+        / source_sha256
+        / "skills"
+        / "argument-clustering"
+        / "SKILL.md"
+    )
+    assert first["outcome"] == "ready_for_mutation_preview"
+    assert first["write_plan"]["prepare_write_evidence"] is True
+    assert first["write_plan"]["expected_source_sha256"] == source_sha256
+    assert first["write_plan"]["source_hash_verified"] is True
+    assert first["write_plan"]["source_snapshot_created"] is True
+    assert first["write_plan"]["source_snapshot_retained"] is True
+    assert first["write_plan"]["destination_stage_created"] is True
+    assert first["write_plan"]["destination_stage_skill_path"] == str(stage_path)
+    assert first["write_plan"]["destination_stage_sha256"] == source_sha256
+    assert snapshot_path.read_bytes() == source_path.read_bytes()
+    assert stage_path.read_bytes() == source_path.read_bytes()
+    assert _sha256(snapshot_path) == source_sha256
+    assert _sha256(stage_path) == source_sha256
+    _assert_no_durable_admission_mutation(first)
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _without_admission_evidence(_snapshot_tree(runs_dir)) == runs_before
+
+    runs_after_first = _snapshot_tree(runs_dir)
+    second = _admit_candidate_json(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-write-evidence",
+        "--expected-source-sha256",
+        source_sha256,
+    )
+
+    assert second["write_plan"]["source_snapshot_created"] is False
+    assert second["write_plan"]["source_snapshot_retained"] is True
+    assert second["write_plan"]["destination_stage_created"] is False
+    assert second["write_plan"]["destination_stage_sha256"] == source_sha256
+    _assert_no_durable_admission_mutation(second)
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_after_first
+
+
+def test_acceptance_prepare_write_evidence_blocks_source_hash_mismatch_without_writing(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    candidate_id, _, _ = _prepare_reviewed_candidate(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+    )
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+
+    result = _admit_candidate_json(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-write-evidence",
+        "--expected-source-sha256",
+        "0" * 64,
+    )
+
+    assert result["write_plan"]["operation"] == "blocked"
+    assert result["write_plan"]["source_hash_verified"] is False
+    assert "source_hash_mismatch" in result["write_plan"]["blockers"]
+    assert result["write_plan"]["source_snapshot_created"] is False
+    assert result["write_plan"]["source_snapshot_retained"] is False
+    assert result["write_plan"]["destination_stage_created"] is False
+    assert result["write_plan"]["destination_stage_sha256"] is None
+    _assert_no_durable_admission_mutation(result)
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+    assert not (runs_dir / "admission_snapshots").exists()
+    assert not (runs_dir / "admission_staging").exists()
+
+
+def test_acceptance_prepare_write_evidence_blocks_snapshot_mismatch_without_rewriting(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path, _ = _prepare_reviewed_candidate(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+    )
+    source_sha256 = _sha256(source_path)
+    snapshot_path = (
+        runs_dir / "admission_snapshots" / candidate_id / source_sha256 / "SKILL.md"
+    )
+    snapshot_path.parent.mkdir(parents=True)
+    snapshot_path.write_text("historical mismatch\n", encoding="utf-8")
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+
+    result = _admit_candidate_json(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-write-evidence",
+        "--expected-source-sha256",
+        source_sha256,
+    )
+
+    assert result["write_plan"]["operation"] == "blocked"
+    assert "retained_snapshot_hash_mismatch" in result["write_plan"]["blockers"]
+    assert result["write_plan"]["source_snapshot_created"] is False
+    assert result["write_plan"]["source_snapshot_retained"] is False
+    assert result["write_plan"]["destination_stage_created"] is False
+    _assert_no_durable_admission_mutation(result)
+    assert snapshot_path.read_text(encoding="utf-8") == "historical mismatch\n"
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+    assert not (runs_dir / "admission_staging").exists()
+
+
+def test_acceptance_prepare_write_evidence_blocks_stage_mismatch_without_rewriting(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path, _ = _prepare_reviewed_candidate(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+    )
+    source_sha256 = _sha256(source_path)
+    snapshot_path = (
+        runs_dir / "admission_snapshots" / candidate_id / source_sha256 / "SKILL.md"
+    )
+    stage_path = (
+        runs_dir
+        / "admission_staging"
+        / candidate_id
+        / source_sha256
+        / "skills"
+        / "argument-clustering"
+        / "SKILL.md"
+    )
+    snapshot_path.parent.mkdir(parents=True)
+    snapshot_path.write_bytes(source_path.read_bytes())
+    stage_path.parent.mkdir(parents=True)
+    stage_path.write_text("historical staged mismatch\n", encoding="utf-8")
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+
+    result = _admit_candidate_json(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-write-evidence",
+        "--expected-source-sha256",
+        source_sha256,
+    )
+
+    assert result["write_plan"]["operation"] == "blocked"
+    assert "destination_stage_hash_mismatch" in result["write_plan"]["blockers"]
+    assert result["write_plan"]["source_snapshot_created"] is False
+    assert result["write_plan"]["source_snapshot_retained"] is True
+    assert result["write_plan"]["destination_stage_created"] is False
+    assert result["write_plan"]["destination_stage_sha256"] is None
+    _assert_no_durable_admission_mutation(result)
+    assert stage_path.read_text(encoding="utf-8") == "historical staged mismatch\n"
     assert _snapshot_tree(copied_seed_skills) == durable_before
     assert _snapshot_tree(runs_dir) == runs_before
 
@@ -357,6 +579,14 @@ def _admit_candidate_json(
 
 
 def _assert_no_admission_mutation(report: dict) -> None:
+    _assert_no_durable_admission_mutation(report)
+    for key in [
+        "source_snapshot_created",
+    ]:
+        assert report["write_plan"][key] is False
+
+
+def _assert_no_durable_admission_mutation(report: dict) -> None:
     for key in [
         "mutation_supported",
         "durable_skill_installed",
@@ -371,7 +601,6 @@ def _assert_no_admission_mutation(report: dict) -> None:
         "ledger_mutated",
         "registry_mutated",
         "resolution_ledger_mutated",
-        "source_snapshot_created",
         "governor_steering_enabled",
     ]:
         assert report["write_plan"][key] is False
@@ -392,4 +621,13 @@ def _snapshot_tree(path: Path) -> dict[str, bytes]:
         str(item.relative_to(path)): item.read_bytes()
         for item in sorted(path.rglob("*"))
         if item.is_file()
+    }
+
+
+def _without_admission_evidence(tree: dict[str, bytes]) -> dict[str, bytes]:
+    return {
+        key: value
+        for key, value in tree.items()
+        if not key.startswith("admission_snapshots/")
+        and not key.startswith("admission_staging/")
     }

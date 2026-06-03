@@ -311,13 +311,15 @@ Durable admission workflow design lives in `docs/plans/durable-admission-workflo
 
 ## Durable Admission Preview
 
-`admit-candidate --dry-run` previews the future durable admission mutation contract. It requires the existing admission-plan proof and reports what would be needed before a future write-mode command could exist. It does not copy, install, admit, mutate ledgers, mutate the registry, promote to stable, widen permissions, create snapshots, or steer the governor. `--no-dry-run` exits with an error because durable admission mutation is intentionally unavailable.
+`admit-candidate --dry-run` previews the future durable admission mutation contract. It requires the existing admission-plan proof and reports what would be needed before a future write-mode command could exist. By default it does not copy, install, admit, mutate ledgers, mutate the registry, promote to stable, widen permissions, create snapshots, stage destination files, or steer the governor. With `--prepare-write-evidence`, it may create or reuse matching run-scoped evidence only under `runs/admission_snapshots/` and `runs/admission_staging/`. `--no-dry-run` exits with an error because durable admission mutation is intentionally unavailable.
 
 Dry-run options:
 
 - `--collision-policy block_existing` is the default and blocks same-name durable skills.
 - `--collision-policy allow_replace_with_approval` may preview `replace_existing_skill` only when append-only `approve_review` evidence exists for the same candidate.
 - `--permission-approval-id <resolution-id>` optionally names separate resolved approval evidence for permission widening. Without that evidence, permission widening remains blocked. Older dry-run callers may still pass the source `input_request_id`, but new records include a stable `resolution_<id>` value.
+- `--prepare-write-evidence` retains the source snapshot and stages the destination copy under `runs/` only when the dry-run write plan is otherwise unblocked.
+- `--expected-source-sha256 <sha256>` optionally pins evidence preparation to a previously reviewed source fingerprint. A mismatch blocks snapshot retention and staging.
 
 ```json
 {
@@ -344,6 +346,14 @@ Dry-run options:
     "snapshot_dir": "runs/admission_snapshots/candidate_abc123def456/abc123...",
     "snapshot_skill_path": "runs/admission_snapshots/candidate_abc123def456/abc123.../SKILL.md",
     "snapshot_sha256": "abc123...",
+    "prepare_write_evidence": false,
+    "expected_source_sha256": null,
+    "source_hash_verified": true,
+    "source_snapshot_retained": false,
+    "destination_stage_dir": "runs/admission_staging/candidate_abc123def456/abc123.../skills/argument-clustering",
+    "destination_stage_skill_path": "runs/admission_staging/candidate_abc123def456/abc123.../skills/argument-clustering/SKILL.md",
+    "destination_stage_sha256": null,
+    "destination_stage_created": false,
     "collision_policy": "block_existing",
     "permission_policy": "block_widening_without_approval",
     "permission_approval_id": null,
@@ -375,9 +385,9 @@ Dry-run options:
 
 Allowed preview outcomes are `ready_for_mutation_preview`, `approval_required`, and `blocked`. Allowed write-plan operations are `copy_new_skill`, `replace_existing_skill`, and `blocked`. A preview can reach `ready_for_mutation_preview` only after `admission-plan` is ready or the only admission-plan blocker is a same-name collision explicitly handled by `allow_replace_with_approval`, the append-only input request resolution ledger contains resolved `approve_review` evidence for the same candidate, and the write plan has no blockers.
 
-Source snapshot retention is previewed but not executed in this slice. `snapshot_dir`, `snapshot_skill_path`, and `snapshot_sha256` describe the future retained source copy under `runs/admission_snapshots/<candidate_id>/<source_sha256>/`; `source_snapshot_created` remains `false`.
+Source snapshot retention and destination staging are opt-in dry-run evidence preparation steps. Without `--prepare-write-evidence`, `snapshot_dir`, `snapshot_skill_path`, `snapshot_sha256`, `destination_stage_dir`, and `destination_stage_skill_path` describe future evidence paths and all creation flags remain `false`. With `--prepare-write-evidence`, the command verifies the current source hash, reuses matching existing evidence, creates missing run-scoped snapshot/staging files, and blocks rather than overwriting if an existing evidence file has a different hash.
 
-Acceptance coverage for the future write mode lives in `tests/test_durable_admission_acceptance.py`. It proves source hash drift, snapshot path planning, destination planning, collision approval, permission approval, and `--no-dry-run` rejection without copying, installing, creating snapshots, or rewriting historical evidence.
+Acceptance coverage for the future write mode lives in `tests/test_durable_admission_acceptance.py`. It proves source hash drift, snapshot path planning, run-scoped source retention, destination staging, collision approval, permission approval, and `--no-dry-run` rejection without copying into durable `skills/`, installing, or rewriting historical evidence.
 
 ## Capability Decision
 

@@ -58,11 +58,15 @@ The write plan fields are:
 - `operation`: `copy_new_skill`, `replace_existing_skill`, or `blocked`.
 - `source_skill_path` and `source_sha256`: the selected temporary `SKILL.md` and its fingerprint.
 - `target_skill_dir` and `target_skill_path`: the exact future durable destination under `skills/`.
-- `snapshot_dir`, `snapshot_skill_path`, and `snapshot_sha256`: the future retained source snapshot under `runs/admission_snapshots/<candidate_id>/<source_sha256>/`.
+- `snapshot_dir`, `snapshot_skill_path`, and `snapshot_sha256`: the retained source snapshot path under `runs/admission_snapshots/<candidate_id>/<source_sha256>/`.
+- `destination_stage_dir`, `destination_stage_skill_path`, and `destination_stage_sha256`: the staged future destination copy under `runs/admission_staging/<candidate_id>/<source_sha256>/skills/<skill_name>/`.
+- `prepare_write_evidence`: whether the dry run was allowed to create or reuse run-scoped evidence artifacts.
+- `expected_source_sha256` and `source_hash_verified`: optional source-hash pinning for stale-plan detection.
 - `collision_policy`: `block_existing` by default, or `allow_replace_with_approval` for an explicitly approved replacement preview.
 - `permission_policy`: `block_widening_without_approval`.
 - `permission_approval_id`: optional resolution record ID for separate permission-widening approval evidence.
-- Mutation booleans: `durable_skill_installed`, `ledger_mutated`, `registry_mutated`, `resolution_ledger_mutated`, `source_snapshot_created`, and `governor_steering_enabled` all remain `false`.
+- Durable mutation booleans: `durable_skill_installed`, `ledger_mutated`, `registry_mutated`, `resolution_ledger_mutated`, and `governor_steering_enabled` all remain `false`.
+- Evidence booleans: `source_snapshot_created`, `source_snapshot_retained`, and `destination_stage_created` describe run-scoped dry-run evidence only.
 - `blockers` and `warnings`: the write-plan reasons that prevent a future mutation preview from becoming ready.
 
 Collision policy:
@@ -77,11 +81,13 @@ Permission approval policy:
 - Permission approval evidence does not override broader source validation failures, scripted-skill blockers, or unsafe text blockers.
 - No permission is widened in this slice.
 
-Source snapshot retention:
+Source snapshot retention and destination staging:
 
-- The dry run computes the future snapshot location from candidate ID and source SHA-256.
-- No snapshot directory or file is created in this slice.
-- Future write mode must verify the source hash before retaining or copying the source.
+- The default dry run computes the future snapshot and staging locations from candidate ID, source SHA-256, and target skill name without creating files.
+- `--prepare-write-evidence` may retain the source snapshot and stage the exact destination copy under `runs/` only after the write plan has no other blockers.
+- Existing snapshot or staging files are reused when their hash matches the source.
+- Existing snapshot or staging files with different content block the preview and are not overwritten.
+- Future write mode must consume this evidence and still require a separate human-approved write gate before copying into durable `skills/`.
 
 ## Future Install/Copy Preconditions
 
@@ -90,7 +96,8 @@ A future durable install/copy slice must first add proof that is not present tod
 - A new explicit command or subcommand contract for durable admission mutation. Status: `admit-candidate --dry-run` preview exists.
 - A dry-run mode for that command before any write mode. Status: write mode is unavailable and `--no-dry-run` is rejected.
 - A destination preview that names the exact target path under durable `skills/`.
-- A source snapshot hash or equivalent immutable source evidence reference. Status: previewed by `write_plan.snapshot_*` fields; no snapshot is created.
+- A source snapshot hash or equivalent immutable source evidence reference. Status: previewed by `write_plan.snapshot_*` fields and optionally retained with `--prepare-write-evidence`.
+- A staged destination copy matching the future durable target. Status: optionally staged under `runs/admission_staging/` with `--prepare-write-evidence`; durable `skills/` remains untouched.
 - A collision policy for same-name durable skills and rejected durable records. Status: `block_existing` and `allow_replace_with_approval` are dry-run preview policies.
 - A permission and risk comparison that blocks widening unless a separate human approval record explicitly authorizes it. Status: `permission_policy` and `--permission-approval-id` are previewed; no widening occurs.
 - A stable-promotion policy that remains separate from file copy/install.
@@ -101,7 +108,7 @@ A future durable install/copy slice must first add proof that is not present tod
 
 - Do not copy or install a durable skill in this slice.
 - Do not add an `admit-candidate` write command in this slice.
-- Do not mutate historical run logs, candidate ledgers, input request resolution ledgers, source snapshots, or durable skill files.
+- Do not mutate historical run logs, candidate ledgers, input request resolution ledgers, mismatched source snapshots, mismatched staging files, or durable skill files.
 - Do not widen permissions.
 - Do not promote any candidate to `stable`.
 - Do not add active governor steering.

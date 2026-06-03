@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import hashlib
+from dataclasses import dataclass
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from app.admission_plan import AdmissionPlanError, build_admission_plan
 from app.input_resolution_ledger import (
@@ -32,6 +34,8 @@ def build_durable_admission_preview(
     dry_run: bool = True,
     collision_policy: str = "block_existing",
     permission_approval_id: str | None = None,
+    prepare_write_evidence: bool = False,
+    expected_source_sha256: str | None = None,
 ) -> DurableAdmissionPreviewReport:
     if not dry_run:
         raise AdmissionPlanError(
@@ -52,6 +56,12 @@ def build_durable_admission_preview(
     source_sha256 = _sha256(source_path) if source_path is not None else None
     target_dir, target_path = _target_paths(admission_plan, skills_dir)
     snapshot_dir, snapshot_path = _snapshot_paths(candidate_id, source_sha256, runs_dir)
+    destination_stage_dir, destination_stage_path = _destination_stage_paths(
+        candidate_id,
+        source_sha256,
+        target_dir,
+        runs_dir,
+    )
     blockers = list(admission_plan.blockers)
     write_blockers = list(blockers)
     warnings = list(admission_plan.warnings)
@@ -101,6 +111,36 @@ def build_durable_admission_preview(
         ]
 
     write_blockers = _unique(write_blockers)
+    source_hash_verified = bool(
+        source_sha256 is not None
+        and (
+            expected_source_sha256 is None
+            or expected_source_sha256 == source_sha256
+        )
+    )
+    if (
+        prepare_write_evidence
+        and expected_source_sha256 is not None
+        and expected_source_sha256 != source_sha256
+    ):
+        write_blockers.append("source_hash_mismatch")
+    evidence_state = _empty_evidence_state(
+        prepare_write_evidence=prepare_write_evidence,
+        expected_source_sha256=expected_source_sha256,
+        source_hash_verified=source_hash_verified,
+        destination_stage_dir=destination_stage_dir,
+        destination_stage_path=destination_stage_path,
+    )
+    write_blockers = _unique(write_blockers)
+    if prepare_write_evidence and not write_blockers:
+        evidence_blockers, evidence_state = _prepare_write_evidence(
+            source_path=source_path,
+            source_sha256=source_sha256,
+            snapshot_path=snapshot_path,
+            destination_stage_path=destination_stage_path,
+            state=evidence_state,
+        )
+        write_blockers = _unique([*write_blockers, *evidence_blockers])
     operation = _write_operation(
         blockers=write_blockers,
         name_collision=name_collision,
@@ -115,6 +155,15 @@ def build_durable_admission_preview(
         snapshot_dir=str(snapshot_dir) if snapshot_dir is not None else None,
         snapshot_skill_path=str(snapshot_path) if snapshot_path is not None else None,
         snapshot_sha256=source_sha256,
+        prepare_write_evidence=prepare_write_evidence,
+        expected_source_sha256=expected_source_sha256,
+        source_hash_verified=evidence_state.source_hash_verified,
+        source_snapshot_created=evidence_state.source_snapshot_created,
+        source_snapshot_retained=evidence_state.source_snapshot_retained,
+        destination_stage_dir=evidence_state.destination_stage_dir,
+        destination_stage_skill_path=evidence_state.destination_stage_skill_path,
+        destination_stage_sha256=evidence_state.destination_stage_sha256,
+        destination_stage_created=evidence_state.destination_stage_created,
         collision_policy=collision_policy,
         permission_approval_id=permission_approval_id,
         replacement_approved=replacement_approved,
@@ -123,7 +172,7 @@ def build_durable_admission_preview(
         warnings=warnings,
     )
 
-    blockers = _unique(blockers)
+    blockers = _unique(write_plan.blockers)
     ready = not write_plan.blockers
     return DurableAdmissionPreviewReport(
         candidate_id=candidate_id,
@@ -235,6 +284,134 @@ def _snapshot_paths(
         return None, None
     snapshot_dir = runs_dir / "admission_snapshots" / candidate_id / source_sha256
     return snapshot_dir, snapshot_dir / "SKILL.md"
+
+
+def _destination_stage_paths(
+    candidate_id: str,
+    source_sha256: str | None,
+    target_dir: Path | None,
+    runs_dir: Path,
+) -> tuple[Path | None, Path | None]:
+    if source_sha256 is None or target_dir is None:
+        return None, None
+    stage_dir = (
+        runs_dir
+        / "admission_staging"
+        / candidate_id
+        / source_sha256
+        / "skills"
+        / target_dir.name
+    )
+    return stage_dir, stage_dir / "SKILL.md"
+
+
+@dataclass
+class _WriteEvidenceState:
+    prepare_write_evidence: bool
+    expected_source_sha256: str | None
+    source_hash_verified: bool
+    source_snapshot_created: bool = False
+    source_snapshot_retained: bool = False
+    destination_stage_dir: str | None = None
+    destination_stage_skill_path: str | None = None
+    destination_stage_sha256: str | None = None
+    destination_stage_created: bool = False
+
+
+def _empty_evidence_state(
+    *,
+    prepare_write_evidence: bool,
+    expected_source_sha256: str | None,
+    source_hash_verified: bool,
+    destination_stage_dir: Path | None,
+    destination_stage_path: Path | None,
+) -> _WriteEvidenceState:
+    return _WriteEvidenceState(
+        prepare_write_evidence=prepare_write_evidence,
+        expected_source_sha256=expected_source_sha256,
+        source_hash_verified=source_hash_verified,
+        destination_stage_dir=(
+            str(destination_stage_dir) if destination_stage_dir is not None else None
+        ),
+        destination_stage_skill_path=(
+            str(destination_stage_path) if destination_stage_path is not None else None
+        ),
+    )
+
+
+def _prepare_write_evidence(
+    *,
+    source_path: Path | None,
+    source_sha256: str | None,
+    snapshot_path: Path | None,
+    destination_stage_path: Path | None,
+    state: _WriteEvidenceState,
+) -> tuple[list[str], _WriteEvidenceState]:
+    if source_path is None or source_sha256 is None:
+        return ["source_skill_missing"], state
+    if snapshot_path is None or destination_stage_path is None:
+        return ["destination_stage_path_missing"], state
+
+    try:
+        source_bytes = source_path.read_bytes()
+    except OSError:
+        return ["source_skill_unreadable"], state
+
+    snapshot_created, snapshot_blocker = _retain_matching_file(
+        snapshot_path,
+        source_bytes,
+        source_sha256,
+        mismatch_blocker="retained_snapshot_hash_mismatch",
+        write_blocker="source_snapshot_retention_failed",
+    )
+    if snapshot_blocker is not None:
+        return [snapshot_blocker], state
+    state.source_snapshot_created = snapshot_created
+    state.source_snapshot_retained = True
+
+    staged_created, staged_blocker = _retain_matching_file(
+        destination_stage_path,
+        source_bytes,
+        source_sha256,
+        mismatch_blocker="destination_stage_hash_mismatch",
+        write_blocker="destination_stage_write_failed",
+    )
+    if staged_blocker is not None:
+        return [staged_blocker], state
+    state.destination_stage_created = staged_created
+    state.destination_stage_sha256 = source_sha256
+    return [], state
+
+
+def _retain_matching_file(
+    path: Path,
+    content: bytes,
+    expected_sha256: str,
+    *,
+    mismatch_blocker: str,
+    write_blocker: str,
+) -> tuple[bool, str | None]:
+    if path.exists():
+        return (False, None) if _sha256(path) == expected_sha256 else (False, mismatch_blocker)
+    try:
+        _atomic_write_bytes(path, content)
+    except OSError:
+        return False, write_blocker
+    return True, None
+
+
+def _atomic_write_bytes(path: Path, content: bytes) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temp_path: Path | None = None
+    with NamedTemporaryFile(dir=path.parent, delete=False) as handle:
+        temp_path = Path(handle.name)
+        handle.write(content)
+    try:
+        temp_path.replace(path)
+    except OSError:
+        if temp_path.exists():
+            temp_path.unlink()
+        raise
 
 
 def _only_replaceable_collision(

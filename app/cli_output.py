@@ -191,7 +191,26 @@ def emit_durable_admission_preview_output(report: DurableAdmissionPreviewReport)
     typer.echo(f"Snapshot SKILL.md: {report.write_plan.snapshot_skill_path or '-'}")
     typer.echo(f"Snapshot sha256: {report.write_plan.snapshot_sha256 or '-'}")
     typer.echo(
+        f"Prepare write evidence: {str(report.write_plan.prepare_write_evidence).lower()}"
+    )
+    typer.echo(f"Expected source sha256: {report.write_plan.expected_source_sha256 or '-'}")
+    typer.echo(
+        f"Source hash verified: {str(report.write_plan.source_hash_verified).lower()}"
+    )
+    typer.echo(
         f"Source snapshot created: {str(report.write_plan.source_snapshot_created).lower()}"
+    )
+    typer.echo(
+        f"Source snapshot retained: {str(report.write_plan.source_snapshot_retained).lower()}"
+    )
+    typer.echo(f"Destination stage dir: {report.write_plan.destination_stage_dir or '-'}")
+    typer.echo(
+        "Destination stage SKILL.md: "
+        f"{report.write_plan.destination_stage_skill_path or '-'}"
+    )
+    typer.echo(f"Destination stage sha256: {report.write_plan.destination_stage_sha256 or '-'}")
+    typer.echo(
+        f"Destination stage created: {str(report.write_plan.destination_stage_created).lower()}"
     )
     typer.echo("Write blockers:")
     _emit_string_items(report.write_plan.blockers)

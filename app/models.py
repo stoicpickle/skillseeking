@@ -607,6 +607,14 @@ class DurableAdmissionWritePlan(BaseModel):
     snapshot_dir: str | None = None
     snapshot_skill_path: str | None = None
     snapshot_sha256: str | None = None
+    prepare_write_evidence: bool = False
+    expected_source_sha256: str | None = None
+    source_hash_verified: bool = False
+    source_snapshot_retained: bool = False
+    destination_stage_dir: str | None = None
+    destination_stage_skill_path: str | None = None
+    destination_stage_sha256: str | None = None
+    destination_stage_created: bool = False
     collision_policy: DurableAdmissionCollisionPolicy = "block_existing"
     permission_policy: DurableAdmissionPermissionPolicy = "block_widening_without_approval"
     permission_approval_id: str | None = None

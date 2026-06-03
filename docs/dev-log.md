@@ -735,3 +735,19 @@ Boundaries:
 
 - `--no-dry-run` remains rejected.
 - No durable skill copy/install, source snapshot creation, stable promotion, permission widening, unsafe execution, or governor steering was added.
+
+## 2026-06-03 Dry-Run Snapshot Retention And Destination Staging
+
+Added the next dry-run evidence layer for future durable admission writes.
+
+Added:
+
+- `admit-candidate --dry-run --prepare-write-evidence` to retain a source snapshot and stage the destination copy under `runs/` only.
+- `--expected-source-sha256` stale-plan protection before run-scoped evidence is created.
+- Write-plan fields for source-hash verification, retained snapshot state, destination staging paths, and staging hash.
+- Acceptance tests proving matching evidence is reusable, mismatched historical evidence is not overwritten, source-hash mismatches block preparation, and durable `skills/` remains untouched.
+
+Boundaries:
+
+- `--no-dry-run` remains rejected.
+- No durable skill copy/install, stable promotion, permission widening, unsafe execution, ledger rewrite, registry mutation, or governor steering was added.
