@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from pathlib import Path
 from shutil import copytree
 
 import pytest
@@ -8,6 +9,7 @@ from typer.testing import CliRunner
 
 from app.cli import app
 from app.eval_runner import EvalSuiteError, load_eval_suite, run_eval_suite, write_eval_reports
+from app.input_resolution_ledger import load_input_request_resolution_ledger
 
 
 def test_load_eval_suite_reads_jsonl(tmp_path):
@@ -329,6 +331,126 @@ def test_eval_report_distinguishes_input_request_kind_mismatch(copied_seed_skill
     assert [request["kind"] for request in task["input_requests"]] == ["safety_approval"]
     assert task["failure_categories"] == ["input_request_kind_mismatch"]
     assert "input_request_missing" not in task["failure_categories"]
+
+
+def test_eval_report_proves_resolution_ledger_queue_states(copied_seed_skills, tmp_path):
+    suite = tmp_path / "suite.jsonl"
+    suite.write_text(
+        "\n".join(
+            [
+                json.dumps(
+                    {
+                        "id": "deferred_resolution",
+                        "task": "Read local files and summarize them.",
+                        "input_request_resolutions": [
+                            {
+                                "kind": "safety_approval",
+                                "status": "open",
+                                "decision": "defer",
+                                "reviewer": "Eval PM",
+                                "notes": "Leave advisory gate open for later review.",
+                            }
+                        ],
+                        "expected": {
+                            "outcome": "awaiting_human_approval",
+                            "must_have_input_request": True,
+                            "input_request_kind": "safety_approval",
+                            "input_request_status": "open",
+                            "input_request_active_count": 1,
+                            "input_request_resolution_count": 1,
+                            "input_request_resolution_decisions": ["defer"],
+                        },
+                        "tags": ["input_focus", "resolution_ledger"],
+                    }
+                ),
+                json.dumps(
+                    {
+                        "id": "resolved_resolution",
+                        "task": "Read local files and summarize them into a short answer.",
+                        "input_request_resolutions": [
+                            {
+                                "kind": "safety_approval",
+                                "status": "open",
+                                "decision": "approve_workflow",
+                                "reviewer": "Eval PM",
+                                "notes": "Settle advisory gate without mutating run logs.",
+                            }
+                        ],
+                        "expected": {
+                            "outcome": "awaiting_human_approval",
+                            "must_have_input_request": True,
+                            "input_request_kind": "safety_approval",
+                            "input_request_status": "resolved",
+                            "input_request_active_count": 0,
+                            "input_request_resolution_count": 1,
+                            "input_request_resolution_decisions": ["approve_workflow"],
+                        },
+                        "tags": ["input_focus", "resolution_ledger"],
+                    }
+                ),
+                json.dumps(
+                    {
+                        "id": "repeated_resolution_history",
+                        "task": "Read local files and summarize them into a short answer.",
+                        "input_request_resolutions": [
+                            {
+                                "kind": "safety_approval",
+                                "status": "open",
+                                "decision": "defer",
+                                "reviewer": "Eval PM",
+                                "notes": "First append leaves the request actionable.",
+                            },
+                            {
+                                "kind": "safety_approval",
+                                "status": "open",
+                                "decision": "approve_workflow",
+                                "reviewer": "Eval PM",
+                                "notes": "Second append settles the same request.",
+                            },
+                        ],
+                        "expected": {
+                            "outcome": "awaiting_human_approval",
+                            "must_have_input_request": True,
+                            "input_request_kind": "safety_approval",
+                            "input_request_status": "resolved",
+                            "input_request_active_count": 0,
+                            "input_request_resolution_count": 2,
+                            "input_request_resolution_decisions": ["defer", "approve_workflow"],
+                        },
+                        "tags": ["input_focus", "resolution_ledger", "append_only"],
+                    }
+                ),
+            ]
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = run_eval_suite(suite, copied_seed_skills, tmp_path / "runs")
+
+    assert report["passed"]
+    deferred, resolved, repeated = report["tasks"]
+    assert deferred["input_requests"][0]["status"] == "open"
+    assert resolved["input_requests"][0]["status"] == "resolved"
+    assert repeated["input_requests"][0]["status"] == "resolved"
+    assert [item["decision"] for item in repeated["input_request_resolutions"]] == [
+        "defer",
+        "approve_workflow",
+    ]
+    assert all(
+        resolution["resolution_ledger_mutated"] is True
+        and resolution["run_logs_mutated"] is False
+        and resolution["candidate_ledger_mutated"] is False
+        for task in report["tasks"]
+        for resolution in task["input_request_resolutions"]
+    )
+    ledger = load_input_request_resolution_ledger(Path(report["runs_dir"]))
+    assert [record.decision for record in ledger.resolutions] == [
+        "defer",
+        "approve_workflow",
+        "defer",
+        "approve_workflow",
+    ]
 
 
 def test_eval_report_requires_request_control_summary(copied_seed_skills, tmp_path):

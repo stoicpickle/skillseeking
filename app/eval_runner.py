@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.agent_loop import run_task
 from app.input_focus import collect_input_requests
+from app.input_resolution import InputResolutionError, resolve_input_request
 from app.request_quality import score_skill_request
 from app.skill_candidate_ledger import (
     SkillCandidateLedgerError,
@@ -38,11 +39,23 @@ SUGGESTED_ACTIONS = {
     "input_request_missing": "Emit an input request for this blocked or approval-sensitive path.",
     "input_request_kind_mismatch": "Align the input request kind with the expected human decision boundary.",
     "input_request_status_mismatch": "Align the input request status with the expected queue state.",
+    "input_request_resolution_mismatch": "Inspect the resolution ledger proof and expected reviewer decision path.",
 }
 
 
 class EvalSuiteError(ValueError):
     pass
+
+
+class EvalInputRequestResolution(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    decision: str
+    input_request_id: str | None = None
+    kind: str | None = None
+    status: str | None = None
+    reviewer: str = "eval-fixture"
+    notes: str = "Eval fixture resolution."
 
 
 class EvalTask(BaseModel):
@@ -54,6 +67,7 @@ class EvalTask(BaseModel):
     tags: list[str] = Field(default_factory=list)
     temporary_skills: bool | None = None
     scripted_skills: bool | None = None
+    input_request_resolutions: list[EvalInputRequestResolution] = Field(default_factory=list)
 
 
 def load_eval_suite(path: Path) -> list[EvalTask]:
@@ -238,12 +252,20 @@ def _run_eval_task(
         skill_requests=run_log.skill_requests,
         runs_dir=runs_dir,
     )
+    run_log_input_requests = [
+        request.model_dump(mode="json") for request in run_log.input_requests
+    ]
+    input_request_resolutions, resolution_issues = _resolve_eval_input_requests(
+        task.input_request_resolutions,
+        runs_dir=runs_dir,
+        run_id=run_log.run_id,
+        run_log_input_requests=run_log_input_requests,
+        candidate_ledger_entries=candidate_ledger_entries,
+    )
     input_requests = _input_requests_for_task(
         runs_dir=runs_dir,
         run_id=run_log.run_id,
-        run_log_input_requests=[
-            request.model_dump(mode="json") for request in run_log.input_requests
-        ],
+        run_log_input_requests=run_log_input_requests,
         candidate_ledger_entries=candidate_ledger_entries,
     )
     issues = _evaluate_expectations(
@@ -260,8 +282,10 @@ def _run_eval_task(
         trace_complete=trace_complete,
         candidate_ledger_entries=candidate_ledger_entries,
         input_requests=input_requests,
+        input_request_resolutions=input_request_resolutions,
         run_id=run_log.run_id,
     )
+    issues = resolution_issues + issues
     failure_categories = _failure_categories(
         expected,
         result_category=run_log.result_category,
@@ -275,6 +299,7 @@ def _run_eval_task(
         trace_complete=trace_complete,
         candidate_ledger_entries=candidate_ledger_entries,
         input_requests=input_requests,
+        input_request_resolutions=input_request_resolutions,
         issues=issues,
     )
     run_log_path = str(result.run_log_path)
@@ -297,6 +322,7 @@ def _run_eval_task(
         "rejected_skills": run_log.execution_summary.rejected_skills,
         "skill_requests": run_log.skill_requests,
         "input_requests": input_requests,
+        "input_request_resolutions": input_request_resolutions,
         "candidate_ledger_entries": candidate_ledger_entries,
         "lifecycle_expectation_passed": not _candidate_ledger_expectation_issues(
             expected,
@@ -329,6 +355,7 @@ def _evaluate_expectations(
     trace_complete: bool,
     candidate_ledger_entries: list[dict[str, Any]],
     input_requests: list[dict[str, Any]],
+    input_request_resolutions: list[dict[str, Any]],
     run_id: str,
 ) -> list[str]:
     issues: list[str] = []
@@ -374,7 +401,13 @@ def _evaluate_expectations(
         issues.append(f"trace is incomplete for result {result_category}: {', '.join(trace)}")
     issues.extend(_governor_expectation_issues(expected, governor_decisions))
     issues.extend(_candidate_ledger_expectation_issues(expected, candidate_ledger_entries, run_id))
-    issues.extend(_input_request_expectation_issues(expected, input_requests))
+    issues.extend(
+        _input_request_expectation_issues(
+            expected,
+            input_requests,
+            input_request_resolutions,
+        )
+    )
     return issues
 
 
@@ -478,6 +511,7 @@ def _failure_categories(
     trace_complete: bool,
     candidate_ledger_entries: list[dict[str, Any]],
     input_requests: list[dict[str, Any]],
+    input_request_resolutions: list[dict[str, Any]],
     issues: list[str],
 ) -> list[str]:
     if not issues:
@@ -534,13 +568,23 @@ def _failure_categories(
         "",
     ):
         add("lifecycle_evidence_mismatch")
-    input_request_issues = _input_request_expectation_issues(expected, input_requests)
+    input_request_issues = _input_request_expectation_issues(
+        expected,
+        input_requests,
+        input_request_resolutions,
+    )
     if any(issue == "expected input request" for issue in input_request_issues):
         add("input_request_missing")
     if any("expected input request kind" in issue for issue in input_request_issues):
         add("input_request_kind_mismatch")
     if any("expected input request status" in issue for issue in input_request_issues):
         add("input_request_status_mismatch")
+    if any("expected active input request count" in issue for issue in input_request_issues):
+        add("input_request_status_mismatch")
+    if any("expected input request resolution" in issue for issue in input_request_issues):
+        add("input_request_resolution_mismatch")
+    if any(issue.startswith("could not apply input request resolution") for issue in issues):
+        add("input_request_resolution_mismatch")
 
     return categories or ["planner_misclassified_task"]
 
@@ -890,6 +934,9 @@ def _has_input_request_expectation(expected: dict[str, Any]) -> bool:
             "must_have_input_request",
             "input_request_kind",
             "input_request_status",
+            "input_request_active_count",
+            "input_request_resolution_count",
+            "input_request_resolution_decisions",
         }
     )
 
@@ -897,6 +944,7 @@ def _has_input_request_expectation(expected: dict[str, Any]) -> bool:
 def _input_request_expectation_issues(
     expected: dict[str, Any],
     input_requests: list[dict[str, Any]],
+    input_request_resolutions: list[dict[str, Any]],
 ) -> list[str]:
     if not _has_input_request_expectation(expected):
         return []
@@ -920,6 +968,37 @@ def _input_request_expectation_issues(
         issues.append(
             f"expected input request status {expected_status}, got {statuses or '-'}"
         )
+
+    expected_active_count = expected.get("input_request_active_count")
+    if expected_active_count is not None:
+        active_count = len(
+            [request for request in input_requests if request.get("status") != "resolved"]
+        )
+        if active_count != int(expected_active_count):
+            issues.append(
+                f"expected active input request count {expected_active_count}, got {active_count}"
+            )
+
+    expected_resolution_count = expected.get("input_request_resolution_count")
+    if expected_resolution_count is not None and len(input_request_resolutions) != int(
+        expected_resolution_count
+    ):
+        issues.append(
+            "expected input request resolution count "
+            f"{expected_resolution_count}, got {len(input_request_resolutions)}"
+        )
+
+    expected_decisions = expected.get("input_request_resolution_decisions")
+    if expected_decisions is not None:
+        actual_decisions = [
+            str(resolution.get("decision")) for resolution in input_request_resolutions
+        ]
+        expected_list = [str(item) for item in expected_decisions]
+        if actual_decisions != expected_list:
+            issues.append(
+                "expected input request resolution decisions "
+                f"{expected_list}, got {actual_decisions}"
+            )
     return issues
 
 
@@ -1030,6 +1109,68 @@ def _entry_with_review_queues(entry: Any) -> dict[str, Any]:
     return data
 
 
+def _resolve_eval_input_requests(
+    actions: list[EvalInputRequestResolution],
+    *,
+    runs_dir: Path,
+    run_id: str,
+    run_log_input_requests: list[dict[str, Any]],
+    candidate_ledger_entries: list[dict[str, Any]],
+) -> tuple[list[dict[str, Any]], list[str]]:
+    reports: list[dict[str, Any]] = []
+    issues: list[str] = []
+    for action in actions:
+        input_requests = _input_requests_for_task(
+            runs_dir=runs_dir,
+            run_id=run_id,
+            run_log_input_requests=run_log_input_requests,
+            candidate_ledger_entries=candidate_ledger_entries,
+        )
+        matches = _matching_input_requests_for_resolution(action, input_requests)
+        if len(matches) != 1:
+            labels = sorted(
+                f"{request.get('kind')}:{request.get('status')}:{request.get('id')}"
+                for request in matches
+            )
+            issues.append(
+                "could not apply input request resolution "
+                f"{action.decision!r}; expected one match, got {len(matches)} {labels or '-'}"
+            )
+            continue
+        try:
+            report = resolve_input_request(
+                str(matches[0]["id"]),
+                runs_dir=runs_dir,
+                decision=action.decision,
+                reviewer=action.reviewer,
+                notes=action.notes,
+                dry_run=False,
+            )
+        except InputResolutionError as exc:
+            issues.append(
+                f"could not apply input request resolution {action.decision!r}: {exc}"
+            )
+            continue
+        reports.append(report.model_dump(mode="json"))
+    return reports, issues
+
+
+def _matching_input_requests_for_resolution(
+    action: EvalInputRequestResolution,
+    input_requests: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    matches: list[dict[str, Any]] = []
+    for request in input_requests:
+        if action.input_request_id and request.get("id") != action.input_request_id:
+            continue
+        if action.kind and request.get("kind") != action.kind:
+            continue
+        if action.status and request.get("status") != action.status:
+            continue
+        matches.append(request)
+    return matches
+
+
 def _input_requests_for_task(
     *,
     runs_dir: Path,
@@ -1044,10 +1185,11 @@ def _input_requests_for_task(
     }
     requests_by_id: dict[str, dict[str, Any]] = {}
 
-    def add(request: dict[str, Any]) -> None:
+    def add(request: dict[str, Any], *, replace: bool = False) -> None:
         request_id = str(request.get("id") or "")
         if request_id:
-            requests_by_id.setdefault(request_id, request)
+            if replace or request_id not in requests_by_id:
+                requests_by_id[request_id] = request
 
     for request in run_log_input_requests:
         add(request)
@@ -1059,7 +1201,7 @@ def _input_requests_for_task(
             or data.get("related_candidate_id") in candidate_ids
             or run_id in (data.get("evidence_refs") or [])
         ):
-            add(data)
+            add(data, replace=True)
     return sorted(requests_by_id.values(), key=lambda item: (item.get("kind", ""), item.get("id", "")))
 
 
