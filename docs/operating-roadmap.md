@@ -65,8 +65,8 @@ Promotion remains human-governed:
 ## Next Three Milestones
 
 1. **Remote progress and input focus**
-   - Current progress: input-needed evidence is normalized across safety approvals, repair review, candidate promotion approval, and durable admission review. Queue output now includes run-log and candidate-ledger source diagnostics, missing-evidence fixture coverage, and dry-run decision resolution that proves classification without mutation.
-   - Next coverage: append-only resolution ledger design validation.
+   - Current progress: input-needed evidence is normalized across safety approvals, repair review, candidate promotion approval, and durable admission review. Queue output now includes run-log, candidate-ledger, and resolution-ledger source diagnostics, missing-evidence fixture coverage, dry-run decision resolution, and append-only resolution evidence.
+   - Next coverage: resolution-ledger eval expectation rows and durable admission workflow design.
    - Keep queues advisory; do not let them steer routing, promotion, registry admission, or governor behavior.
 
 2. **Human promotion workflow design**
@@ -117,14 +117,14 @@ Status: passed; the current CLI prototype is ready for local testing and iterati
 
 | Check | Command | Result | Notes |
 | --- | --- | --- | --- |
-| Full test suite | `.venv/bin/python -m pytest -q` | passed | `154 passed in 16.03s`. |
+| Full test suite | `.venv/bin/python -m pytest -q` | passed | `157 passed in 14.51s`. |
 | Compile app | `.venv/bin/python -m compileall -q app` | passed | No compile errors. |
 | Diff check | `git diff --check` | passed | No whitespace errors. |
-| Smoke eval | `.venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`; report: `runs/evals/eval_report_20260603_034846_977438.json`. |
-| v0 eval | `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `20/20` passed, task pass rate `1.0`, trace completeness `20 / 20`; report: `runs/evals/eval_report_20260603_034847_411926.json`. |
-| Lifecycle eval | `.venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`; report: `runs/evals/eval_report_20260603_034847_070296.json`. |
-| Agent diagnostic eval | `.venv/bin/skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `13/13` passed, task pass rate `1.0`, trace completeness `13 / 13`; report: `runs/evals/eval_report_20260603_034847_292785.json`. |
-| CodeRabbit review | `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` | passed | `0 findings` for the dry-run input resolution diff. |
+| Smoke eval | `.venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`; report: `runs/evals/eval_report_20260603_040824_455105.json`. |
+| v0 eval | `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `20/20` passed, task pass rate `1.0`, trace completeness `20 / 20`; report: `runs/evals/eval_report_20260603_040824_968794.json`. |
+| Lifecycle eval | `.venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`; report: `runs/evals/eval_report_20260603_040824_542795.json`. |
+| Agent diagnostic eval | `.venv/bin/skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `13/13` passed, task pass rate `1.0`, trace completeness `13 / 13`; report: `runs/evals/eval_report_20260603_040824_802697.json`. |
+| CodeRabbit review | `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` | passed | `0 findings` for the append-only input resolution ledger diff. |
 
 ### Baseline proof state — 2026-06-01
 
@@ -160,6 +160,7 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-02: Added advisory lifecycle review queues and health expansion for promotion-ready, repair-needed, blocked/quarantined, duplicate, and repeated-requested candidate evidence.
 - 2026-06-02: Added durable candidate admission dry-run reports; durable copy/install and stable promotion remain out of scope.
 - 2026-06-03: Added Remote Progress and Input Focus as the next slice: input-needed evidence is explicit and read-only across run logs, queue output, health, explain, admission plans, and eval assertions.
+- 2026-06-03: Added append-only input request resolution evidence through `runs/input_request_resolutions.json`; source run logs, candidate ledgers, durable skills, and governor behavior remain untouched.
 - 2026-06-01: Reaffirmed that auto-promotion and permission widening remain out of scope without human approval.
 - 2026-06-01: Required full test, smoke eval, and v0 eval baseline before runtime ledger changes.
 - 2026-06-01: Recorded passing baseline: full tests `107 passed`, smoke eval `4/4`, and v0 eval `20/20`.

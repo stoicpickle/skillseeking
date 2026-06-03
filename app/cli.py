@@ -24,7 +24,7 @@ from app.input_focus import (
     input_request_kind_counts,
     input_request_source_warnings,
 )
-from app.input_resolution import InputResolutionError, build_input_resolution_dry_run
+from app.input_resolution import InputResolutionError, resolve_input_request as resolve_input_request_report
 from app.librarian import analyze_library
 from app.skill_candidate_ledger import (
     SkillCandidateLedgerError,
@@ -228,22 +228,22 @@ def resolve_input_request(
     input_request_id: Annotated[str, typer.Argument(help="Input request ID from skill-agent input-requests.")],
     runs_dir: Annotated[Path, typer.Option(help="Run log directory to scan for input requests.")] = Path("runs"),
     decision: Annotated[str, typer.Option("--decision", help="Resolution decision to classify.")] = "",
-    reviewer: Annotated[str, typer.Option("--reviewer", help="Human reviewer for the dry-run decision.")] = "",
+    reviewer: Annotated[str, typer.Option("--reviewer", help="Human reviewer for the resolution decision.")] = "",
     notes: Annotated[str, typer.Option("--notes", help="Human notes tying the decision to evidence.")] = "",
     dry_run: Annotated[
         bool,
         typer.Option(
             "--dry-run/--no-dry-run",
-            help="Only dry-run resolution is supported in this slice.",
+            help="Append to the resolution ledger unless dry-run is enabled.",
         ),
     ] = True,
     json_output: Annotated[
         bool,
-        typer.Option("--json", help="Print the dry-run resolution report as JSON."),
+        typer.Option("--json", help="Print the resolution report as JSON."),
     ] = False,
 ) -> None:
     try:
-        report = build_input_resolution_dry_run(
+        report = resolve_input_request_report(
             input_request_id,
             runs_dir=runs_dir,
             decision=decision,
@@ -259,7 +259,7 @@ def resolve_input_request(
         typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
         return
 
-    typer.echo("INPUT_REQUEST_RESOLUTION_DRY_RUN")
+    typer.echo("INPUT_REQUEST_RESOLUTION_DRY_RUN" if report.dry_run else "INPUT_REQUEST_RESOLUTION")
     typer.echo(f"Input: {report.input_request_id}")
     typer.echo(f"Decision: {report.decision}")
     typer.echo(f"Resolution class: {report.resolution_class}")
@@ -267,7 +267,7 @@ def resolve_input_request(
     typer.echo(f"Reviewer: {report.reviewer}")
     typer.echo(f"Dry run: {str(report.dry_run).lower()}")
     typer.echo(f"Remaining blocked scope: {report.remaining_blocked_scope or '-'}")
-    typer.echo("Mutations: none")
+    typer.echo("Mutations: none" if report.dry_run else "Mutations: resolution_ledger")
     if report.sources:
         typer.echo("Sources:")
         for source in report.sources:

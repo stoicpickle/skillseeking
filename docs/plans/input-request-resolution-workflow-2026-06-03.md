@@ -1,8 +1,8 @@
 # Input Request Resolution Workflow Design
 
-Status: dry-run resolver implemented; durable resolution ledger still future
+Status: append-only resolution ledger implemented
 
-This plan defines how input requests should be resolved without changing the current read-only queue. The current implementation remains advisory: it can collect, display, dry-run classify, and test input-needed states, but it does not mutate run logs, approve candidates, install skills, or steer the governor.
+This plan defines how input requests are resolved without changing the advisory nature of the queue. The current implementation can collect, display, dry-run classify, and append resolution evidence, but it does not mutate run logs, candidate ledgers, install skills, approve durable admission, or steer the governor.
 
 ## Goals
 
@@ -28,9 +28,9 @@ Required fields:
 - `decision`: one of the request's declared `options`.
 - `reviewer`: human reviewer name for approval-like decisions.
 - `notes`: short reason tying the decision to evidence.
-- `--dry-run`: default for the first implementation.
+- `--dry-run`: default non-mutating classification mode.
 
-Only dry-run resolution is implemented. Non-dry-run resolution is rejected until a separate append-only resolution ledger exists; historical run logs must never be rewritten.
+Dry-run resolution remains non-mutating. Non-dry-run resolution appends a record to `runs/input_request_resolutions.json`; historical run logs and candidate ledgers must never be rewritten by this command.
 
 ## Resolution Outcomes
 
@@ -43,7 +43,7 @@ Only dry-run resolution is implemented. Non-dry-run resolution is rejected until
 | `ambiguity_resolution` | `merge_candidate`, `keep_separate`, `reject_candidate`, `defer` | `resolved`, or `open` for `defer` | Produce merge decision evidence; do not mutate candidate identity yet. |
 | `missing_evidence` | `repair_candidate`, `recover_evidence`, `block`, `defer` | `resolved`, or `open` for `defer` | Re-run evidence collection or admission plan. |
 
-## Future Resolution Ledger Shape
+## Resolution Ledger Shape
 
 ```json
 {
@@ -66,14 +66,14 @@ Only dry-run resolution is implemented. Non-dry-run resolution is rejected until
 }
 ```
 
-The future ledger should live under `runs/input_request_resolutions.json` and should be append-only until there is a separate compaction design.
+The ledger lives under `runs/input_request_resolutions.json` and is append-only until there is a separate compaction design. `skill-agent input-requests` reads the latest record for each input request as a status overlay: `resolved` requests leave the active queue, while `defer` keeps the request visible as `open`.
 
 ## Validation Plan
 
 - CLI dry-run test for each input kind and every declared decision option. Status: complete.
-- JSON contract test for source request snapshots.
+- JSON contract test for source request snapshots. Status: complete.
 - Regression test proving run logs and candidate ledgers are not rewritten. Status: complete.
-- Eval expectation for `input_request_status` once resolution state is read by `input-requests`.
+- Input queue regression proving the latest resolution controls active status. Status: complete.
 
 ## Boundaries
 

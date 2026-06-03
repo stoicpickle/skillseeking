@@ -683,3 +683,21 @@ Boundaries:
 
 - The resolver does not write run logs, candidate ledgers, resolution ledgers, durable skills, or governor state.
 - The append-only resolution ledger remains future work.
+
+## 2026-06-03 Append-Only Input Resolution Ledger
+
+Added durable resolution evidence for input requests.
+
+Added:
+
+- `runs/input_request_resolutions.json` with append-only resolution records.
+- `skill-agent resolve-input-request --no-dry-run` appends one resolution record while dry-run remains non-mutating.
+- Resolution records snapshot the source request, evidence sources, decision, resulting status, reviewer, notes, blocked scope, next steps, and timestamp.
+- `skill-agent input-requests` applies the latest resolution status so resolved requests leave the active queue and deferred requests remain open.
+- Tests proving dry-run writes nothing, non-dry-run appends, repeated resolutions preserve history, and source run logs/candidate ledgers remain unchanged.
+
+Boundaries:
+
+- No historical run logs are rewritten.
+- Candidate ledgers are not mutated by resolution.
+- No durable skill install/copy, permission widening, stable promotion, unsafe execution, or governor steering was added.

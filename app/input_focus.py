@@ -15,6 +15,12 @@ from app.models import (
     InputRequestSource,
     SkillCandidateLedgerEntry,
 )
+from app.input_resolution_ledger import (
+    InputResolutionLedgerError,
+    input_request_resolution_ledger_path,
+    latest_input_request_resolutions,
+    load_input_request_resolution_ledger,
+)
 from app.skill_candidate_ledger import (
     SkillCandidateLedgerError,
     candidate_review_queue_names,
@@ -223,15 +229,20 @@ def collect_input_request_queue(runs_dir: Path) -> list[InputRequestQueueItem]:
                     )
                 )
 
-    return _dedupe_queue_items(items)
+    return _apply_resolution_ledger(_dedupe_queue_items(items), runs_dir)
 
 
 def input_request_source_warnings(runs_dir: Path) -> list[str]:
+    warnings: list[str] = []
     try:
         load_candidate_ledger(runs_dir)
     except SkillCandidateLedgerError as exc:
-        return [f"candidate ledger unavailable: {exc}"]
-    return []
+        warnings.append(f"candidate ledger unavailable: {exc}")
+    try:
+        load_input_request_resolution_ledger(runs_dir)
+    except InputResolutionLedgerError as exc:
+        warnings.append(f"resolution ledger unavailable: {exc}")
+    return warnings
 
 
 def input_request_kind_counts(requests: list[InputRequest]) -> dict[str, int]:
@@ -327,6 +338,34 @@ def _dedupe_queue_items(items: list[InputRequestQueueItem]) -> list[InputRequest
                 existing.sources.append(source)
                 known.add(key)
     return sorted(deduped.values(), key=lambda item: (item.request.kind, item.request.id))
+
+
+def _apply_resolution_ledger(
+    items: list[InputRequestQueueItem],
+    runs_dir: Path,
+) -> list[InputRequestQueueItem]:
+    try:
+        ledger = load_input_request_resolution_ledger(runs_dir)
+    except InputResolutionLedgerError:
+        return items
+    latest = latest_input_request_resolutions(ledger)
+    if not latest:
+        return items
+
+    source_path = str(input_request_resolution_ledger_path(runs_dir))
+    for item in items:
+        resolution = latest.get(item.request.id)
+        if resolution is None:
+            continue
+        item.request.status = resolution.status
+        item.sources.append(
+            InputRequestSource(
+                source_type="resolution_ledger",
+                source_path=source_path,
+                source_detail=resolution.decision,
+            )
+        )
+    return items
 
 
 def _input_request_id(*parts: object) -> str:

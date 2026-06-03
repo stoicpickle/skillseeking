@@ -259,6 +259,12 @@ Classify a proposed human decision without mutating evidence:
 .venv/bin/skill-agent resolve-input-request <input-request-id> --runs-dir runs --decision defer --reviewer "Ada" --notes "Reviewed evidence." --dry-run
 ```
 
+Append human resolution evidence without mutating source run logs or candidate ledgers:
+
+```bash
+.venv/bin/skill-agent resolve-input-request <input-request-id> --runs-dir runs --decision approve_workflow --reviewer "Ada" --notes "Reviewed evidence." --no-dry-run
+```
+
 Local testing/iteration readiness for the current CLI prototype is proven with:
 
 ```bash

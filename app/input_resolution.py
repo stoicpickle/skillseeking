@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from app.input_focus import collect_input_request_queue
+from app.input_resolution_ledger import InputResolutionLedgerError, append_input_request_resolution
 from app.models import (
     InputRequest,
     InputRequestQueueItem,
@@ -31,7 +32,7 @@ DECISION_CLASS_BY_OPTION: dict[str, InputRequestResolutionClass] = {
 }
 
 
-def build_input_resolution_dry_run(
+def resolve_input_request(
     input_request_id: str,
     *,
     runs_dir: Path,
@@ -40,8 +41,36 @@ def build_input_resolution_dry_run(
     notes: str,
     dry_run: bool = True,
 ) -> InputRequestResolutionDryRun:
-    if not dry_run:
-        raise InputResolutionError("resolve-input-request is dry-run only in this slice")
+    report = build_input_resolution_dry_run(
+        input_request_id,
+        runs_dir=runs_dir,
+        decision=decision,
+        reviewer=reviewer,
+        notes=notes,
+    )
+    if dry_run:
+        return report
+
+    try:
+        append_input_request_resolution(report, runs_dir)
+    except InputResolutionLedgerError as exc:
+        raise InputResolutionError(str(exc)) from exc
+    return report.model_copy(
+        update={
+            "dry_run": False,
+            "resolution_ledger_mutated": True,
+        }
+    )
+
+
+def build_input_resolution_dry_run(
+    input_request_id: str,
+    *,
+    runs_dir: Path,
+    decision: str,
+    reviewer: str,
+    notes: str,
+) -> InputRequestResolutionDryRun:
     if not decision.strip():
         raise InputResolutionError("decision is required for dry-run resolution")
     if not reviewer.strip():

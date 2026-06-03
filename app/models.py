@@ -41,7 +41,7 @@ InputRequestKind = Literal[
     "missing_evidence",
 ]
 InputRequestStatus = Literal["open", "resolved", "blocked"]
-InputRequestSourceType = Literal["run_log", "candidate_ledger"]
+InputRequestSourceType = Literal["run_log", "candidate_ledger", "resolution_ledger"]
 InputRequestResolutionClass = Literal[
     "approve",
     "revise",
@@ -521,6 +521,29 @@ class InputRequestResolutionDryRun(BaseModel):
     resolution_ledger_mutated: bool = False
     durable_skills_mutated: bool = False
     governor_steering_enabled: bool = False
+
+
+class InputRequestResolutionRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    input_request_id: str
+    decision: str
+    resolution_class: InputRequestResolutionClass
+    status: InputRequestStatus
+    reviewer: str
+    notes: str
+    source_request: InputRequest
+    sources: list[InputRequestSource] = Field(default_factory=list)
+    remaining_blocked_scope: str | None = None
+    next_steps: list[str] = Field(default_factory=list)
+    created_at: datetime = Field(default_factory=datetime.now)
+
+
+class InputRequestResolutionLedger(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: int = 1
+    resolutions: list[InputRequestResolutionRecord] = Field(default_factory=list)
 
 
 class AdmissionPlanReport(BaseModel):
