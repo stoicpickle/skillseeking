@@ -11,6 +11,8 @@ from app.agent_loop import run_task
 from app.cli_output import (
     emit_admission_plan_json,
     emit_admission_plan_output,
+    emit_candidate_usefulness_json,
+    emit_candidate_usefulness_output,
     emit_candidates_json,
     emit_candidates_output,
     emit_durable_admission_preview_json,
@@ -18,6 +20,10 @@ from app.cli_output import (
     emit_run_json,
     emit_registry_json,
     emit_run_output,
+)
+from app.candidate_usefulness import (
+    CandidateUsefulnessError,
+    build_candidate_usefulness_report,
 )
 from app.durable_admission import build_durable_admission_preview
 from app.eval_runner import EvalSuiteError, run_eval_suite, write_eval_reports
@@ -299,6 +305,32 @@ def candidates(
         emit_candidates_json(ledger, path)
     else:
         emit_candidates_output(ledger, path)
+
+
+@app.command("candidate-usefulness")
+def candidate_usefulness(
+    candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to inspect for temporary-skill usefulness evidence.")],
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory containing the skill candidate ledger.")] = Path("runs"),
+    skills_dir: Annotated[Path, typer.Option(help="Durable local skills directory for read-only admission-plan context.")] = Path("skills"),
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the candidate usefulness report as JSON."),
+    ] = False,
+) -> None:
+    try:
+        report = build_candidate_usefulness_report(
+            candidate_id,
+            runs_dir=runs_dir,
+            skills_dir=skills_dir,
+        )
+    except CandidateUsefulnessError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        emit_candidate_usefulness_json(report)
+    else:
+        emit_candidate_usefulness_output(report)
 
 
 @app.command("promote-candidate")

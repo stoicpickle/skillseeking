@@ -751,3 +751,19 @@ Boundaries:
 
 - `--no-dry-run` remains rejected.
 - No durable skill copy/install, stable promotion, permission widening, unsafe execution, ledger rewrite, registry mutation, or governor steering was added.
+
+## 2026-06-03 Candidate Usefulness Packet
+
+Added a read-only usefulness evidence packet for candidate skills.
+
+Added:
+
+- `skill-agent candidate-usefulness <candidate-id>` with human and `--json` output.
+- Report fields for matching run-log evidence, temporary validation/load state, successful temporary run IDs, admission-plan readiness, and no-mutation flags.
+- Deterministic outcomes: `usefulness_supported`, `needs_successful_temporary_use`, `repair_required`, `blocked`, and `evidence_missing`.
+- Tests proving successful temporary skills, repair-required candidates, requested-only candidates, missing evidence, and unknown candidates are surfaced without mutating run logs, candidate ledgers, durable skills, snapshots, staging folders, registry state, or governor behavior.
+
+Boundaries:
+
+- The packet does not compute statistical lift or claim paired baseline comparison yet.
+- No durable skill copy/install, stable promotion, permission widening, unsafe execution, ledger rewrite, registry mutation, or governor steering was added.

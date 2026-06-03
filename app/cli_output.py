@@ -9,6 +9,7 @@ from app.models import (
     AdmissionPlanReport,
     AdmissionSourceArtifact,
     AgentRunResult,
+    CandidateUsefulnessReport,
     DurableAdmissionPreviewReport,
     InputRequest,
     LoadedSkillLog,
@@ -143,6 +144,76 @@ def emit_candidates_output(ledger: SkillCandidateLedger, ledger_path: str) -> No
         typer.echo(f"Promotion approval notes: {entry.promotion_approval_notes or '-'}")
         typer.echo(f"Evidence runs: {_format_list(entry.evidence_run_ids)}")
         _emit_candidate_next_action(entry)
+
+
+def emit_candidate_usefulness_json(report: CandidateUsefulnessReport) -> None:
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_candidate_usefulness_output(report: CandidateUsefulnessReport) -> None:
+    typer.echo("CANDIDATE_USEFULNESS")
+    typer.echo(f"Candidate: {report.candidate_id}")
+    typer.echo(f"Skill: {report.skill_name}")
+    typer.echo(f"Capability: {report.capability}")
+    typer.echo(f"Outcome: {report.outcome}")
+    typer.echo(f"Usefulness supported: {str(report.usefulness_supported).lower()}")
+    typer.echo(
+        "Baseline comparison available: "
+        f"{str(report.baseline_comparison_available).lower()}"
+    )
+    typer.echo(f"Successful temporary uses: {report.successful_temporary_uses}")
+    typer.echo(
+        "Validation: "
+        f"passed={report.validation_pass_count} failed={report.validation_failure_count}"
+    )
+    typer.echo(
+        "Admission plan: "
+        f"{report.admission_plan_outcome or '-'} "
+        f"ready={str(report.admission_plan_ready).lower()}"
+    )
+
+    typer.echo("")
+    typer.echo("SUCCESSFUL_RUNS")
+    _emit_string_items(report.matching_successful_run_ids)
+
+    typer.echo("")
+    typer.echo("EVIDENCE_RUNS")
+    if not report.evidence_runs:
+        typer.echo("none")
+    for run in report.evidence_runs:
+        typer.echo(
+            f"- run_id: {run.run_id} found={str(run.found).lower()} "
+            f"result={run.result_category or '-'} "
+            f"validation_passed={_optional_bool(run.validation_passed)} "
+            f"loaded={_optional_bool(run.loaded)} "
+            f"successful={str(run.successful).lower()}"
+        )
+        if run.temporary_skill_paths:
+            typer.echo(f"  temporary_skill_paths: {_format_list(run.temporary_skill_paths)}")
+
+    typer.echo("")
+    typer.echo("BLOCKERS")
+    _emit_string_items(report.blockers)
+
+    typer.echo("")
+    typer.echo("WARNINGS")
+    _emit_string_items(report.warnings)
+
+    typer.echo("")
+    typer.echo("MUTATION_BOUNDARY")
+    typer.echo(f"Run logs mutated: {str(report.run_logs_mutated).lower()}")
+    typer.echo(
+        f"Candidate ledger mutated: {str(report.candidate_ledger_mutated).lower()}"
+    )
+    typer.echo(f"Durable skills mutated: {str(report.durable_skills_mutated).lower()}")
+    typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
+    typer.echo(
+        f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}"
+    )
+
+    typer.echo("")
+    typer.echo("NEXT_STEPS")
+    _emit_string_items(report.next_steps)
 
 
 def emit_admission_plan_json(report: AdmissionPlanReport) -> None:

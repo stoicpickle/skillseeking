@@ -21,6 +21,7 @@ The v0 surface is implemented and proven through the completed milestones in the
 - Canonical demos, acceptance harnesses, gauntlet demo, eval harness, and 20-task capability-gap calibration.
 - Skill Candidate Ledger evidence tracking for repeated gaps, temporary outcomes, repair requirements, blocked/quarantined skills, duplicate contracts, and promotion requirements.
 - Candidate review surfaces through `skill-agent candidates`, `skill-agent candidates --json`, `skill-agent health`, and `skill-agent explain --include-candidates`.
+- Candidate usefulness packets through `skill-agent candidate-usefulness`, deriving temporary-skill usefulness support from preserved run-log evidence without claiming statistical lift.
 - Advisory lifecycle review queues for promotion-ready, repair-needed, blocked/quarantined, duplicate-merge-needed, and repeated-requested-gap candidate records.
 - Durable admission dry-run reports through `skill-agent admission-plan`, without copying, installing, or promoting skills.
 - Remote progress input focus through `InputRequest`, `skill-agent input-requests`, `INPUT_NEEDED`, `INPUT_FOCUS`, append-only input request resolutions, and resolution-ledger eval assertions.
@@ -70,8 +71,8 @@ Promotion remains human-governed:
    - Keep queues advisory; do not let them steer routing, promotion, registry admission, or governor behavior.
 
 2. **Human promotion workflow design**
-   - Current progress: `promote-candidate` records reviewer/notes approval and can move eligible temporary ledger entries to `candidate` evidence status; `admission-plan` can inspect durable review readiness without mutating durable skills; durable admission workflow design defines the required proof gates; `admit-candidate --dry-run` previews source fingerprint, target path, source snapshot retention path, collision policy, permission approval evidence, write blockers, and required approval records while rejecting write mode. The no-write durable admission acceptance harness verifies those gates, and `--prepare-write-evidence` now retains matching source snapshots plus destination staging evidence under `runs/` without writing durable `skills/`.
-   - Next coverage: candidate-to-stable workflow design, promotion review queues, and a separate human-approved write-mode gate after staged evidence is proven.
+   - Current progress: `promote-candidate` records reviewer/notes approval and can move eligible temporary ledger entries to `candidate` evidence status; `candidate-usefulness` summarizes whether preserved temporary-skill evidence actually supports review; `admission-plan` can inspect durable review readiness without mutating durable skills; durable admission workflow design defines the required proof gates; `admit-candidate --dry-run` previews source fingerprint, target path, source snapshot retention path, collision policy, permission approval evidence, write blockers, and required approval records while rejecting write mode. The no-write durable admission acceptance harness verifies those gates, and `--prepare-write-evidence` now retains matching source snapshots plus destination staging evidence under `runs/` without writing durable `skills/`.
+   - Next coverage: paired baseline/temporary usefulness comparisons, candidate-to-stable workflow design, promotion review queues, and a separate human-approved write-mode gate after staged evidence is proven.
    - Keep permission widening human-gated and evidence-backed.
 
 3. **Lifecycle review queues and health expansion**
@@ -167,6 +168,7 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-03: Extended `admit-candidate --dry-run` with a durable write-plan contract for collision policy, destination paths, source snapshot retention, permission approval evidence, and historical-evidence immutability before any real copy/install mode exists.
 - 2026-06-03: Added a no-write durable admission acceptance harness proving source hash drift, snapshot path planning, collision approval, permission approval, destination planning, and no mutation before enabling real copy/install behavior.
 - 2026-06-03: Added opt-in dry-run write evidence preparation; `--prepare-write-evidence` verifies the source hash, retains a run-scoped snapshot, stages the exact destination copy under `runs/admission_staging/`, and still does not copy/install into durable `skills/`.
+- 2026-06-03: Added `candidate-usefulness` read-only packets, proving preserved temporary-skill validation/load/result evidence before admission review without mutating ledgers or durable skills.
 - 2026-06-01: Reaffirmed that auto-promotion and permission widening remain out of scope without human approval.
 - 2026-06-01: Required full test, smoke eval, and v0 eval baseline before runtime ledger changes.
 - 2026-06-01: Recorded passing baseline: full tests `107 passed`, smoke eval `4/4`, and v0 eval `20/20`.

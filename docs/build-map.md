@@ -464,6 +464,7 @@ Slices:
 | Durable admission write-plan contract | complete | `admit-candidate --dry-run` now emits a nested write plan with collision policy, destination paths, source snapshot retention paths, permission approval evidence, write blockers, and false mutation flags |
 | No-write durable admission acceptance harness | complete | `tests/test_durable_admission_acceptance.py` verifies source hash drift, snapshot path planning, collision approval, permission approval, destination planning, and no mutation before any future copy/install mode |
 | Dry-run snapshot retention and destination staging | complete | `admit-candidate --dry-run --prepare-write-evidence` verifies source hash, retains a run-scoped source snapshot, stages the destination copy under `runs/admission_staging/`, and still leaves durable `skills/` untouched |
+| Candidate usefulness packet | complete | `skill-agent candidate-usefulness` summarizes preserved temporary-skill validation/load/result evidence and admission-plan readiness without mutating run logs, ledgers, durable skills, registry, or governor behavior |
 | Roadmap checkpoint docs | complete | README and operating roadmap distinguish local testing readiness from production readiness |
 
 Boundaries:

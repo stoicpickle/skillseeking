@@ -204,6 +204,8 @@ Inspect Skill Candidate Ledger evidence after missing-skill or temporary-skill r
 ```bash
 .venv/bin/skill-agent candidates
 .venv/bin/skill-agent candidates --json
+.venv/bin/skill-agent candidate-usefulness candidate_<id> --runs-dir runs --skills-dir skills
+.venv/bin/skill-agent candidate-usefulness candidate_<id> --runs-dir runs --skills-dir skills --json
 .venv/bin/skill-agent promote-candidate candidate_<id> --reviewer "Your Name" --notes "Reviewed temporary evidence"
 .venv/bin/skill-agent admission-plan candidate_<id> --runs-dir runs --skills-dir skills
 .venv/bin/skill-agent admit-candidate candidate_<id> --runs-dir runs --skills-dir skills --dry-run
@@ -212,6 +214,8 @@ Inspect Skill Candidate Ledger evidence after missing-skill or temporary-skill r
 ```
 
 Candidate entries are evidence for human review only. Auto-promotion is disabled, and `Promotion approval required` refers to durable skill promotion, not current-run execution. `promote-candidate` records human approval and moves an eligible ledger entry to `candidate` status; it does not copy or install a durable skill.
+
+`candidate-usefulness` is a read-only packet for one candidate. It summarizes matching run-log evidence, whether a temporary skill validated and loaded successfully, whether preserved evidence supports usefulness, and whether an admission plan is currently ready. It does not compute statistical lift yet; `baseline_comparison_available` remains `false` until a later paired baseline/temporary comparison slice exists. It does not mutate run logs, candidate ledgers, durable skills, registries, snapshots, staging folders, permissions, or governor behavior.
 
 `skill-agent candidates` and `skill-agent health` also derive advisory review queues from the ledger:
 

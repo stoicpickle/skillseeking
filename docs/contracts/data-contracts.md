@@ -108,6 +108,54 @@ Candidate review queues are derived read-time summaries, not persisted lifecycle
 
 Candidate output and health output may include queue counts and per-entry queue names. Queues are advisory only; they do not promote, copy, install, route, score, or admit skills.
 
+## Candidate Usefulness
+
+`skill-agent candidate-usefulness <candidate-id>` is a read-only candidate evidence packet. It derives usefulness support from existing candidate ledger counters and matching run-log evidence. It does not rewrite run logs, mutate the candidate ledger, mutate the resolution ledger, copy or install durable skills, mutate the registry, create snapshots, create staging files, widen permissions, or steer the governor.
+
+```json
+{
+  "candidate_id": "candidate_abc123def456",
+  "skill_name": "argument-clustering",
+  "capability": "argument clustering",
+  "outcome": "usefulness_supported",
+  "usefulness_supported": true,
+  "baseline_comparison_available": false,
+  "successful_temporary_uses": 1,
+  "validation_pass_count": 1,
+  "validation_failure_count": 0,
+  "matching_successful_run_ids": ["run_abc123"],
+  "evidence_runs": [
+    {
+      "run_id": "run_abc123",
+      "run_log_path": "runs/run_20260603_abc123.json",
+      "found": true,
+      "result_category": "success",
+      "matching_request_ids": ["skillreq_abc123"],
+      "temporary_skill_paths": [
+        "runs/artifacts/run_abc123/skills/argument-clustering/SKILL.md"
+      ],
+      "validation_passed": true,
+      "loaded": true,
+      "successful": true,
+      "repair_requested": false
+    }
+  ],
+  "admission_plan_outcome": "needs_promotion_approval",
+  "admission_plan_ready": false,
+  "dry_run": true,
+  "run_logs_mutated": false,
+  "candidate_ledger_mutated": false,
+  "durable_skills_mutated": false,
+  "registry_mutated": false,
+  "governor_steering_enabled": false,
+  "blockers": [],
+  "warnings": ["baseline_comparison_missing"],
+  "next_steps": ["Record human promotion review or resolve admission blockers."]
+}
+```
+
+Allowed outcomes are `usefulness_supported`, `needs_successful_temporary_use`, `repair_required`, `blocked`, and `evidence_missing`. `usefulness_supported` means matching preserved run-log evidence shows a temporary skill validated, loaded, and the run completed with `result_category: success`. `evidence_missing` covers missing evidence run IDs, missing run-log files, or run logs without a matching request. It is not durable admission approval. `baseline_comparison_available` remains `false` in this slice because paired baseline/temporary comparisons are not implemented yet.
+
 ## Input Request
 
 Input requests normalize human-decision boundaries across run logs, safety decisions, repair requests, candidate review queues, and admission dry runs. They are evidence and queue records only; they do not approve, promote, install, copy, route, or mutate durable skills.

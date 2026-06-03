@@ -48,6 +48,13 @@ DurableAdmissionCollisionPolicy = Literal[
 DurableAdmissionPermissionPolicy = Literal[
     "block_widening_without_approval",
 ]
+CandidateUsefulnessOutcome = Literal[
+    "usefulness_supported",
+    "needs_successful_temporary_use",
+    "repair_required",
+    "blocked",
+    "evidence_missing",
+]
 AdmissionCheckResult = Literal["pass", "warning", "blocker", "info"]
 InputRequestKind = Literal[
     "safety_approval",
@@ -653,6 +660,48 @@ class DurableAdmissionPreviewReport(BaseModel):
     warnings: list[str] = Field(default_factory=list)
     next_steps: list[str] = Field(default_factory=list)
     admission_plan: AdmissionPlanReport
+
+
+class CandidateUsefulnessEvidenceRun(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str
+    run_log_path: str | None = None
+    found: bool = False
+    result_category: str | None = None
+    matching_request_ids: list[str] = Field(default_factory=list)
+    temporary_skill_paths: list[str] = Field(default_factory=list)
+    validation_passed: bool | None = None
+    loaded: bool | None = None
+    successful: bool = False
+    repair_requested: bool = False
+
+
+class CandidateUsefulnessReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_id: str
+    skill_name: str
+    capability: str
+    outcome: CandidateUsefulnessOutcome
+    usefulness_supported: bool = False
+    baseline_comparison_available: bool = False
+    successful_temporary_uses: int = 0
+    validation_pass_count: int = 0
+    validation_failure_count: int = 0
+    matching_successful_run_ids: list[str] = Field(default_factory=list)
+    evidence_runs: list[CandidateUsefulnessEvidenceRun] = Field(default_factory=list)
+    admission_plan_outcome: AdmissionPlanOutcome | None = None
+    admission_plan_ready: bool = False
+    dry_run: bool = True
+    run_logs_mutated: bool = False
+    candidate_ledger_mutated: bool = False
+    durable_skills_mutated: bool = False
+    registry_mutated: bool = False
+    governor_steering_enabled: bool = False
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
 
 
 class RunLog(BaseModel):
