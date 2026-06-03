@@ -205,6 +205,7 @@ Inspect Skill Candidate Ledger evidence after missing-skill or temporary-skill r
 .venv/bin/skill-agent candidates
 .venv/bin/skill-agent candidates --json
 .venv/bin/skill-agent promote-candidate candidate_<id> --reviewer "Your Name" --notes "Reviewed temporary evidence"
+.venv/bin/skill-agent admission-plan candidate_<id> --runs-dir runs --skills-dir skills
 ```
 
 Candidate entries are evidence for human review only. Auto-promotion is disabled, and `Promotion approval required` refers to durable skill promotion, not current-run execution. `promote-candidate` records human approval and moves an eligible ledger entry to `candidate` status; it does not copy or install a durable skill.
@@ -218,6 +219,8 @@ Candidate entries are evidence for human review only. Auto-promotion is disabled
 - `repeated_requested_gap`
 
 These queues are review aids only. They do not steer routing, promote skills, widen permissions, or change governor decisions.
+
+`admission-plan` is also a dry run. It inspects ledger evidence, run logs, source temporary `SKILL.md` artifacts, and durable registry collisions to decide whether a candidate is ready for human durable admission review. It does not copy, install, promote, or mutate anything.
 
 Run the M6 malicious-skill rejection demo:
 
@@ -234,6 +237,18 @@ Run the capability-gap eval smoke suite:
 ```
 
 The eval writes a machine-readable JSON report and a Markdown summary. It scores task outcome, missing-skill detection, wrong skill loads, unsafe allowance, safe blocking, trace completeness, deterministic skill-request quality, governor assertions, and lifecycle candidate evidence. The lifecycle smoke suite lives at `evals/skill_lifecycle_v0.jsonl` and covers repeated gaps, temporary success, repair-required failure, and advisory review queue expectations.
+
+Local testing/iteration readiness for the current CLI prototype is proven with:
+
+```bash
+.venv/bin/python -m pytest -q
+.venv/bin/python -m compileall -q app
+.venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals
+.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir runs/evals
+.venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir runs/evals
+```
+
+This proves the current prototype surface is ready to test and iterate locally. It does not claim production readiness, real sandboxing, durable candidate installation, stable promotion, or active governor steering.
 
 Explain any run log as a human-readable trace:
 

@@ -6,8 +6,11 @@ import json
 
 import typer
 
+from app.admission_plan import AdmissionPlanError, build_admission_plan
 from app.agent_loop import run_task
 from app.cli_output import (
+    emit_admission_plan_json,
+    emit_admission_plan_output,
     emit_candidates_json,
     emit_candidates_output,
     emit_run_json,
@@ -194,6 +197,32 @@ def promote_candidate(
         typer.echo("Durable skill installed: false")
         typer.echo("Auto-promotion: disabled")
         typer.echo(f"Promotion approved by: {entry.promotion_approved_by}")
+
+
+@app.command("admission-plan")
+def admission_plan(
+    candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to inspect.")],
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory containing the skill candidate ledger.")] = Path("runs"),
+    skills_dir: Annotated[Path, typer.Option(help="Durable local skills directory.")] = Path("skills"),
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the admission plan as JSON."),
+    ] = False,
+) -> None:
+    try:
+        report = build_admission_plan(
+            candidate_id,
+            runs_dir=runs_dir,
+            skills_dir=skills_dir,
+        )
+    except AdmissionPlanError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        emit_admission_plan_json(report)
+    else:
+        emit_admission_plan_output(report)
 
 
 @app.command("eval")

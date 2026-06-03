@@ -573,3 +573,38 @@ Boundaries:
 
 - Queues are advisory read-time summaries.
 - Queues do not mutate the ledger schema, route skills, promote candidates, install durable skills, widen permissions, or change governor decisions.
+
+## 2026-06-02 Durable Candidate Admission Planning
+
+Implemented the first durable admission workflow surface as a dry-run report.
+
+Added:
+
+- `skill-agent admission-plan <candidate-id>` with human and `--json` output.
+- Output-only admission report models covering candidate evidence, source artifacts, durable registry checks, blockers, warnings, and next steps.
+- Read-only evidence discovery from the Skill Candidate Ledger, immutable run logs, and explicit temporary `SKILL.md` paths.
+- Source parsing/validation checks and durable registry collision/contract-overlap checks.
+- Tests covering ready candidates, unpromoted previews, missing evidence, missing source files, validation failures, durable collisions, contract-overlap warnings, permission blockers, CLI output, and no-mutation invariants.
+
+Boundaries:
+
+- `admission-plan` is dry-run only.
+- It does not copy files, install durable skills, mutate the ledger, mutate the registry, steer the governor, widen permissions, or promote candidates to stable.
+
+## 2026-06-02 Testing/Iteration Readiness Checkpoint
+
+Added a bounded readiness checkpoint for local testing and iteration of the current CLI prototype.
+
+Added:
+
+- Source-path hardening for admission plans when run logs store temporary `SKILL.md` paths relative to `runs_dir`.
+- End-to-end CLI acceptance proof for temporary skill creation, candidate approval, and `admission-plan --json`.
+- Durable `skills/` snapshot assertions proving the readiness path does not copy or install candidate artifacts.
+- Lifecycle eval in the GitHub Actions validation bundle.
+- README, operating roadmap, and build-map wording that separates local testing readiness from production readiness.
+
+Boundaries:
+
+- No durable copy/install workflow was added.
+- `ready_for_durable_review` remains human review evidence only.
+- Governor steering, stable promotion, permission widening, and true sandboxing remain out of scope.

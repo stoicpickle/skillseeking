@@ -79,6 +79,12 @@ Candidate to stable:
 - No duplicate stable skill exists.
 - Owner or maintainer approval is recorded.
 
+Durable admission planning:
+
+- `skill-agent admission-plan` is a dry-run preflight before any durable copy/install workflow exists.
+- It can report `ready_for_durable_review`, but this does not copy files into `skills/`, install a durable skill, or promote the ledger entry to `stable`.
+- It blocks admission review when evidence is missing, source validation fails, permissions widen, scripts appear, or a same-name durable skill already exists.
+
 Any state to blocked:
 
 - Prompt injection or malicious instructions detected.

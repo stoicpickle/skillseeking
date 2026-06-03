@@ -6,6 +6,8 @@ import json
 import typer
 
 from app.models import (
+    AdmissionPlanReport,
+    AdmissionSourceArtifact,
     AgentRunResult,
     LoadedSkillLog,
     ScriptExecutionLog,
@@ -131,6 +133,79 @@ def emit_candidates_output(ledger: SkillCandidateLedger, ledger_path: str) -> No
         typer.echo(f"Evidence runs: {_format_list(entry.evidence_run_ids)}")
 
 
+def emit_admission_plan_json(report: AdmissionPlanReport) -> None:
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_admission_plan_output(report: AdmissionPlanReport) -> None:
+    typer.echo("ADMISSION_PLAN")
+    typer.echo(f"Candidate: {report.candidate_id}")
+    typer.echo(f"Skill: {report.candidate.get('skill_name', '-')}")
+    typer.echo(f"Status: {report.candidate.get('status', '-')}")
+    typer.echo(f"Outcome: {report.outcome}")
+    typer.echo(f"Ready for durable workflow review: {str(report.ready_for_durable_review).lower()}")
+    typer.echo(f"Dry run: {str(report.dry_run).lower()}")
+    typer.echo(f"Durable skill installed: {str(report.durable_skill_installed).lower()}")
+    typer.echo(f"Ledger mutated: {str(report.ledger_mutated).lower()}")
+    typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
+    typer.echo(f"Auto-promotion: {'enabled' if report.auto_promotion_enabled else 'disabled'}")
+    typer.echo(f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}")
+
+    typer.echo("")
+    typer.echo("SOURCE")
+    selected = _selected_source(report)
+    if selected is None:
+        typer.echo("Selected temporary SKILL.md: -")
+        if report.selected_source_artifact:
+            typer.echo(
+                "Source warning: selected source artifact missing from report: "
+                f"{report.selected_source_artifact}"
+            )
+        typer.echo("Source validation passed: -")
+    else:
+        typer.echo(f"Selected temporary SKILL.md: {selected.skill_path}")
+        typer.echo(f"Source validation passed: {str(selected.validation_accepted).lower()}")
+        typer.echo(f"Source skill: {selected.skill_name or '-'}")
+        typer.echo(f"Source risk: {selected.risk_level or '-'}")
+        typer.echo(f"Source permissions: {selected.permissions or '-'}")
+
+    typer.echo("")
+    typer.echo("EVIDENCE")
+    if not report.evidence_runs:
+        typer.echo("none")
+    for run in report.evidence_runs:
+        typer.echo(
+            f"- run_id: {run.run_id} found={str(run.found).lower()} "
+            f"validation_passed={_optional_bool(run.validation_passed)} "
+            f"loaded={_optional_bool(run.loaded)}"
+        )
+
+    typer.echo("")
+    typer.echo("DURABLE_REGISTRY")
+    typer.echo(f"Accepted skills: {report.durable_registry.durable_registry_accepted_count}")
+    typer.echo(f"Rejected skills: {report.durable_registry.durable_registry_rejected_count}")
+    typer.echo(f"Name collision: {report.durable_registry.name_collision or 'none'}")
+    typer.echo(f"Contract overlaps: {report.durable_registry.contract_overlaps or 'none'}")
+    typer.echo(f"Permission widening: {_format_list(report.durable_registry.permission_widening)}")
+    typer.echo(f"Scripted implications: {_format_list(report.durable_registry.scripted_implications)}")
+
+    typer.echo("")
+    typer.echo("PROMOTION_REQUIREMENTS")
+    _emit_string_items(report.promotion_requirements)
+
+    typer.echo("")
+    typer.echo("BLOCKERS")
+    _emit_string_items(report.blockers)
+
+    typer.echo("")
+    typer.echo("WARNINGS")
+    _emit_string_items(report.warnings)
+
+    typer.echo("")
+    typer.echo("NEXT_STEPS")
+    _emit_string_items(report.next_steps)
+
+
 def emit_run_output(result: AgentRunResult) -> None:
     typer.echo("TRACE")
     for stage in result.run_log.trace:
@@ -247,3 +322,27 @@ def _candidate_status_counts(entries: Iterable[SkillCandidateLedgerEntry]) -> di
 def _format_list(values: Iterable[str]) -> str:
     items = [value for value in values if value]
     return ", ".join(items) if items else "-"
+
+
+def _emit_string_items(values: Iterable[str]) -> None:
+    items = [value for value in values if value]
+    if not items:
+        typer.echo("none")
+        return
+    for value in items:
+        typer.echo(f"- {value}")
+
+
+def _optional_bool(value: bool | None) -> str:
+    if value is None:
+        return "-"
+    return str(value).lower()
+
+
+def _selected_source(report: AdmissionPlanReport) -> AdmissionSourceArtifact | None:
+    if report.selected_source_artifact is None:
+        return None
+    for artifact in report.source_artifacts:
+        if artifact.skill_path == report.selected_source_artifact:
+            return artifact
+    return None

@@ -22,6 +22,7 @@ The v0 surface is implemented and proven through the completed milestones in the
 - Skill Candidate Ledger evidence tracking for repeated gaps, temporary outcomes, repair requirements, blocked/quarantined skills, duplicate contracts, and promotion requirements.
 - Candidate review surfaces through `skill-agent candidates`, `skill-agent candidates --json`, `skill-agent health`, and `skill-agent explain --include-candidates`.
 - Advisory lifecycle review queues for promotion-ready, repair-needed, blocked/quarantined, duplicate-merge-needed, and repeated-requested-gap candidate records.
+- Durable admission dry-run reports through `skill-agent admission-plan`, without copying, installing, or promoting skills.
 
 The current product proof is a CLI-first prototype, not a production agent framework. The public phase framing remains in [Roadmap](roadmap.md): static skill loader -> skill request mode -> Markdown-only Skillsmith -> scripted skills -> SkillOps.
 
@@ -68,8 +69,8 @@ Promotion remains human-governed:
    - Distinguish capability decision accuracy from lifecycle evidence accuracy.
 
 2. **Human promotion workflow design**
-   - Current progress: `promote-candidate` records reviewer/notes approval and can move eligible temporary ledger entries to `candidate` evidence status.
-   - Next coverage: durable copy/admission design, candidate-to-stable workflow, and promotion review queues.
+   - Current progress: `promote-candidate` records reviewer/notes approval and can move eligible temporary ledger entries to `candidate` evidence status; `admission-plan` can now inspect durable review readiness without mutating durable skills.
+   - Next coverage: durable copy/install design, candidate-to-stable workflow, and promotion review queues.
    - Keep permission widening human-gated and evidence-backed.
 
 3. **Lifecycle review queues and health expansion**
@@ -87,9 +88,39 @@ Validated command set for this repository:
 .venv/bin/python -m pytest -q
 .venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals
 .venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir runs/evals
+.venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir runs/evals
 ```
 
-CI currently runs the full test suite with `python -m pytest -q`, the smoke eval through the installed `skill-agent` script, and `python -m compileall -q app`; see [.github/workflows/tests.yml](../.github/workflows/tests.yml). In this shell, `python` was not on `PATH`, so the local baseline used `.venv/bin/python` and `.venv/bin/skill-agent`.
+CI currently runs the full test suite with `python -m pytest -q`, the smoke eval and lifecycle eval through the installed `skill-agent` script, and `python -m compileall -q app`; see [.github/workflows/tests.yml](../.github/workflows/tests.yml). In this shell, `python` was not on `PATH`, so the local baseline used `.venv/bin/python` and `.venv/bin/skill-agent`.
+
+## Testing/Iteration Readiness Checkpoint
+
+Status: ready after the validation bundle passes.
+
+The repo is ready for local testing and iteration of the current CLI prototype when:
+
+- the full pytest suite passes,
+- `python -m compileall -q app` passes,
+- capability-gap smoke and v0 evals pass,
+- lifecycle eval passes,
+- lifecycle/admission acceptance coverage proves temporary skill creation, human candidate approval, and `admission-plan` without durable skill mutation,
+- no durable copy/install workflow has been introduced,
+- governor behavior remains trace-only,
+- scripted skills remain trusted-local opt-in and are not described as sandboxed.
+
+### Readiness proof state — 2026-06-02
+
+Status: passed; the current CLI prototype is ready for local testing and iteration inside the documented boundaries.
+
+| Check | Command | Result | Notes |
+| --- | --- | --- | --- |
+| Full test suite | `.venv/bin/python -m pytest -q` | passed | `145 passed in 9.38s`. |
+| Compile app | `.venv/bin/python -m compileall -q app` | passed | No compile errors. |
+| Diff check | `git diff --check` | passed | No whitespace errors. |
+| Smoke eval | `.venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`. |
+| v0 eval | `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `20/20` passed, task pass rate `1.0`, trace completeness `20 / 20`. |
+| Lifecycle eval | `.venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`. |
+| CodeRabbit review | `coderabbit review --agent -t uncommitted --dir .` | passed | `0 issues` after review fixes. |
 
 ### Baseline proof state — 2026-06-01
 
@@ -123,6 +154,7 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-02: Skill Candidate Ledger is landed; next work is lifecycle eval expansion, human promotion workflow design, and lifecycle review queues.
 - 2026-06-02: Added first human promotion workflow: reviewer/notes approval can mark eligible temporary ledger entries as `candidate` evidence without durable install or auto-promotion.
 - 2026-06-02: Added advisory lifecycle review queues and health expansion for promotion-ready, repair-needed, blocked/quarantined, duplicate, and repeated-requested candidate evidence.
+- 2026-06-02: Added durable candidate admission dry-run reports; durable copy/install and stable promotion remain out of scope.
 - 2026-06-01: Reaffirmed that auto-promotion and permission widening remain out of scope without human approval.
 - 2026-06-01: Required full test, smoke eval, and v0 eval baseline before runtime ledger changes.
 - 2026-06-01: Recorded passing baseline: full tests `107 passed`, smoke eval `4/4`, and v0 eval `20/20`.

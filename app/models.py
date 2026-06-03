@@ -25,6 +25,13 @@ CandidateReviewQueueName = Literal[
     "duplicate_merge_needed",
     "repeated_requested_gap",
 ]
+AdmissionPlanOutcome = Literal[
+    "ready_for_durable_review",
+    "needs_promotion_approval",
+    "evidence_incomplete",
+    "blocked",
+]
+AdmissionCheckResult = Literal["pass", "warning", "blocker", "info"]
 RiskLevel = Literal["low", "medium", "high"]
 CapabilityDecisionType = Literal["USE_SKILL", "REQUEST_SKILL", "ASK_HUMAN", "ABORT_UNSAFE"]
 Reversibility = Literal["reversible", "partially_reversible", "irreversible", "unknown"]
@@ -385,6 +392,85 @@ class CandidateReviewQueueItem(BaseModel):
     status: SkillCandidateStatus
     reason: str
     evidence_run_ids: list[str] = Field(default_factory=list)
+
+
+class AdmissionPlanCheck(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    code: str
+    result: AdmissionCheckResult
+    message: str
+    details: dict[str, Any] = Field(default_factory=dict)
+
+
+class AdmissionEvidenceRun(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    run_id: str
+    run_log_path: str | None = None
+    found: bool = False
+    result_category: str | None = None
+    matching_request_ids: list[str] = Field(default_factory=list)
+    temporary_skill_paths: list[str] = Field(default_factory=list)
+    validation_passed: bool | None = None
+    loaded: bool | None = None
+
+
+class AdmissionSourceArtifact(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    skill_path: str
+    exists: bool
+    parsed: bool = False
+    source_root: str | None = None
+    validation_accepted: bool = False
+    validation_reasons: list[str] = Field(default_factory=list)
+    skill_name: str | None = None
+    risk_level: str | None = None
+    permissions: dict[str, bool] = Field(default_factory=dict)
+    input_schema: dict[str, str] = Field(default_factory=dict)
+    output_schema: dict[str, str] = Field(default_factory=dict)
+    scripted: bool = False
+
+
+class AdmissionDurableRegistrySummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    durable_registry_accepted_count: int
+    durable_registry_rejected_count: int
+    name_collision: dict[str, Any] | None = None
+    rejected_name_collision: list[dict[str, Any]] = Field(default_factory=list)
+    contract_overlaps: list[dict[str, Any]] = Field(default_factory=list)
+    permission_widening: list[str] = Field(default_factory=list)
+    risk_or_status_differences: list[str] = Field(default_factory=list)
+    scripted_implications: list[str] = Field(default_factory=list)
+
+
+class AdmissionPlanReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_id: str
+    ledger_path: str
+    skills_dir: str
+    runs_dir: str
+    dry_run: bool = True
+    auto_promotion_enabled: bool = False
+    durable_skill_installed: bool = False
+    ledger_mutated: bool = False
+    registry_mutated: bool = False
+    governor_steering_enabled: bool = False
+    ready_for_durable_review: bool
+    outcome: AdmissionPlanOutcome
+    candidate: dict[str, Any]
+    promotion_requirements: list[str]
+    evidence_runs: list[AdmissionEvidenceRun]
+    source_artifacts: list[AdmissionSourceArtifact]
+    selected_source_artifact: str | None = None
+    durable_registry: AdmissionDurableRegistrySummary
+    checks: list[AdmissionPlanCheck]
+    blockers: list[str]
+    warnings: list[str]
+    next_steps: list[str]
 
 
 class RunLog(BaseModel):

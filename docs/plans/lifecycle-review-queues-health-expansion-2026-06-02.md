@@ -8,7 +8,7 @@ Add advisory review queues over the Skill Candidate Ledger so humans can see whi
 
 Milestone: Lifecycle review queues and health expansion
 
-Status: working
+Status: complete
 
 Goal:
 Surface repeated demand, repair-needed, blocked/quarantined, duplicate, and promotion-ready candidate records through existing CLI, JSON, health, and eval proof surfaces.

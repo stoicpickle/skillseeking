@@ -108,6 +108,30 @@ Candidate review queues are derived read-time summaries, not persisted lifecycle
 
 Candidate output and health output may include queue counts and per-entry queue names. Queues are advisory only; they do not promote, copy, install, route, score, or admit skills.
 
+## Admission Plan
+
+Admission plans are output-only dry-run reports. They inspect candidate ledger evidence, run logs, run-scoped temporary skill artifacts, and the durable registry, but they do not write the ledger, copy files, install skills, admit registry records, steer the governor, or promote anything to stable.
+
+```json
+{
+  "candidate_id": "candidate_abc123def456",
+  "outcome": "ready_for_durable_review",
+  "ready_for_durable_review": true,
+  "dry_run": true,
+  "auto_promotion_enabled": false,
+  "durable_skill_installed": false,
+  "ledger_mutated": false,
+  "registry_mutated": false,
+  "governor_steering_enabled": false,
+  "selected_source_artifact": "runs/artifacts/run_id/skills/argument-clustering/SKILL.md",
+  "blockers": [],
+  "warnings": [],
+  "next_steps": ["Prepare human durable admission review."]
+}
+```
+
+Allowed outcomes are `ready_for_durable_review`, `needs_promotion_approval`, `evidence_incomplete`, and `blocked`. Missing candidates or unreadable ledgers are command errors; missing run logs, missing source paths, missing source files, source validation failures, permission widening, scripted candidates, and same-name durable collisions are report blockers.
+
 ## Capability Decision
 
 ```json

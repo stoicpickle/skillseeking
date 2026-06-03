@@ -161,6 +161,7 @@ Slices:
 | Capability-Gap Calibration | complete | Twenty-task suite tracks classification, safety, approval, trace completeness, and failure taxonomy |
 | Skill Candidate Ledger | complete | Repeated gaps, temporary outcomes, repair requirements, rejected skills, duplicate contracts, and promotion requirements are recorded and surfaced without auto-promotion |
 | Lifecycle review queues and health expansion | complete | Candidate and health surfaces derive advisory promotion-ready, repair-needed, blocked/quarantined, duplicate, and repeated-gap review queues without steering execution |
+| Durable candidate admission planning | complete | `admission-plan` reports durable review readiness, evidence gaps, source validation, and registry collisions without copying or installing skills |
 
 ## Current First Slice
 
@@ -437,3 +438,25 @@ Boundaries:
 - No generated or temporary skill is durably promoted.
 - Ledger `human_approval_required` means promotion approval, not current-run approval.
 - Governor behavior remains observational.
+
+
+## Milestone 15: Testing/Iteration Readiness
+
+Status: complete
+
+Goal:
+Prove the current CLI prototype can be tested and iterated locally without widening lifecycle, durable admission, or governor boundaries.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Lifecycle/admission acceptance proof | complete | `tests/test_testing_iteration_readiness.py` covers temporary skill creation, candidate approval, and `admission-plan` dry run without durable skill mutation |
+| Lifecycle eval in validation bundle | complete | CI and the local validation bundle run `evals/skill_lifecycle_v0.jsonl` |
+| Roadmap checkpoint docs | complete | README and operating roadmap distinguish local testing readiness from production readiness |
+
+Boundaries:
+
+- No durable candidate copy/install workflow is introduced.
+- `ready_for_durable_review` remains review evidence, not admission to `skills/`.
+- Active governor steering, stable promotion, permission widening, and true sandboxing remain future work.
