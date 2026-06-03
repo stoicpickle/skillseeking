@@ -206,6 +206,21 @@ Inspect Skill Candidate Ledger evidence after missing-skill or temporary-skill r
 .venv/bin/skill-agent candidates --json
 .venv/bin/skill-agent candidate-usefulness candidate_<id> --runs-dir runs --skills-dir skills
 .venv/bin/skill-agent candidate-usefulness candidate_<id> --runs-dir runs --skills-dir skills --json
+.venv/bin/skill-agent candidate-usefulness candidate_<id> --runs-dir runs --skills-dir skills --baseline-run-id <run_id> --treatment-run-id <run_id>
+.venv/bin/skill-agent skill-receipt candidate_<id> --runs-dir runs --skills-dir skills --baseline-run-id <run_id> --treatment-run-id <run_id>
+.venv/bin/skill-agent negative-evidence --runs-dir runs
+.venv/bin/skill-agent negative-evidence --runs-dir runs --candidate-id candidate_<id>
+.venv/bin/skill-agent evidence-checkpoint --runs-dir runs
+.venv/bin/skill-agent evidence-checkpoint --runs-dir runs --no-dry-run
+.venv/bin/skill-agent evidence-checkpoint --runs-dir runs --verify
+.venv/bin/skill-agent evidence-governor candidate_<id> --runs-dir runs --skills-dir skills
+.venv/bin/skill-agent shadow-activation-plan candidate_<id> --runs-dir runs --skills-dir skills
+.venv/bin/skill-agent shadow-activation-plan candidate_<id> --runs-dir runs --skills-dir skills --managed-prefix runs/managed_shadow
+.venv/bin/skill-agent shadow-rollback-plan candidate_<id> --runs-dir runs --skills-dir skills
+.venv/bin/skill-agent shadow-rollback-plan candidate_<id> --runs-dir runs --skills-dir skills --managed-prefix runs/managed_shadow
+.venv/bin/skill-agent shadow-activation-acceptance candidate_<id> --runs-dir runs --skills-dir skills --managed-prefix runs/managed_shadow
+.venv/bin/skill-agent shadow-activation-acceptance candidate_<id> --runs-dir runs --skills-dir skills --managed-prefix runs/managed_shadow --prepare-acceptance-evidence
+.venv/bin/skill-agent shadow-write-gate candidate_<id> --runs-dir runs --skills-dir skills --managed-prefix runs/managed_shadow --acceptance-plan-digest <digest>
 .venv/bin/skill-agent promote-candidate candidate_<id> --reviewer "Your Name" --notes "Reviewed temporary evidence"
 .venv/bin/skill-agent admission-plan candidate_<id> --runs-dir runs --skills-dir skills
 .venv/bin/skill-agent admit-candidate candidate_<id> --runs-dir runs --skills-dir skills --dry-run
@@ -215,7 +230,23 @@ Inspect Skill Candidate Ledger evidence after missing-skill or temporary-skill r
 
 Candidate entries are evidence for human review only. Auto-promotion is disabled, and `Promotion approval required` refers to durable skill promotion, not current-run execution. `promote-candidate` records human approval and moves an eligible ledger entry to `candidate` status; it does not copy or install a durable skill.
 
-`candidate-usefulness` is a read-only packet for one candidate. It summarizes matching run-log evidence, whether a temporary skill validated and loaded successfully, whether preserved evidence supports usefulness, and whether an admission plan is currently ready. It does not compute statistical lift yet; `baseline_comparison_available` remains `false` until a later paired baseline/temporary comparison slice exists. It does not mutate run logs, candidate ledgers, durable skills, registries, snapshots, staging folders, permissions, or governor behavior.
+`candidate-usefulness` is a read-only packet for one candidate. It summarizes matching run-log evidence, whether a temporary skill validated and loaded successfully, whether preserved evidence supports usefulness, and whether an admission plan is currently ready. Optional `--baseline-run-id` and `--treatment-run-id` flags compare a pinned no-temporary-skill control run against a pinned temporary-skill treatment run. A valid pair is evidence for that pair only; it does not compute statistical lift or approve durable admission. It does not mutate run logs, candidate ledgers, durable skills, registries, snapshots, staging folders, permissions, or governor behavior.
+
+`skill-receipt` is a read-only proof bundle for one candidate. It aggregates candidate usefulness and durable admission preview evidence into origin, utility, containment, compatibility, approval, and reversibility proof categories. It is an audit surface only: blocked or partial categories show what is still missing before durable admission can even be considered, and no durable copy/install write mode exists yet.
+
+`negative-evidence` is a read-only report over preserved unfavorable or limiting evidence. It surfaces rejected, deferred, blocked, and repair-class input request resolutions plus blocked, quarantined, duplicate, or repair-required candidate ledger evidence. It does not rewrite history; it exists so failed or denied evidence stays visible instead of becoming survivor bias.
+
+`evidence-checkpoint` creates or verifies a local hash-chain over core evidence files under `runs/`, excluding eval reports and the checkpoint ledger itself. Dry-run mode computes the next checkpoint without writing. `--no-dry-run` appends one record to `runs/evidence_checkpoints.json`; `--verify` checks the checkpoint chain and whether current evidence still matches the latest checkpoint. It is tamper-evidence only: it does not sign evidence, prove trust, approve durable admission, mutate run logs, mutate candidate or resolution ledgers, copy/install durable skills, or steer the governor.
+
+`evidence-governor` is a read-only advisory report for one candidate. It composes the skill receipt, negative evidence, and checkpoint verification surfaces, then recommends only `ask`, `test_more`, `deny`, or `defer`. It never grants approval, authorizes install/copy, promotes candidates, widens permissions, changes routing, mutates ledgers, or enables active governor steering.
+
+`shadow-activation-plan` is a read-only plan for a future managed-prefix activation. It names the content-addressed store path, profile generation, activation pointer, previous generation, rollback target, and shadow plan digest that a later write-mode slice would have to honor. It does not create the managed prefix, switch profiles, copy durable skills, or mutate any ledger.
+
+`shadow-rollback-plan` is a read-only verifier for future managed-prefix rollback. It inspects an existing managed profile pointer and generation directories, reports the current generation, planned next generation, rollback generation, rollback target, and rollback plan digest, and blocks when no previous generation or matching activation pointer can be verified. It does not create generation directories, switch profiles, write store objects, copy durable skills, or mutate any ledger.
+
+`shadow-activation-acceptance` is a controlled acceptance harness for future managed-prefix write mode. By default it reports the run-scoped acceptance paths. With `--prepare-acceptance-evidence`, it writes only under `runs/shadow_activation_acceptance/` or another `--acceptance-prefix` inside `--runs-dir`, copies the source skill into an acceptance store/generation, simulates activation pointer switching, restores the pointer to the rollback generation, and reports activation/rollback verification. It can recover an acceptance pointer already left on the planned generation, and it blocks rather than overwriting conflicting acceptance files or unexpected pointer targets. It refuses acceptance prefixes outside `runs/` and still does not mutate durable `skills/`, the real managed prefix, ledgers, registry, permissions, or governor behavior.
+
+`shadow-write-gate` is a read-only verifier for the future human-approved managed-prefix write boundary. It composes the durable admission preview, shadow activation plan, rollback plan, and prepared acceptance evidence, then verifies the unchanged source hash, acceptance store copy, acceptance generation copy, restored rollback pointer, rollback marker, and supplied exact `--acceptance-plan-digest`. Without that expected digest it remains an inspection-only blocked report. It does not prepare acceptance evidence, switch the real managed prefix, copy/install durable skills, mutate ledgers, widen permissions, or steer the governor.
 
 `skill-agent candidates` and `skill-agent health` also derive advisory review queues from the ledger:
 
@@ -229,7 +260,7 @@ These queues are review aids only. They do not steer routing, promote skills, wi
 
 `admission-plan` is also a dry run. It inspects ledger evidence, run logs, source temporary `SKILL.md` artifacts, and durable registry collisions to decide whether a candidate is ready for human durable admission review. It does not copy, install, promote, or mutate anything.
 
-`admit-candidate --dry-run` previews the future durable admission mutation contract. It reports a nested write plan with the selected source artifact, source SHA-256 fingerprint, target durable `skills/<name>/SKILL.md` path, future source snapshot path, destination staging path, collision policy, permission policy, missing human review records, blockers, and mutation flags. `--collision-policy block_existing` is the default; `--collision-policy allow_replace_with_approval` can preview a same-name replacement only when append-only human review evidence exists. `--permission-approval-id <resolution-id>` can name separate permission approval evidence for the dry-run write plan. `--prepare-write-evidence` retains a matching source snapshot and staged destination copy under `runs/` only after the dry-run plan is otherwise unblocked; `--expected-source-sha256 <sha256>` blocks that preparation if the source changed. `--no-dry-run` is intentionally rejected; no durable copy/install write mode exists yet.
+`admit-candidate --dry-run` previews the future durable admission mutation contract. It reports a nested write plan with the selected source artifact, source SHA-256 fingerprint, exact plan digest, target durable `skills/<name>/SKILL.md` path, future source snapshot path, destination staging path, collision policy, permission policy, permission/dependency diff, missing human review records, blockers, and mutation flags. `--collision-policy block_existing` is the default; `--collision-policy allow_replace_with_approval` can preview a same-name replacement only when append-only human review evidence exists. `--permission-approval-id <resolution-id>` can name separate permission approval evidence for the dry-run write plan. `--plan-approval-id <resolution-id>` can pin the resolved approval whose notes include `plan_digest=<digest>` and `expires_at=<timestamp>`. `--prepare-write-evidence` retains a matching source snapshot and staged destination copy under `runs/` only after the exact dry-run plan is approved and otherwise unblocked; `--expected-source-sha256 <sha256>` blocks that preparation if the source changed. `--no-dry-run` is intentionally rejected; no durable copy/install write mode exists yet.
 
 Run the M6 malicious-skill rejection demo:
 

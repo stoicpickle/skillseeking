@@ -6,6 +6,7 @@ from typing import Any
 
 from app.admission_plan import AdmissionPlanError, build_admission_plan
 from app.models import (
+    CandidateUsefulnessComparison,
     CandidateUsefulnessEvidenceRun,
     CandidateUsefulnessOutcome,
     CandidateUsefulnessReport,
@@ -27,6 +28,8 @@ def build_candidate_usefulness_report(
     *,
     runs_dir: Path,
     skills_dir: Path,
+    baseline_run_id: str | None = None,
+    treatment_run_id: str | None = None,
 ) -> CandidateUsefulnessReport:
     try:
         ledger = load_candidate_ledger(runs_dir)
@@ -47,6 +50,20 @@ def build_candidate_usefulness_report(
         for run in evidence_runs
         if run.successful
     ]
+    comparison_requested = baseline_run_id is not None or treatment_run_id is not None
+    comparison = _comparison(
+        entry,
+        run_logs,
+        baseline_run_id=baseline_run_id,
+        treatment_run_id=(
+            treatment_run_id
+            or (successful_run_ids[0] if comparison_requested and successful_run_ids else None)
+        ),
+    )
+    if comparison is None:
+        warnings.append("baseline_comparison_missing")
+    elif comparison.blockers:
+        warnings.append("baseline_comparison_invalid")
 
     admission_plan_outcome = None
     admission_plan_ready = False
@@ -56,11 +73,6 @@ def build_candidate_usefulness_report(
         admission_plan_ready = admission.ready_for_durable_review
     except AdmissionPlanError as exc:
         warnings.append(f"admission_plan_unavailable:{exc}")
-
-    if evidence_runs and not any(run.successful for run in evidence_runs):
-        warnings.append("baseline_comparison_missing")
-    elif successful_run_ids:
-        warnings.append("baseline_comparison_missing")
 
     return CandidateUsefulnessReport(
         candidate_id=entry.candidate_id,
@@ -73,11 +85,166 @@ def build_candidate_usefulness_report(
         validation_failure_count=entry.validation_failure_count,
         matching_successful_run_ids=successful_run_ids,
         evidence_runs=evidence_runs,
+        baseline_comparison_available=bool(comparison and not comparison.blockers),
+        comparison=comparison,
         admission_plan_outcome=admission_plan_outcome,
         admission_plan_ready=admission_plan_ready,
         blockers=blockers,
         warnings=_unique(warnings),
         next_steps=_next_steps(outcome, admission_plan_ready),
+    )
+
+
+def _comparison(
+    entry: SkillCandidateLedgerEntry,
+    run_logs: dict[str, dict[str, Any]],
+    *,
+    baseline_run_id: str | None,
+    treatment_run_id: str | None,
+) -> CandidateUsefulnessComparison | None:
+    if baseline_run_id is None and treatment_run_id is None:
+        return None
+    if baseline_run_id is None or treatment_run_id is None:
+        missing_id = baseline_run_id or treatment_run_id or ""
+        return CandidateUsefulnessComparison(
+            baseline_run_id=baseline_run_id or "",
+            treatment_run_id=treatment_run_id or "",
+            outcome="invalid_comparison",
+            blockers=["baseline_and_treatment_run_ids_required"],
+            summary=(
+                "Pinned baseline and treatment run IDs are required for paired "
+                f"comparison; only {missing_id or 'no run ID'} was provided."
+            ),
+        )
+
+    baseline = _run_observation(entry, baseline_run_id, run_logs)
+    treatment = _run_observation(entry, treatment_run_id, run_logs)
+    blockers: list[str] = []
+    warnings: list[str] = []
+
+    if not baseline["found"]:
+        blockers.append("baseline_run_log_missing")
+    if not treatment["found"]:
+        blockers.append("treatment_run_log_missing")
+    if baseline["temporary_skill_present"]:
+        blockers.append("baseline_uses_candidate_skill")
+    if baseline["found"] and not baseline["matches_candidate_request"]:
+        blockers.append("baseline_run_not_matching_candidate")
+    if treatment["found"] and not treatment["matches_candidate_request"]:
+        blockers.append("treatment_run_not_matching_candidate")
+    if treatment["found"] and not treatment["temporary_skill_present"]:
+        blockers.append("treatment_missing_candidate_temporary_skill")
+    if treatment["found"] and not treatment["temporary_skill_loaded"]:
+        blockers.append("treatment_missing_candidate_temporary_skill")
+    if treatment["found"] and treatment["result_category"] != "success":
+        blockers.append("treatment_not_successful")
+
+    outcome = _comparison_outcome(baseline, treatment, blockers)
+    return CandidateUsefulnessComparison(
+        baseline_run_id=baseline_run_id,
+        baseline_run_log_path=baseline["run_log_path"],
+        baseline_result_category=baseline["result_category"],
+        baseline_exit_code=baseline["exit_code"],
+        baseline_matches_candidate_request=baseline["matches_candidate_request"],
+        baseline_temporary_skill_present=baseline["temporary_skill_present"],
+        baseline_temporary_skill_loaded=baseline["temporary_skill_loaded"],
+        treatment_run_id=treatment_run_id,
+        treatment_run_log_path=treatment["run_log_path"],
+        treatment_result_category=treatment["result_category"],
+        treatment_exit_code=treatment["exit_code"],
+        treatment_matches_candidate_request=treatment["matches_candidate_request"],
+        treatment_temporary_skill_present=treatment["temporary_skill_present"],
+        treatment_temporary_skill_loaded=treatment["temporary_skill_loaded"],
+        outcome=outcome,
+        blockers=_unique(blockers),
+        warnings=_unique(warnings),
+        summary=_comparison_summary(outcome, baseline, treatment, blockers),
+    )
+
+
+def _run_observation(
+    entry: SkillCandidateLedgerEntry,
+    run_id: str,
+    run_logs: dict[str, dict[str, Any]],
+) -> dict[str, Any]:
+    record = run_logs.get(run_id)
+    if record is None:
+        return {
+            "found": False,
+            "run_log_path": None,
+            "result_category": None,
+            "exit_code": None,
+            "matches_candidate_request": False,
+            "temporary_skill_present": False,
+            "temporary_skill_loaded": False,
+        }
+
+    data = record["data"]
+    matches_candidate_request = False
+    temporary_skill_present = False
+    temporary_skill_loaded = False
+    for request in data.get("skill_requests") or []:
+        if not isinstance(request, dict) or not _request_matches_entry(request, entry):
+            continue
+        matches_candidate_request = True
+        temporary = request.get("temporary_skill")
+        if isinstance(temporary, dict):
+            temporary_skill_present = True
+            if bool(temporary.get("loaded")):
+                temporary_skill_loaded = True
+
+    return {
+        "found": True,
+        "run_log_path": record["path"],
+        "result_category": (
+            str(data["result_category"])
+            if data.get("result_category") is not None
+            else None
+        ),
+        "exit_code": int(data["exit_code"]) if data.get("exit_code") is not None else None,
+        "matches_candidate_request": matches_candidate_request,
+        "temporary_skill_present": temporary_skill_present,
+        "temporary_skill_loaded": temporary_skill_loaded,
+    }
+
+
+def _comparison_outcome(
+    baseline: dict[str, Any],
+    treatment: dict[str, Any],
+    blockers: list[str],
+) -> str:
+    if blockers:
+        return "invalid_comparison"
+    baseline_result = baseline["result_category"]
+    treatment_result = treatment["result_category"]
+    if baseline_result != "success" and treatment_result == "success":
+        return "improved"
+    if baseline_result == "success" and treatment_result != "success":
+        return "regressed"
+    return "no_clear_improvement"
+
+
+def _comparison_summary(
+    outcome: str,
+    baseline: dict[str, Any],
+    treatment: dict[str, Any],
+    blockers: list[str],
+) -> str:
+    if blockers:
+        return "Comparison is unavailable until blockers are resolved."
+    if outcome == "improved":
+        return (
+            "Treatment succeeded with the candidate temporary skill while the "
+            f"baseline ended as {baseline['result_category'] or 'unknown'}."
+        )
+    if outcome == "regressed":
+        return (
+            "Treatment did not preserve the baseline success result; do not use "
+            "this pair as admission evidence."
+        )
+    return (
+        "Baseline and treatment do not show clear causal improvement from this "
+        "single pinned pair."
     )
 
 

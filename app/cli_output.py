@@ -11,11 +11,19 @@ from app.models import (
     AgentRunResult,
     CandidateUsefulnessReport,
     DurableAdmissionPreviewReport,
+    EvidenceCheckpointReport,
+    EvidenceGovernorReport,
     InputRequest,
     LoadedSkillLog,
+    NegativeEvidenceReport,
     ScriptExecutionLog,
+    ShadowActivationAcceptanceReport,
+    ShadowActivationPlanReport,
+    ShadowRollbackPlanReport,
+    ShadowWriteGateReport,
     SkillCandidateLedger,
     SkillCandidateLedgerEntry,
+    SkillReceiptReport,
 )
 from app.registry import SkillRegistry
 from app.skill_candidate_ledger import (
@@ -192,6 +200,31 @@ def emit_candidate_usefulness_output(report: CandidateUsefulnessReport) -> None:
             typer.echo(f"  temporary_skill_paths: {_format_list(run.temporary_skill_paths)}")
 
     typer.echo("")
+    typer.echo("BASELINE_COMPARISON")
+    if report.comparison is None:
+        typer.echo("none")
+    else:
+        comparison = report.comparison
+        typer.echo(f"Outcome: {comparison.outcome}")
+        typer.echo(f"Summary: {comparison.summary}")
+        typer.echo(
+            f"Baseline: {comparison.baseline_run_id} "
+            f"result={comparison.baseline_result_category or '-'} "
+            f"temporary_present={str(comparison.baseline_temporary_skill_present).lower()} "
+            f"temporary_loaded={str(comparison.baseline_temporary_skill_loaded).lower()}"
+        )
+        typer.echo(
+            f"Treatment: {comparison.treatment_run_id} "
+            f"result={comparison.treatment_result_category or '-'} "
+            f"temporary_present={str(comparison.treatment_temporary_skill_present).lower()} "
+            f"temporary_loaded={str(comparison.treatment_temporary_skill_loaded).lower()}"
+        )
+        if comparison.blockers:
+            typer.echo(f"Blockers: {_format_list(comparison.blockers)}")
+        if comparison.warnings:
+            typer.echo(f"Warnings: {_format_list(comparison.warnings)}")
+
+    typer.echo("")
     typer.echo("BLOCKERS")
     _emit_string_items(report.blockers)
 
@@ -204,6 +237,566 @@ def emit_candidate_usefulness_output(report: CandidateUsefulnessReport) -> None:
     typer.echo(f"Run logs mutated: {str(report.run_logs_mutated).lower()}")
     typer.echo(
         f"Candidate ledger mutated: {str(report.candidate_ledger_mutated).lower()}"
+    )
+    typer.echo(f"Durable skills mutated: {str(report.durable_skills_mutated).lower()}")
+    typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
+    typer.echo(
+        f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}"
+    )
+
+    typer.echo("")
+    typer.echo("NEXT_STEPS")
+    _emit_string_items(report.next_steps)
+
+
+def emit_skill_receipt_json(report: SkillReceiptReport) -> None:
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_skill_receipt_output(report: SkillReceiptReport) -> None:
+    typer.echo("SKILL_RECEIPT")
+    typer.echo(f"Candidate: {report.candidate_id}")
+    typer.echo(f"Skill: {report.skill_name}")
+    typer.echo(f"Capability: {report.capability}")
+    typer.echo(f"Status: {report.status or '-'}")
+    typer.echo(f"Outcome: {report.outcome}")
+    typer.echo(f"Dry run: {str(report.dry_run).lower()}")
+
+    typer.echo("")
+    typer.echo("PROOFS")
+    for proof in report.proofs:
+        typer.echo(f"- {proof.category}: {proof.status}")
+        typer.echo(f"  summary: {proof.summary}")
+        if proof.evidence_refs:
+            typer.echo(f"  evidence: {_format_list(proof.evidence_refs)}")
+        if proof.blockers:
+            typer.echo(f"  blockers: {_format_list(proof.blockers)}")
+        if proof.warnings:
+            typer.echo(f"  warnings: {_format_list(proof.warnings)}")
+
+    preview = report.durable_admission_preview
+    typer.echo("")
+    typer.echo("RECEIPT_DIGESTS")
+    typer.echo(f"Source sha256: {preview.source_sha256 or '-'}")
+    typer.echo(f"Plan digest: {preview.write_plan.plan_digest or '-'}")
+    typer.echo(
+        "Plan approval verified: "
+        f"{str(preview.write_plan.plan_approval_verified).lower()}"
+    )
+
+    typer.echo("")
+    typer.echo("MUTATION_BOUNDARY")
+    typer.echo(f"Run logs mutated: {str(report.run_logs_mutated).lower()}")
+    typer.echo(
+        f"Candidate ledger mutated: {str(report.candidate_ledger_mutated).lower()}"
+    )
+    typer.echo(
+        f"Resolution ledger mutated: {str(report.resolution_ledger_mutated).lower()}"
+    )
+    typer.echo(f"Durable skills mutated: {str(report.durable_skills_mutated).lower()}")
+    typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
+    typer.echo(
+        f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}"
+    )
+
+    typer.echo("")
+    typer.echo("NEXT_STEPS")
+    _emit_string_items(report.next_steps)
+
+
+def emit_negative_evidence_json(report: NegativeEvidenceReport) -> None:
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_negative_evidence_output(report: NegativeEvidenceReport) -> None:
+    typer.echo("NEGATIVE_EVIDENCE")
+    typer.echo(f"Runs dir: {report.runs_dir}")
+    typer.echo(f"Candidate filter: {report.candidate_id or '-'}")
+    typer.echo(f"Evidence count: {report.evidence_count}")
+    typer.echo(f"Counts by type: {report.counts_by_type or '-'}")
+    typer.echo(f"Dry run: {str(report.dry_run).lower()}")
+    if not report.items:
+        typer.echo("none")
+    for item in report.items:
+        typer.echo("")
+        typer.echo(f"Evidence: {item.id}")
+        typer.echo(f"Type: {item.evidence_type}")
+        typer.echo(f"Candidate: {item.candidate_id or '-'}")
+        typer.echo(f"Skill: {item.skill_name or '-'}")
+        typer.echo(f"Decision: {item.decision or '-'}")
+        typer.echo(f"Resolution class: {item.resolution_class or '-'}")
+        typer.echo(f"Status: {item.status or '-'}")
+        typer.echo(f"Reason: {item.reason}")
+        typer.echo(f"Remaining blocked scope: {item.remaining_blocked_scope or '-'}")
+        typer.echo(f"Source: {item.source}")
+        typer.echo(f"Evidence refs: {_format_list(item.evidence_refs)}")
+        if item.notes:
+            typer.echo(f"Notes: {item.notes}")
+
+    typer.echo("")
+    typer.echo("MUTATION_BOUNDARY")
+    typer.echo(f"Run logs mutated: {str(report.run_logs_mutated).lower()}")
+    typer.echo(
+        f"Candidate ledger mutated: {str(report.candidate_ledger_mutated).lower()}"
+    )
+    typer.echo(
+        f"Resolution ledger mutated: {str(report.resolution_ledger_mutated).lower()}"
+    )
+    typer.echo(f"Durable skills mutated: {str(report.durable_skills_mutated).lower()}")
+    typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
+    typer.echo(
+        f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}"
+    )
+
+
+def emit_evidence_checkpoint_json(report: EvidenceCheckpointReport) -> None:
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_evidence_checkpoint_output(report: EvidenceCheckpointReport) -> None:
+    typer.echo("EVIDENCE_CHECKPOINT")
+    typer.echo(f"Runs dir: {report.runs_dir}")
+    typer.echo(f"Ledger: {report.ledger_path}")
+    typer.echo(f"Mode: {report.mode}")
+    typer.echo(f"Outcome: {report.outcome}")
+    typer.echo(f"Dry run: {str(report.dry_run).lower()}")
+    typer.echo(f"Scope: {report.scope}")
+    typer.echo(f"Checkpoint ID: {report.checkpoint_id or '-'}")
+    typer.echo(f"Previous checkpoint hash: {report.previous_checkpoint_hash or '-'}")
+    typer.echo(f"Checkpoint hash: {report.checkpoint_hash or '-'}")
+    typer.echo(f"Latest checkpoint hash: {report.latest_checkpoint_hash or '-'}")
+    typer.echo(f"Checkpoint count: {report.checkpoint_count}")
+    typer.echo(f"Checkpoints verified: {report.checkpoints_verified}")
+    typer.echo(f"Chain valid: {str(report.chain_valid).lower()}")
+    typer.echo(
+        "Current evidence matches latest: "
+        f"{str(report.current_evidence_matches_latest).lower()}"
+    )
+    typer.echo(f"Evidence files: {report.evidence_file_count}")
+    for item in report.evidence_files:
+        typer.echo(f"- {item.path} sha256={item.sha256} bytes={item.size_bytes}")
+
+    typer.echo("")
+    typer.echo("BLOCKERS")
+    _emit_string_items(report.blockers)
+
+    typer.echo("")
+    typer.echo("WARNINGS")
+    _emit_string_items(report.warnings)
+
+    typer.echo("")
+    typer.echo("MUTATION_BOUNDARY")
+    typer.echo(
+        f"Checkpoint ledger mutated: {str(report.checkpoint_ledger_mutated).lower()}"
+    )
+    typer.echo(f"Run logs mutated: {str(report.run_logs_mutated).lower()}")
+    typer.echo(
+        f"Candidate ledger mutated: {str(report.candidate_ledger_mutated).lower()}"
+    )
+    typer.echo(
+        f"Resolution ledger mutated: {str(report.resolution_ledger_mutated).lower()}"
+    )
+    typer.echo(f"Durable skills mutated: {str(report.durable_skills_mutated).lower()}")
+    typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
+    typer.echo(
+        f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}"
+    )
+
+    typer.echo("")
+    typer.echo("NEXT_STEPS")
+    _emit_string_items(report.next_steps)
+
+
+def emit_evidence_governor_json(report: EvidenceGovernorReport) -> None:
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_evidence_governor_output(report: EvidenceGovernorReport) -> None:
+    typer.echo("EVIDENCE_GOVERNOR")
+    typer.echo(f"Candidate: {report.candidate_id}")
+    typer.echo(f"Skill: {report.skill_name or '-'}")
+    typer.echo(f"Recommendation: {report.recommendation}")
+    typer.echo(f"Reason: {report.recommendation_reason}")
+    typer.echo(f"Advisory only: {str(report.advisory_only).lower()}")
+    typer.echo(f"Approval granted: {str(report.approval_granted).lower()}")
+    typer.echo(f"Install authorized: {str(report.install_authorized).lower()}")
+    typer.echo(f"Promotion authorized: {str(report.promotion_authorized).lower()}")
+    typer.echo(
+        "Permission widening authorized: "
+        f"{str(report.permission_widening_authorized).lower()}"
+    )
+    typer.echo(f"Route steering enabled: {str(report.route_steering_enabled).lower()}")
+
+    typer.echo("")
+    typer.echo("SIGNALS")
+    for signal in report.signals:
+        typer.echo(f"- {signal.name}: {signal.status}")
+        typer.echo(f"  summary: {signal.summary}")
+        if signal.evidence_refs:
+            typer.echo(f"  evidence: {_format_list(signal.evidence_refs)}")
+        if signal.blockers:
+            typer.echo(f"  blockers: {_format_list(signal.blockers)}")
+        if signal.warnings:
+            typer.echo(f"  warnings: {_format_list(signal.warnings)}")
+
+    typer.echo("")
+    typer.echo("BLOCKERS")
+    _emit_string_items(report.blockers)
+
+    typer.echo("")
+    typer.echo("WARNINGS")
+    _emit_string_items(report.warnings)
+
+    typer.echo("")
+    typer.echo("MUTATION_BOUNDARY")
+    typer.echo(f"Run logs mutated: {str(report.run_logs_mutated).lower()}")
+    typer.echo(
+        f"Candidate ledger mutated: {str(report.candidate_ledger_mutated).lower()}"
+    )
+    typer.echo(
+        f"Resolution ledger mutated: {str(report.resolution_ledger_mutated).lower()}"
+    )
+    typer.echo(
+        f"Checkpoint ledger mutated: {str(report.checkpoint_ledger_mutated).lower()}"
+    )
+    typer.echo(f"Durable skills mutated: {str(report.durable_skills_mutated).lower()}")
+    typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
+    typer.echo(
+        f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}"
+    )
+
+    typer.echo("")
+    typer.echo("NEXT_STEPS")
+    _emit_string_items(report.next_steps)
+
+
+def emit_shadow_activation_plan_json(report: ShadowActivationPlanReport) -> None:
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_shadow_activation_plan_output(report: ShadowActivationPlanReport) -> None:
+    typer.echo("SHADOW_ACTIVATION_PLAN")
+    typer.echo(f"Candidate: {report.candidate_id}")
+    typer.echo(f"Skill: {report.skill_name or '-'}")
+    typer.echo(f"Outcome: {report.outcome}")
+    typer.echo(
+        "Ready for shadow activation preview: "
+        f"{str(report.ready_for_shadow_activation_preview).lower()}"
+    )
+    typer.echo(f"Dry run: {str(report.dry_run).lower()}")
+    typer.echo(f"Mutation supported: {str(report.mutation_supported).lower()}")
+
+    typer.echo("")
+    typer.echo("MANAGED_PREFIX")
+    typer.echo(f"Prefix: {report.managed_prefix}")
+    typer.echo(f"Prefix exists: {str(report.managed_prefix_exists).lower()}")
+    typer.echo(f"Store dir: {report.store_dir or '-'}")
+    typer.echo(f"Store SKILL.md: {report.store_skill_path or '-'}")
+
+    typer.echo("")
+    typer.echo("GENERATION")
+    typer.echo(f"Profile: {report.profile_name}")
+    typer.echo(f"Profile dir: {report.profile_dir or '-'}")
+    typer.echo(f"Activation pointer: {report.activation_pointer or '-'}")
+    typer.echo(f"Previous generation: {report.previous_generation or '-'}")
+    typer.echo(f"Planned generation: {report.planned_generation or '-'}")
+    typer.echo(f"Generation dir: {report.generation_dir or '-'}")
+    typer.echo(f"Generation SKILL.md: {report.generation_skill_path or '-'}")
+    typer.echo(f"Rollback target: {report.rollback_target or '-'}")
+
+    typer.echo("")
+    typer.echo("DIGESTS")
+    typer.echo(f"Source sha256: {report.source_sha256 or '-'}")
+    typer.echo(f"Durable plan digest: {report.durable_plan_digest or '-'}")
+    typer.echo(f"Shadow plan digest: {report.shadow_plan_digest or '-'}")
+
+    typer.echo("")
+    typer.echo("POLICIES")
+    typer.echo(f"Collision policy: {report.collision_policy}")
+    typer.echo(f"Activation policy: {report.activation_policy}")
+    typer.echo(f"Canary scope: {report.canary_scope}")
+
+    typer.echo("")
+    typer.echo("BLOCKERS")
+    _emit_string_items(report.blockers)
+
+    typer.echo("")
+    typer.echo("WARNINGS")
+    _emit_string_items(report.warnings)
+
+    typer.echo("")
+    typer.echo("MUTATION_BOUNDARY")
+    typer.echo(f"Managed prefix mutated: {str(report.managed_prefix_mutated).lower()}")
+    typer.echo(f"Profile mutated: {str(report.profile_mutated).lower()}")
+    typer.echo(f"Run logs mutated: {str(report.run_logs_mutated).lower()}")
+    typer.echo(
+        f"Candidate ledger mutated: {str(report.candidate_ledger_mutated).lower()}"
+    )
+    typer.echo(
+        f"Resolution ledger mutated: {str(report.resolution_ledger_mutated).lower()}"
+    )
+    typer.echo(f"Durable skills mutated: {str(report.durable_skills_mutated).lower()}")
+    typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
+    typer.echo(
+        f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}"
+    )
+
+    typer.echo("")
+    typer.echo("NEXT_STEPS")
+    _emit_string_items(report.next_steps)
+
+
+def emit_shadow_rollback_plan_json(report: ShadowRollbackPlanReport) -> None:
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_shadow_rollback_plan_output(report: ShadowRollbackPlanReport) -> None:
+    typer.echo("SHADOW_ROLLBACK_PLAN")
+    typer.echo(f"Candidate: {report.candidate_id}")
+    typer.echo(f"Skill: {report.skill_name or '-'}")
+    typer.echo(f"Outcome: {report.outcome}")
+    typer.echo(f"Rollback verifiable: {str(report.rollback_verifiable).lower()}")
+    typer.echo(f"Dry run: {str(report.dry_run).lower()}")
+    typer.echo(f"Mutation supported: {str(report.mutation_supported).lower()}")
+
+    typer.echo("")
+    typer.echo("PROFILE")
+    typer.echo(f"Managed prefix: {report.managed_prefix}")
+    typer.echo(f"Profile: {report.profile_name}")
+    typer.echo(f"Profile dir: {report.profile_dir or '-'}")
+    typer.echo(f"Activation pointer: {report.activation_pointer or '-'}")
+    typer.echo(
+        f"Activation pointer exists: {str(report.activation_pointer_exists).lower()}"
+    )
+    typer.echo(f"Activation pointer target: {report.activation_pointer_target or '-'}")
+
+    typer.echo("")
+    typer.echo("ROLLBACK")
+    typer.echo(f"Current generation: {report.current_generation or '-'}")
+    typer.echo(f"Planned generation: {report.planned_generation or '-'}")
+    typer.echo(f"Rollback generation: {report.rollback_generation or '-'}")
+    typer.echo(f"Rollback target: {report.rollback_target or '-'}")
+    typer.echo(f"Rollback target exists: {str(report.rollback_target_exists).lower()}")
+
+    typer.echo("")
+    typer.echo("DIGESTS")
+    typer.echo(f"Shadow plan digest: {report.shadow_plan_digest or '-'}")
+    typer.echo(f"Rollback plan digest: {report.rollback_plan_digest or '-'}")
+
+    typer.echo("")
+    typer.echo("BLOCKERS")
+    _emit_string_items(report.blockers)
+
+    typer.echo("")
+    typer.echo("WARNINGS")
+    _emit_string_items(report.warnings)
+
+    typer.echo("")
+    typer.echo("MUTATION_BOUNDARY")
+    typer.echo(f"Managed prefix mutated: {str(report.managed_prefix_mutated).lower()}")
+    typer.echo(f"Profile mutated: {str(report.profile_mutated).lower()}")
+    typer.echo(f"Run logs mutated: {str(report.run_logs_mutated).lower()}")
+    typer.echo(
+        f"Candidate ledger mutated: {str(report.candidate_ledger_mutated).lower()}"
+    )
+    typer.echo(
+        f"Resolution ledger mutated: {str(report.resolution_ledger_mutated).lower()}"
+    )
+    typer.echo(f"Durable skills mutated: {str(report.durable_skills_mutated).lower()}")
+    typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
+    typer.echo(
+        f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}"
+    )
+
+    typer.echo("")
+    typer.echo("NEXT_STEPS")
+    _emit_string_items(report.next_steps)
+
+
+def emit_shadow_activation_acceptance_json(
+    report: ShadowActivationAcceptanceReport,
+) -> None:
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_shadow_activation_acceptance_output(
+    report: ShadowActivationAcceptanceReport,
+) -> None:
+    typer.echo("SHADOW_ACTIVATION_ACCEPTANCE")
+    typer.echo(f"Candidate: {report.candidate_id}")
+    typer.echo(f"Skill: {report.skill_name or '-'}")
+    typer.echo(f"Outcome: {report.outcome}")
+    typer.echo(f"Acceptance prepared: {str(report.acceptance_prepared).lower()}")
+    typer.echo(f"Activation verified: {str(report.activation_verified).lower()}")
+    typer.echo(f"Rollback verified: {str(report.rollback_verified).lower()}")
+    typer.echo(f"Dry run: {str(report.dry_run).lower()}")
+    typer.echo(f"Mutation supported: {str(report.mutation_supported).lower()}")
+
+    typer.echo("")
+    typer.echo("PREFIXES")
+    typer.echo(f"Planned managed prefix: {report.planned_managed_prefix}")
+    typer.echo(f"Acceptance prefix: {report.acceptance_prefix}")
+    typer.echo(f"Acceptance prefix exists: {str(report.acceptance_prefix_exists).lower()}")
+    typer.echo(f"Profile: {report.profile_name}")
+
+    typer.echo("")
+    typer.echo("PATHS")
+    typer.echo(f"Source SKILL.md: {report.source_skill_path or '-'}")
+    typer.echo(f"Source sha256: {report.source_sha256 or '-'}")
+    typer.echo(f"Acceptance store SKILL.md: {report.acceptance_store_skill_path or '-'}")
+    typer.echo(
+        f"Acceptance generation SKILL.md: {report.acceptance_generation_skill_path or '-'}"
+    )
+    typer.echo(f"Acceptance pointer: {report.acceptance_activation_pointer or '-'}")
+    typer.echo(f"Acceptance rollback target: {report.acceptance_rollback_target or '-'}")
+
+    typer.echo("")
+    typer.echo("GENERATION")
+    typer.echo(f"Previous generation: {report.previous_generation or '-'}")
+    typer.echo(f"Planned generation: {report.planned_generation or '-'}")
+    typer.echo(f"Pointer before acceptance: {report.activation_pointer_before or '-'}")
+    typer.echo(
+        "Pointer after activation: "
+        f"{report.activation_pointer_after_activation or '-'}"
+    )
+    typer.echo(
+        "Pointer after rollback: "
+        f"{report.activation_pointer_after_rollback or '-'}"
+    )
+    typer.echo(
+        "Interrupted activation recovered: "
+        f"{str(report.interrupted_activation_recovered).lower()}"
+    )
+    typer.echo(
+        "Acceptance conflict detected: "
+        f"{str(report.acceptance_conflict_detected).lower()}"
+    )
+
+    typer.echo("")
+    typer.echo("DIGESTS")
+    typer.echo(f"Shadow plan digest: {report.shadow_plan_digest or '-'}")
+    typer.echo(f"Acceptance plan digest: {report.acceptance_plan_digest or '-'}")
+
+    typer.echo("")
+    typer.echo("BLOCKERS")
+    _emit_string_items(report.blockers)
+
+    typer.echo("")
+    typer.echo("WARNINGS")
+    _emit_string_items(report.warnings)
+
+    typer.echo("")
+    typer.echo("MUTATION_BOUNDARY")
+    typer.echo(
+        f"Acceptance prefix mutated: {str(report.acceptance_prefix_mutated).lower()}"
+    )
+    typer.echo(f"Managed prefix mutated: {str(report.managed_prefix_mutated).lower()}")
+    typer.echo(f"Profile mutated: {str(report.profile_mutated).lower()}")
+    typer.echo(f"Run logs mutated: {str(report.run_logs_mutated).lower()}")
+    typer.echo(
+        f"Candidate ledger mutated: {str(report.candidate_ledger_mutated).lower()}"
+    )
+    typer.echo(
+        f"Resolution ledger mutated: {str(report.resolution_ledger_mutated).lower()}"
+    )
+    typer.echo(f"Durable skills mutated: {str(report.durable_skills_mutated).lower()}")
+    typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
+    typer.echo(
+        f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}"
+    )
+
+    typer.echo("")
+    typer.echo("NEXT_STEPS")
+    _emit_string_items(report.next_steps)
+
+
+def emit_shadow_write_gate_json(report: ShadowWriteGateReport) -> None:
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_shadow_write_gate_output(report: ShadowWriteGateReport) -> None:
+    typer.echo("SHADOW_WRITE_GATE")
+    typer.echo(f"Candidate: {report.candidate_id}")
+    typer.echo(f"Skill: {report.skill_name or '-'}")
+    typer.echo(f"Outcome: {report.outcome}")
+    typer.echo(
+        "Ready for human managed-prefix write: "
+        f"{str(report.ready_for_human_managed_prefix_write).lower()}"
+    )
+    typer.echo(f"Dry run: {str(report.dry_run).lower()}")
+    typer.echo(f"Mutation supported: {str(report.mutation_supported).lower()}")
+
+    typer.echo("")
+    typer.echo("PREFIXES")
+    typer.echo(f"Managed prefix: {report.managed_prefix}")
+    typer.echo(f"Acceptance prefix: {report.acceptance_prefix}")
+    typer.echo(f"Profile: {report.profile_name}")
+
+    typer.echo("")
+    typer.echo("EVIDENCE")
+    typer.echo(f"Source SKILL.md: {report.source_skill_path or '-'}")
+    typer.echo(f"Source sha256: {report.source_sha256 or '-'}")
+    typer.echo(f"Source hash verified: {str(report.source_hash_verified).lower()}")
+    typer.echo(f"Acceptance store SKILL.md: {report.acceptance_store_skill_path or '-'}")
+    typer.echo(
+        f"Acceptance store verified: {str(report.acceptance_store_verified).lower()}"
+    )
+    typer.echo(
+        "Acceptance generation SKILL.md: "
+        f"{report.acceptance_generation_skill_path or '-'}"
+    )
+    typer.echo(
+        "Acceptance generation verified: "
+        f"{str(report.acceptance_generation_verified).lower()}"
+    )
+    typer.echo(f"Acceptance pointer: {report.acceptance_activation_pointer or '-'}")
+    typer.echo(f"Acceptance pointer target: {report.acceptance_pointer_target or '-'}")
+    typer.echo(
+        "Acceptance pointer restored: "
+        f"{str(report.acceptance_pointer_restored).lower()}"
+    )
+    typer.echo(f"Acceptance rollback target: {report.acceptance_rollback_target or '-'}")
+    typer.echo(
+        "Acceptance rollback marker verified: "
+        f"{str(report.acceptance_rollback_marker_verified).lower()}"
+    )
+
+    typer.echo("")
+    typer.echo("DIGESTS")
+    typer.echo(f"Durable plan digest: {report.durable_plan_digest or '-'}")
+    typer.echo(f"Shadow plan digest: {report.shadow_plan_digest or '-'}")
+    typer.echo(f"Rollback plan digest: {report.rollback_plan_digest or '-'}")
+    typer.echo(f"Acceptance plan digest: {report.acceptance_plan_digest or '-'}")
+    typer.echo(
+        "Expected acceptance plan digest: "
+        f"{report.expected_acceptance_plan_digest or '-'}"
+    )
+    typer.echo(
+        "Acceptance plan digest verified: "
+        f"{str(report.acceptance_plan_digest_verified).lower()}"
+    )
+
+    typer.echo("")
+    typer.echo("BLOCKERS")
+    _emit_string_items(report.blockers)
+
+    typer.echo("")
+    typer.echo("WARNINGS")
+    _emit_string_items(report.warnings)
+
+    typer.echo("")
+    typer.echo("MUTATION_BOUNDARY")
+    typer.echo(
+        f"Acceptance prefix mutated: {str(report.acceptance_prefix_mutated).lower()}"
+    )
+    typer.echo(f"Managed prefix mutated: {str(report.managed_prefix_mutated).lower()}")
+    typer.echo(f"Profile mutated: {str(report.profile_mutated).lower()}")
+    typer.echo(f"Run logs mutated: {str(report.run_logs_mutated).lower()}")
+    typer.echo(
+        f"Candidate ledger mutated: {str(report.candidate_ledger_mutated).lower()}"
+    )
+    typer.echo(
+        f"Resolution ledger mutated: {str(report.resolution_ledger_mutated).lower()}"
     )
     typer.echo(f"Durable skills mutated: {str(report.durable_skills_mutated).lower()}")
     typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
@@ -250,9 +843,41 @@ def emit_durable_admission_preview_output(report: DurableAdmissionPreviewReport)
     typer.echo("")
     typer.echo("WRITE_PLAN")
     typer.echo(f"Operation: {report.write_plan.operation}")
+    typer.echo(f"Plan digest algorithm: {report.write_plan.plan_digest_algorithm}")
+    typer.echo(f"Plan digest: {report.write_plan.plan_digest or '-'}")
+    typer.echo(f"Plan approval ID: {report.write_plan.plan_approval_id or '-'}")
+    typer.echo(f"Plan approval digest: {report.write_plan.plan_approval_digest or '-'}")
+    typer.echo(
+        f"Plan approval expires at: {report.write_plan.plan_approval_expires_at or '-'}"
+    )
+    typer.echo(
+        f"Plan approval verified: {str(report.write_plan.plan_approval_verified).lower()}"
+    )
     typer.echo(f"Collision policy: {report.write_plan.collision_policy}")
     typer.echo(f"Permission policy: {report.write_plan.permission_policy}")
     typer.echo(f"Permission approval ID: {report.write_plan.permission_approval_id or '-'}")
+    typer.echo("Permission/dependency diff:")
+    diff = report.write_plan.permission_dependency_diff
+    typer.echo(
+        "  Added permissions: "
+        f"{_format_list(diff.added_permission_classes) if diff.added_permission_classes else 'none'}"
+    )
+    typer.echo(
+        "  Added tools: "
+        f"{_format_list(diff.added_tools) if diff.added_tools else 'none'}"
+    )
+    typer.echo(
+        "  Dependencies declared: "
+        f"{str(diff.dependency_diff.dependencies_declared).lower()}"
+    )
+    typer.echo(
+        "  Dependency declaration keys: "
+        f"{_format_list(diff.dependency_diff.declaration_keys) if diff.dependency_diff.declaration_keys else 'none'}"
+    )
+    typer.echo(
+        "  Exact dependency realization: "
+        f"{str(diff.dependency_diff.exact_realization_available).lower()}"
+    )
     typer.echo(f"Replacement approved: {str(report.write_plan.replacement_approved).lower()}")
     typer.echo(
         "Permission widening approved: "

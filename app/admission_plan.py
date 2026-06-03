@@ -310,6 +310,7 @@ def _inspect_source_artifact(
     permissions = (
         manifest.permissions.model_dump(mode="json") if manifest is not None else {}
     )
+    dependency_declarations = _dependency_declarations(parsed.frontmatter)
     permission_widening = [name for name, enabled in permissions.items() if enabled]
     for name in permission_widening:
         _add_check(
@@ -345,7 +346,14 @@ def _inspect_source_artifact(
         validation_reasons=list(validation.reasons),
         skill_name=manifest.name if manifest is not None else validation.name,
         risk_level=manifest.risk_level if manifest is not None else None,
+        allowed_tools=list(manifest.allowed_tools) if manifest is not None else [],
         permissions={str(key): bool(value) for key, value in permissions.items()},
+        compatibility=(
+            {str(key): str(value) for key, value in manifest.compatibility.items()}
+            if manifest is not None
+            else {}
+        ),
+        dependency_declarations=dependency_declarations,
         input_schema=(
             {str(key): str(value) for key, value in manifest.input_schema.items()}
             if manifest is not None
@@ -365,6 +373,19 @@ def _manifest(frontmatter: dict[str, Any]) -> SkillManifest | None:
         return SkillManifest.model_validate(frontmatter)
     except ValidationError:
         return None
+
+
+def _dependency_declarations(frontmatter: dict[str, Any]) -> dict[str, Any]:
+    if not isinstance(frontmatter, dict):
+        return {}
+    keys = {
+        "dependencies",
+        "dependency_realization",
+        "dependency_lock",
+        "requirements",
+        "packages",
+    }
+    return {str(key): frontmatter[key] for key in keys if key in frontmatter}
 
 
 def _selected_source_artifact(
@@ -401,6 +422,8 @@ def _durable_registry_summary(
                 "path": str(existing.path),
                 "status": existing.status,
                 "risk_level": existing.risk_level,
+                "allowed_tools": list(existing.allowed_tools),
+                "permissions": existing.permissions.model_dump(mode="json"),
             }
             _add_check(
                 checks,

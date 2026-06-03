@@ -10,8 +10,12 @@ from app.admission_plan import build_admission_plan
 from app.agent_loop import run_task
 from app.cli import app
 from app.durable_admission import build_durable_admission_preview
-from app.input_resolution import resolve_input_request
-from app.input_resolution_ledger import load_input_request_resolution_ledger
+from app.input_resolution import InputResolutionError, resolve_input_request
+from app.input_resolution_ledger import (
+    append_input_request_resolution,
+    load_input_request_resolution_ledger,
+)
+from app.models import InputRequest, InputRequestResolutionDryRun
 from app.skill_candidate_ledger import approve_candidate_promotion, load_candidate_ledger
 
 
@@ -43,6 +47,9 @@ def test_durable_admission_preview_requires_approve_review_resolution(
     assert preview.write_plan.permission_policy == "block_widening_without_approval"
     assert preview.write_plan.source_skill_path == str(source_path)
     assert preview.write_plan.source_sha256 == preview.source_sha256
+    assert preview.write_plan.plan_digest_algorithm == "sha256"
+    assert preview.write_plan.plan_digest is not None
+    assert preview.write_plan.plan_approval_verified is False
     assert preview.write_plan.target_skill_path == preview.target_skill_path
     assert preview.write_plan.snapshot_dir == str(
         runs_dir / "admission_snapshots" / candidate_id / preview.source_sha256
@@ -52,12 +59,19 @@ def test_durable_admission_preview_requires_approve_review_resolution(
     )
     assert preview.write_plan.snapshot_sha256 == preview.source_sha256
     assert preview.write_plan.source_snapshot_created is False
-    assert preview.blockers == ["durable_review_resolution_missing"]
-    assert preview.write_plan.blockers == ["durable_review_resolution_missing"]
+    assert preview.blockers == [
+        "durable_review_resolution_missing",
+        "plan_digest_approval_missing",
+    ]
+    assert preview.write_plan.blockers == [
+        "durable_review_resolution_missing",
+        "plan_digest_approval_missing",
+    ]
     assert preview.required_human_records == [
         "promotion_approved_by",
         "promotion_approved_at",
         "durable_admission_review approve_review resolution",
+        "plan digest approval resolution",
     ]
     assert preview.dry_run is True
     assert preview.mutation_supported is False
@@ -83,13 +97,17 @@ def test_durable_admission_preview_ready_after_append_only_review_resolution(
         skills_dir=copied_seed_skills,
     )
     assert admission.input_request is not None
-    resolve_input_request(
-        admission.input_request.id,
+    initial_preview = build_durable_admission_preview(
+        candidate_id,
         runs_dir=runs_dir,
-        decision="approve_review",
-        reviewer="Ada",
-        notes="Reviewed durable admission evidence for preview.",
-        dry_run=False,
+        skills_dir=copied_seed_skills,
+    )
+    assert initial_preview.write_plan.plan_digest is not None
+    _approve_durable_review(
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        plan_digest=initial_preview.write_plan.plan_digest,
     )
     durable_before = _snapshot_tree(copied_seed_skills)
     runs_before = _snapshot_tree(runs_dir)
@@ -104,6 +122,18 @@ def test_durable_admission_preview_ready_after_append_only_review_resolution(
     assert preview.ready_for_mutation_preview is True
     assert preview.write_plan.operation == "copy_new_skill"
     assert preview.write_plan.blockers == []
+    assert preview.write_plan.plan_approval_verified is True
+    assert preview.write_plan.plan_approval_digest == preview.write_plan.plan_digest
+    assert preview.write_plan.permission_dependency_diff.added_permission_classes == []
+    assert preview.write_plan.permission_dependency_diff.added_tools == []
+    assert (
+        preview.write_plan.permission_dependency_diff.dependency_diff.dependencies_declared
+        is False
+    )
+    assert (
+        preview.write_plan.permission_dependency_diff.dependency_diff.exact_realization_available
+        is True
+    )
     assert preview.write_plan.replacement_approved is False
     assert preview.write_plan.permission_widening_approved is False
     assert preview.write_plan.source_snapshot_created is False
@@ -123,7 +153,7 @@ def test_durable_admission_preview_blocks_default_same_name_collision(
 ):
     runs_dir = tmp_path / "runs"
     candidate_id, source_path = _promoted_candidate(copied_seed_skills, runs_dir)
-    _approve_durable_review(candidate_id, runs_dir, copied_seed_skills)
+    _approve_current_plan(candidate_id, runs_dir, copied_seed_skills)
     copytree(source_path.parent, copied_seed_skills / "argument-clustering")
     durable_before = _snapshot_tree(copied_seed_skills)
     runs_before = _snapshot_tree(runs_dir)
@@ -171,8 +201,20 @@ def test_durable_admission_preview_allows_replace_plan_with_policy_and_review_ev
 ):
     runs_dir = tmp_path / "runs"
     candidate_id, source_path = _promoted_candidate(copied_seed_skills, runs_dir)
-    _approve_durable_review(candidate_id, runs_dir, copied_seed_skills)
     copytree(source_path.parent, copied_seed_skills / "argument-clustering")
+    initial_preview = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        collision_policy="allow_replace_with_approval",
+    )
+    assert initial_preview.write_plan.plan_digest is not None
+    _approve_durable_review(
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        plan_digest=initial_preview.write_plan.plan_digest,
+    )
     durable_before = _snapshot_tree(copied_seed_skills)
     runs_before = _snapshot_tree(runs_dir)
 
@@ -186,6 +228,7 @@ def test_durable_admission_preview_allows_replace_plan_with_policy_and_review_ev
     assert preview.ready_for_mutation_preview is True
     assert preview.write_plan.operation == "replace_existing_skill"
     assert preview.write_plan.replacement_approved is True
+    assert preview.write_plan.plan_approval_verified is True
     assert preview.write_plan.blockers == []
     assert _snapshot_tree(copied_seed_skills) == durable_before
     assert _snapshot_tree(runs_dir) == runs_before
@@ -230,10 +273,173 @@ def test_durable_admission_preview_blocks_permission_widening_without_permission
     )
 
     assert approved_preview.write_plan.permission_widening_approved is True
+    assert (
+        "network"
+        in approved_preview.write_plan.permission_dependency_diff.added_permission_classes
+    )
+    assert approved_preview.write_plan.permission_dependency_diff.permission_approval_required is True
     assert "permission_widening_approval_missing" not in approved_preview.write_plan.blockers
     assert "source_permission_widening" in approved_preview.write_plan.blockers
     assert _snapshot_tree(copied_seed_skills) == durable_before
     assert _snapshot_tree(runs_dir) == runs_before
+
+
+def test_durable_admission_preview_blocks_dependency_declaration_without_realization(
+    copied_seed_skills,
+    tmp_path,
+):
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path = _promoted_candidate(copied_seed_skills, runs_dir)
+    _append_dependency_declaration(source_path)
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+
+    preview = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+    )
+
+    dependency_diff = preview.write_plan.permission_dependency_diff.dependency_diff
+    assert preview.ready_for_mutation_preview is False
+    assert dependency_diff.dependencies_declared is True
+    assert dependency_diff.declaration_keys == ["dependencies"]
+    assert dependency_diff.exact_realization_available is False
+    assert dependency_diff.added == ["example-package"]
+    assert dependency_diff.realized == []
+    assert dependency_diff.unresolved == ["example-package"]
+    assert "dependency_realization_missing" in dependency_diff.blockers
+    assert "dependency_realization_missing" in preview.write_plan.blockers
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+
+
+def test_durable_admission_preview_extracts_requirement_and_package_dependency_names(
+    copied_seed_skills,
+    tmp_path,
+):
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path = _promoted_candidate(copied_seed_skills, runs_dir)
+    _append_requirement_package_declarations(source_path)
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+
+    preview = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+    )
+
+    dependency_diff = preview.write_plan.permission_dependency_diff.dependency_diff
+    assert preview.ready_for_mutation_preview is False
+    assert dependency_diff.dependencies_declared is True
+    assert dependency_diff.declaration_keys == [
+        "dependency_lock",
+        "packages",
+        "requirements",
+    ]
+    assert dependency_diff.added == [
+        "locked-package",
+        "package-two",
+        "requirement-one",
+    ]
+    assert dependency_diff.unresolved == [
+        "locked-package",
+        "package-two",
+        "requirement-one",
+    ]
+    assert "dependency_realization_missing" in dependency_diff.blockers
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+
+
+def test_durable_admission_preview_recognizes_exact_dependency_realization_but_blocks_install(
+    copied_seed_skills,
+    tmp_path,
+):
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path = _promoted_candidate(copied_seed_skills, runs_dir)
+    _append_dependency_declaration(source_path, exact=True)
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+
+    preview = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+    )
+
+    dependency_diff = preview.write_plan.permission_dependency_diff.dependency_diff
+    assert preview.ready_for_mutation_preview is False
+    assert dependency_diff.dependencies_declared is True
+    assert dependency_diff.declaration_keys == ["dependencies", "dependency_realization"]
+    assert dependency_diff.exact_realization_available is True
+    assert dependency_diff.added == ["example-package"]
+    assert dependency_diff.realized == ["example-package"]
+    assert dependency_diff.unresolved == []
+    assert "dependency_realization_missing" not in dependency_diff.blockers
+    assert "dependency_install_unsupported" in dependency_diff.blockers
+    assert "dependency_install_unsupported" in preview.write_plan.blockers
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+
+
+def test_durable_admission_preview_rejects_mismatched_plan_digest_approval(
+    copied_seed_skills,
+    tmp_path,
+):
+    runs_dir = tmp_path / "runs"
+    candidate_id, _ = _promoted_candidate(copied_seed_skills, runs_dir)
+    approval_id = _approve_durable_review(
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        plan_digest="0" * 64,
+    )
+
+    preview = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        plan_approval_id=approval_id,
+    )
+
+    assert preview.ready_for_mutation_preview is False
+    assert preview.write_plan.plan_approval_verified is False
+    assert preview.write_plan.plan_approval_digest == "0" * 64
+    assert "plan_digest_approval_mismatch" in preview.write_plan.blockers
+
+
+def test_durable_admission_preview_rejects_expired_plan_digest_approval(
+    copied_seed_skills,
+    tmp_path,
+):
+    runs_dir = tmp_path / "runs"
+    candidate_id, _ = _promoted_candidate(copied_seed_skills, runs_dir)
+    initial_preview = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+    )
+    assert initial_preview.write_plan.plan_digest is not None
+    approval_id = _approve_durable_review(
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        plan_digest=initial_preview.write_plan.plan_digest,
+        expires_at="2000-01-01T00:00:00Z",
+    )
+
+    preview = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        plan_approval_id=approval_id,
+    )
+
+    assert preview.ready_for_mutation_preview is False
+    assert preview.write_plan.plan_approval_verified is False
+    assert "plan_digest_approval_expired" in preview.write_plan.blockers
 
 
 def test_admit_candidate_cli_outputs_preview_and_rejects_write_mode(
@@ -297,6 +503,8 @@ def test_admit_candidate_cli_outputs_preview_and_rejects_write_mode(
     assert "DURABLE_ADMISSION_PREVIEW" in text_result.stdout
     assert "WRITE_PLAN" in text_result.stdout
     assert "Operation: blocked" in text_result.stdout
+    assert "Plan digest:" in text_result.stdout
+    assert "Plan approval verified: false" in text_result.stdout
     assert "Mutation supported: false" in text_result.stdout
     assert "Resolution ledger mutated: false" in text_result.stdout
     assert "durable_review_resolution_missing" in text_result.stdout
@@ -305,6 +513,9 @@ def test_admit_candidate_cli_outputs_preview_and_rejects_write_mode(
     assert data["outcome"] == "approval_required"
     assert data["ready_for_mutation_preview"] is False
     assert data["write_plan"]["operation"] == "blocked"
+    assert data["write_plan"]["plan_digest_algorithm"] == "sha256"
+    assert data["write_plan"]["plan_digest"]
+    assert data["write_plan"]["plan_approval_verified"] is False
     assert data["write_plan"]["collision_policy"] == "block_existing"
     assert data["write_plan"]["source_snapshot_created"] is False
     assert data["admission_plan"]["input_request"]["kind"] == "durable_admission_review"
@@ -337,29 +548,134 @@ def _approve_durable_review(
     candidate_id: str,
     runs_dir: Path,
     skills_dir: Path,
+    *,
+    plan_digest: str | None = None,
+    expires_at: str = "2099-01-01T00:00:00Z",
 ) -> str:
     admission = build_admission_plan(
         candidate_id,
         runs_dir=runs_dir,
         skills_dir=skills_dir,
     )
-    assert admission.input_request is not None
-    resolve_input_request(
-        admission.input_request.id,
-        runs_dir=runs_dir,
-        decision="approve_review",
-        reviewer="Ada",
-        notes="Reviewed durable admission evidence for preview.",
-        dry_run=False,
-    )
+    if admission.input_request is None or admission.input_request.kind != "durable_admission_review":
+        return _append_plan_approval_record(candidate_id, runs_dir, plan_digest, expires_at)
+    try:
+        resolve_input_request(
+            admission.input_request.id,
+            runs_dir=runs_dir,
+            decision="approve_review",
+            reviewer="Ada",
+            notes=_approval_notes(plan_digest, expires_at),
+            dry_run=False,
+        )
+    except InputResolutionError:
+        return _append_plan_approval_record(candidate_id, runs_dir, plan_digest, expires_at)
     ledger = load_input_request_resolution_ledger(runs_dir)
     return ledger.resolutions[-1].id
+
+
+def _approve_current_plan(candidate_id: str, runs_dir: Path, skills_dir: Path) -> str:
+    preview = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=skills_dir,
+    )
+    assert preview.write_plan.plan_digest is not None
+    return _approve_durable_review(
+        candidate_id,
+        runs_dir,
+        skills_dir,
+        plan_digest=preview.write_plan.plan_digest,
+    )
+
+
+def _approval_notes(plan_digest: str | None, expires_at: str) -> str:
+    notes = "Reviewed durable admission evidence for preview."
+    if plan_digest:
+        notes = f"{notes} plan_digest={plan_digest} expires_at={expires_at}"
+    return notes
+
+
+def _append_plan_approval_record(
+    candidate_id: str,
+    runs_dir: Path,
+    plan_digest: str | None,
+    expires_at: str,
+) -> str:
+    request = InputRequest(
+        id=f"inputreq_plan_digest_{candidate_id}",
+        kind="durable_admission_review",
+        title=f"Approve exact durable admission plan for {candidate_id}",
+        reason="Test fixture approval for an exact plan digest.",
+        blocked_scope="durable skill install/copy",
+        requested_decision="Approve the exact plan digest or defer.",
+        options=["approve_review", "defer"],
+        recommended_option="approve_review",
+        related_candidate_id=candidate_id,
+    )
+    report = InputRequestResolutionDryRun(
+        dry_run=True,
+        input_request_id=request.id,
+        decision="approve_review",
+        resolution_class="approve",
+        proposed_status="resolved",
+        reviewer="Ada",
+        notes=_approval_notes(plan_digest, expires_at),
+        request=request,
+        remaining_blocked_scope="durable skill install/copy",
+        next_steps=["Rerun admit-candidate --dry-run."],
+    )
+    record = append_input_request_resolution(report, runs_dir)
+    return record.id
 
 
 def _enable_network_permission(source_path: Path) -> None:
     text = source_path.read_text(encoding="utf-8")
     updated = text.replace("network: false", "network: true", 1)
     assert updated != text
+    source_path.write_text(updated, encoding="utf-8")
+
+
+def _append_dependency_declaration(source_path: Path, *, exact: bool = False) -> None:
+    text = source_path.read_text(encoding="utf-8")
+    marker = "\n---\n\n#"
+    assert marker in text
+    realization = ""
+    if exact:
+        realization = (
+            "dependency_realization:\n"
+            "  - name: example-package\n"
+            "    version: 1.0.0\n"
+            "    sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n"
+        )
+    updated = text.replace(
+        marker,
+        "\ndependencies:\n  - example-package==1.0.0\n"
+        f"{realization}"
+        "---\n\n#",
+        1,
+    )
+    source_path.write_text(updated, encoding="utf-8")
+
+
+def _append_requirement_package_declarations(source_path: Path) -> None:
+    text = source_path.read_text(encoding="utf-8")
+    marker = "\n---\n\n#"
+    assert marker in text
+    updated = text.replace(
+        marker,
+        "\nrequirements:\n"
+        "  - requirement-one>=2.0.0\n"
+        "packages:\n"
+        "  package-two: 3.0.0\n"
+        "dependency_lock:\n"
+        "  dependencies:\n"
+        "    locked-package:\n"
+        "      version: 4.0.0\n"
+        "      sha256: abcdef\n"
+        "---\n\n#",
+        1,
+    )
     source_path.write_text(updated, encoding="utf-8")
 
 

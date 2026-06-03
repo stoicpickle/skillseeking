@@ -17,15 +17,36 @@ from app.cli_output import (
     emit_candidates_output,
     emit_durable_admission_preview_json,
     emit_durable_admission_preview_output,
+    emit_evidence_checkpoint_json,
+    emit_evidence_checkpoint_output,
+    emit_evidence_governor_json,
+    emit_evidence_governor_output,
+    emit_negative_evidence_json,
+    emit_negative_evidence_output,
     emit_run_json,
     emit_registry_json,
     emit_run_output,
+    emit_shadow_activation_acceptance_json,
+    emit_shadow_activation_acceptance_output,
+    emit_shadow_activation_plan_json,
+    emit_shadow_activation_plan_output,
+    emit_shadow_rollback_plan_json,
+    emit_shadow_rollback_plan_output,
+    emit_shadow_write_gate_json,
+    emit_shadow_write_gate_output,
+    emit_skill_receipt_json,
+    emit_skill_receipt_output,
 )
 from app.candidate_usefulness import (
     CandidateUsefulnessError,
     build_candidate_usefulness_report,
 )
 from app.durable_admission import build_durable_admission_preview
+from app.evidence_checkpoint import (
+    EvidenceCheckpointError,
+    build_evidence_checkpoint_report,
+)
+from app.evidence_governor import EvidenceGovernorError, build_evidence_governor_report
 from app.eval_runner import EvalSuiteError, run_eval_suite, write_eval_reports
 from app.explain import ExplainError, explain_run_log
 from app.input_focus import (
@@ -35,12 +56,21 @@ from app.input_focus import (
 )
 from app.input_resolution import InputResolutionError, resolve_input_request as resolve_input_request_report
 from app.librarian import analyze_library
+from app.negative_evidence import build_negative_evidence_report
+from app.shadow_activation import (
+    ShadowActivationPlanError,
+    build_shadow_activation_acceptance_report,
+    build_shadow_activation_plan,
+    build_shadow_rollback_plan,
+    build_shadow_write_gate_report,
+)
 from app.skill_candidate_ledger import (
     SkillCandidateLedgerError,
     approve_candidate_promotion,
     ledger_path,
     load_candidate_ledger,
 )
+from app.skill_receipt import SkillReceiptError, build_skill_receipt_report
 from app.registry import SkillRegistry
 
 
@@ -312,6 +342,14 @@ def candidate_usefulness(
     candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to inspect for temporary-skill usefulness evidence.")],
     runs_dir: Annotated[Path, typer.Option(help="Run log directory containing the skill candidate ledger.")] = Path("runs"),
     skills_dir: Annotated[Path, typer.Option(help="Durable local skills directory for read-only admission-plan context.")] = Path("skills"),
+    baseline_run_id: Annotated[
+        str | None,
+        typer.Option("--baseline-run-id", help="Pinned no-temporary-skill control run ID for paired usefulness comparison."),
+    ] = None,
+    treatment_run_id: Annotated[
+        str | None,
+        typer.Option("--treatment-run-id", help="Pinned candidate temporary-skill run ID for paired usefulness comparison."),
+    ] = None,
     json_output: Annotated[
         bool,
         typer.Option("--json", help="Print the candidate usefulness report as JSON."),
@@ -322,6 +360,8 @@ def candidate_usefulness(
             candidate_id,
             runs_dir=runs_dir,
             skills_dir=skills_dir,
+            baseline_run_id=baseline_run_id,
+            treatment_run_id=treatment_run_id,
         )
     except CandidateUsefulnessError as exc:
         typer.echo(str(exc))
@@ -331,6 +371,470 @@ def candidate_usefulness(
         emit_candidate_usefulness_json(report)
     else:
         emit_candidate_usefulness_output(report)
+
+
+@app.command("skill-receipt")
+def skill_receipt(
+    candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to summarize as a proof-carrying receipt.")],
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory containing the skill candidate ledger.")] = Path("runs"),
+    skills_dir: Annotated[Path, typer.Option(help="Durable local skills directory for read-only admission context.")] = Path("skills"),
+    baseline_run_id: Annotated[
+        str | None,
+        typer.Option("--baseline-run-id", help="Pinned no-temporary-skill control run ID for utility proof."),
+    ] = None,
+    treatment_run_id: Annotated[
+        str | None,
+        typer.Option("--treatment-run-id", help="Pinned candidate temporary-skill run ID for utility proof."),
+    ] = None,
+    collision_policy: Annotated[
+        str,
+        typer.Option(
+            "--collision-policy",
+            help="Dry-run destination collision policy: block_existing or allow_replace_with_approval.",
+        ),
+    ] = "block_existing",
+    permission_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--permission-approval-id",
+            help="Optional resolved input request resolution ID authorizing permission widening in the receipt preview.",
+        ),
+    ] = "",
+    plan_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--plan-approval-id",
+            help="Optional resolved approve_review resolution ID binding approval to the receipt plan digest.",
+        ),
+    ] = "",
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the skill receipt report as JSON."),
+    ] = False,
+) -> None:
+    try:
+        report = build_skill_receipt_report(
+            candidate_id,
+            runs_dir=runs_dir,
+            skills_dir=skills_dir,
+            baseline_run_id=baseline_run_id,
+            treatment_run_id=treatment_run_id,
+            collision_policy=collision_policy,
+            permission_approval_id=permission_approval_id or None,
+            plan_approval_id=plan_approval_id or None,
+        )
+    except SkillReceiptError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        emit_skill_receipt_json(report)
+    else:
+        emit_skill_receipt_output(report)
+
+
+@app.command("negative-evidence")
+def negative_evidence(
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate and resolution ledgers.")] = Path("runs"),
+    candidate_id: Annotated[
+        str,
+        typer.Option("--candidate-id", help="Optional candidate ID to filter negative evidence."),
+    ] = "",
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the negative evidence report as JSON."),
+    ] = False,
+) -> None:
+    report = build_negative_evidence_report(
+        runs_dir=runs_dir,
+        candidate_id=candidate_id or None,
+    )
+    if json_output:
+        emit_negative_evidence_json(report)
+    else:
+        emit_negative_evidence_output(report)
+
+
+@app.command("evidence-checkpoint")
+def evidence_checkpoint(
+    runs_dir: Annotated[Path, typer.Option(help="Run directory containing evidence to checkpoint.")] = Path("runs"),
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run/--no-dry-run",
+            help="Append to the local checkpoint ledger unless dry-run is enabled.",
+        ),
+    ] = True,
+    verify: Annotated[
+        bool,
+        typer.Option(
+            "--verify",
+            help="Verify the checkpoint chain and current evidence against the latest checkpoint without appending.",
+        ),
+    ] = False,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the evidence checkpoint report as JSON."),
+    ] = False,
+) -> None:
+    try:
+        report = build_evidence_checkpoint_report(
+            runs_dir=runs_dir,
+            dry_run=dry_run,
+            verify=verify,
+        )
+    except EvidenceCheckpointError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        emit_evidence_checkpoint_json(report)
+    else:
+        emit_evidence_checkpoint_output(report)
+
+
+@app.command("evidence-governor")
+def evidence_governor(
+    candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to evaluate with the non-steering evidence governor.")],
+    runs_dir: Annotated[Path, typer.Option(help="Run directory containing candidate, resolution, and checkpoint evidence.")] = Path("runs"),
+    skills_dir: Annotated[Path, typer.Option(help="Durable local skills directory for read-only admission context.")] = Path("skills"),
+    baseline_run_id: Annotated[
+        str | None,
+        typer.Option("--baseline-run-id", help="Pinned no-temporary-skill control run ID for utility proof."),
+    ] = None,
+    treatment_run_id: Annotated[
+        str | None,
+        typer.Option("--treatment-run-id", help="Pinned candidate temporary-skill run ID for utility proof."),
+    ] = None,
+    collision_policy: Annotated[
+        str,
+        typer.Option(
+            "--collision-policy",
+            help="Dry-run destination collision policy: block_existing or allow_replace_with_approval.",
+        ),
+    ] = "block_existing",
+    permission_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--permission-approval-id",
+            help="Optional resolved input request resolution ID authorizing permission widening in the receipt preview.",
+        ),
+    ] = "",
+    plan_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--plan-approval-id",
+            help="Optional resolved approve_review resolution ID binding approval to the receipt plan digest.",
+        ),
+    ] = "",
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the evidence governor report as JSON."),
+    ] = False,
+) -> None:
+    try:
+        report = build_evidence_governor_report(
+            candidate_id,
+            runs_dir=runs_dir,
+            skills_dir=skills_dir,
+            baseline_run_id=baseline_run_id,
+            treatment_run_id=treatment_run_id,
+            collision_policy=collision_policy,
+            permission_approval_id=permission_approval_id or None,
+            plan_approval_id=plan_approval_id or None,
+        )
+    except EvidenceGovernorError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        emit_evidence_governor_json(report)
+    else:
+        emit_evidence_governor_output(report)
+
+
+@app.command("shadow-activation-plan")
+def shadow_activation_plan(
+    candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to plan for managed shadow activation.")],
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate and resolution ledgers.")] = Path("runs"),
+    skills_dir: Annotated[Path, typer.Option(help="Durable local skills directory for read-only admission context.")] = Path("skills"),
+    managed_prefix: Annotated[
+        Path | None,
+        typer.Option(
+            "--managed-prefix",
+            help="Managed shadow prefix to plan under. Defaults to <runs-dir>/managed_shadow.",
+        ),
+    ] = None,
+    profile_name: Annotated[
+        str,
+        typer.Option("--profile-name", help="Managed profile name for generation planning."),
+    ] = "default",
+    collision_policy: Annotated[
+        str,
+        typer.Option(
+            "--collision-policy",
+            help="Dry-run destination collision policy: block_existing or allow_replace_with_approval.",
+        ),
+    ] = "block_existing",
+    permission_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--permission-approval-id",
+            help="Optional resolved input request resolution ID authorizing permission widening in the admission preview.",
+        ),
+    ] = "",
+    plan_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--plan-approval-id",
+            help="Optional resolved approve_review resolution ID binding approval to the durable plan digest.",
+        ),
+    ] = "",
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the shadow activation plan as JSON."),
+    ] = False,
+) -> None:
+    try:
+        report = build_shadow_activation_plan(
+            candidate_id,
+            runs_dir=runs_dir,
+            skills_dir=skills_dir,
+            managed_prefix=managed_prefix,
+            profile_name=profile_name,
+            collision_policy=collision_policy,
+            permission_approval_id=permission_approval_id or None,
+            plan_approval_id=plan_approval_id or None,
+        )
+    except ShadowActivationPlanError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        emit_shadow_activation_plan_json(report)
+    else:
+        emit_shadow_activation_plan_output(report)
+
+
+@app.command("shadow-rollback-plan")
+def shadow_rollback_plan(
+    candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to verify managed-prefix rollback readiness.")],
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate and resolution ledgers.")] = Path("runs"),
+    skills_dir: Annotated[Path, typer.Option(help="Durable local skills directory for read-only admission context.")] = Path("skills"),
+    managed_prefix: Annotated[
+        Path | None,
+        typer.Option(
+            "--managed-prefix",
+            help="Managed shadow prefix to inspect. Defaults to <runs-dir>/managed_shadow.",
+        ),
+    ] = None,
+    profile_name: Annotated[
+        str,
+        typer.Option("--profile-name", help="Managed profile name for rollback planning."),
+    ] = "default",
+    collision_policy: Annotated[
+        str,
+        typer.Option(
+            "--collision-policy",
+            help="Dry-run destination collision policy: block_existing or allow_replace_with_approval.",
+        ),
+    ] = "block_existing",
+    permission_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--permission-approval-id",
+            help="Optional resolved input request resolution ID authorizing permission widening in the admission preview.",
+        ),
+    ] = "",
+    plan_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--plan-approval-id",
+            help="Optional resolved approve_review resolution ID binding approval to the durable plan digest.",
+        ),
+    ] = "",
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the shadow rollback plan as JSON."),
+    ] = False,
+) -> None:
+    try:
+        report = build_shadow_rollback_plan(
+            candidate_id,
+            runs_dir=runs_dir,
+            skills_dir=skills_dir,
+            managed_prefix=managed_prefix,
+            profile_name=profile_name,
+            collision_policy=collision_policy,
+            permission_approval_id=permission_approval_id or None,
+            plan_approval_id=plan_approval_id or None,
+        )
+    except ShadowActivationPlanError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        emit_shadow_rollback_plan_json(report)
+    else:
+        emit_shadow_rollback_plan_output(report)
+
+
+@app.command("shadow-activation-acceptance")
+def shadow_activation_acceptance(
+    candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to exercise managed-prefix activation mechanics in a run-scoped acceptance sandbox.")],
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate and resolution ledgers.")] = Path("runs"),
+    skills_dir: Annotated[Path, typer.Option(help="Durable local skills directory for read-only admission context.")] = Path("skills"),
+    managed_prefix: Annotated[
+        Path | None,
+        typer.Option(
+            "--managed-prefix",
+            help="Managed shadow prefix to mirror for planning. Defaults to <runs-dir>/managed_shadow.",
+        ),
+    ] = None,
+    acceptance_prefix: Annotated[
+        Path | None,
+        typer.Option(
+            "--acceptance-prefix",
+            help="Run-scoped acceptance prefix. Must be under <runs-dir>.",
+        ),
+    ] = None,
+    profile_name: Annotated[
+        str,
+        typer.Option("--profile-name", help="Managed profile name for acceptance planning."),
+    ] = "default",
+    collision_policy: Annotated[
+        str,
+        typer.Option(
+            "--collision-policy",
+            help="Dry-run destination collision policy: block_existing or allow_replace_with_approval.",
+        ),
+    ] = "block_existing",
+    permission_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--permission-approval-id",
+            help="Optional resolved input request resolution ID authorizing permission widening in the admission preview.",
+        ),
+    ] = "",
+    plan_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--plan-approval-id",
+            help="Optional resolved approve_review resolution ID binding approval to the durable plan digest.",
+        ),
+    ] = "",
+    prepare_acceptance_evidence: Annotated[
+        bool,
+        typer.Option(
+            "--prepare-acceptance-evidence",
+            help="Create or reuse run-scoped acceptance evidence under <runs-dir> only.",
+        ),
+    ] = False,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the shadow activation acceptance report as JSON."),
+    ] = False,
+) -> None:
+    try:
+        report = build_shadow_activation_acceptance_report(
+            candidate_id,
+            runs_dir=runs_dir,
+            skills_dir=skills_dir,
+            managed_prefix=managed_prefix,
+            acceptance_prefix=acceptance_prefix,
+            profile_name=profile_name,
+            collision_policy=collision_policy,
+            permission_approval_id=permission_approval_id or None,
+            plan_approval_id=plan_approval_id or None,
+            prepare_acceptance_evidence=prepare_acceptance_evidence,
+        )
+    except ShadowActivationPlanError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        emit_shadow_activation_acceptance_json(report)
+    else:
+        emit_shadow_activation_acceptance_output(report)
+
+
+@app.command("shadow-write-gate")
+def shadow_write_gate(
+    candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to verify human-gated managed-prefix write readiness without writing.")],
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate and resolution ledgers.")] = Path("runs"),
+    skills_dir: Annotated[Path, typer.Option(help="Durable local skills directory for read-only admission context.")] = Path("skills"),
+    managed_prefix: Annotated[
+        Path | None,
+        typer.Option(
+            "--managed-prefix",
+            help="Managed shadow prefix to inspect. Defaults to <runs-dir>/managed_shadow.",
+        ),
+    ] = None,
+    acceptance_prefix: Annotated[
+        Path | None,
+        typer.Option(
+            "--acceptance-prefix",
+            help="Run-scoped acceptance prefix to verify. Must be under <runs-dir>.",
+        ),
+    ] = None,
+    profile_name: Annotated[
+        str,
+        typer.Option("--profile-name", help="Managed profile name for write-gate verification."),
+    ] = "default",
+    collision_policy: Annotated[
+        str,
+        typer.Option(
+            "--collision-policy",
+            help="Dry-run destination collision policy: block_existing or allow_replace_with_approval.",
+        ),
+    ] = "block_existing",
+    permission_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--permission-approval-id",
+            help="Optional resolved input request resolution ID authorizing permission widening in the admission preview.",
+        ),
+    ] = "",
+    plan_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--plan-approval-id",
+            help="Optional resolved approve_review resolution ID binding approval to the durable plan digest.",
+        ),
+    ] = "",
+    acceptance_plan_digest: Annotated[
+        str,
+        typer.Option(
+            "--acceptance-plan-digest",
+            help="Optional exact acceptance plan digest expected before future write-mode work.",
+        ),
+    ] = "",
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the shadow write gate report as JSON."),
+    ] = False,
+) -> None:
+    try:
+        report = build_shadow_write_gate_report(
+            candidate_id,
+            runs_dir=runs_dir,
+            skills_dir=skills_dir,
+            managed_prefix=managed_prefix,
+            acceptance_prefix=acceptance_prefix,
+            profile_name=profile_name,
+            collision_policy=collision_policy,
+            permission_approval_id=permission_approval_id or None,
+            plan_approval_id=plan_approval_id or None,
+            acceptance_plan_digest=acceptance_plan_digest or None,
+        )
+    except ShadowActivationPlanError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        emit_shadow_write_gate_json(report)
+    else:
+        emit_shadow_write_gate_output(report)
 
 
 @app.command("promote-candidate")
@@ -419,6 +923,13 @@ def admit_candidate(
             help="Optional resolved input request resolution ID authorizing permission widening for the dry-run write plan.",
         ),
     ] = "",
+    plan_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--plan-approval-id",
+            help="Optional resolved approve_review resolution ID whose notes bind approval to the emitted plan digest.",
+        ),
+    ] = "",
     prepare_write_evidence: Annotated[
         bool,
         typer.Option(
@@ -446,6 +957,7 @@ def admit_candidate(
             dry_run=dry_run,
             collision_policy=collision_policy,
             permission_approval_id=permission_approval_id or None,
+            plan_approval_id=plan_approval_id or None,
             prepare_write_evidence=prepare_write_evidence,
             expected_source_sha256=expected_source_sha256 or None,
         )

@@ -95,6 +95,143 @@ def test_candidate_usefulness_reports_successful_temporary_skill_without_mutatio
     assert not (runs_dir / "admission_staging").exists()
 
 
+def test_candidate_usefulness_reports_paired_baseline_treatment_without_mutation(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    baseline_result = runner.invoke(
+        app,
+        [
+            "run",
+            "Cluster arguments from these sources.",
+            "--no-temporary-skills",
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--runs-dir",
+            str(runs_dir),
+        ],
+    )
+    assert baseline_result.exit_code == 1
+    baseline_run_id = _only_new_run_id(runs_dir, set())
+    before_treatment = set(_run_ids(runs_dir))
+
+    treatment_result = runner.invoke(
+        app,
+        [
+            "run",
+            "Cluster arguments from these sources.",
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--runs-dir",
+            str(runs_dir),
+        ],
+    )
+    assert treatment_result.exit_code == 0
+    treatment_run_id = _only_new_run_id(runs_dir, before_treatment)
+    candidate_id = load_candidate_ledger(runs_dir).entries[0].candidate_id
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+
+    report = build_candidate_usefulness_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        baseline_run_id=baseline_run_id,
+        treatment_run_id=treatment_run_id,
+    )
+    result = runner.invoke(
+        app,
+        [
+            "candidate-usefulness",
+            candidate_id,
+            "--runs-dir",
+            str(runs_dir),
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--baseline-run-id",
+            baseline_run_id,
+            "--treatment-run-id",
+            treatment_run_id,
+            "--json",
+        ],
+    )
+
+    assert report.baseline_comparison_available is True
+    assert report.comparison is not None
+    assert report.comparison.outcome == "improved"
+    assert report.comparison.baseline_result_category == "blocked_missing_skill"
+    assert report.comparison.baseline_exit_code == 1
+    assert report.comparison.baseline_matches_candidate_request is True
+    assert report.comparison.baseline_temporary_skill_present is False
+    assert report.comparison.baseline_temporary_skill_loaded is False
+    assert report.comparison.treatment_result_category == "success"
+    assert report.comparison.treatment_exit_code == 0
+    assert report.comparison.treatment_matches_candidate_request is True
+    assert report.comparison.treatment_temporary_skill_present is True
+    assert report.comparison.treatment_temporary_skill_loaded is True
+    assert report.warnings == []
+
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)
+    assert data["baseline_comparison_available"] is True
+    assert data["comparison"]["outcome"] == "improved"
+    assert data["comparison"]["blockers"] == []
+    _assert_no_mutation_flags(data)
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+
+
+def test_candidate_usefulness_rejects_contaminated_baseline_comparison(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    run_result = runner.invoke(
+        app,
+        [
+            "run",
+            "Cluster arguments from these sources.",
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--runs-dir",
+            str(runs_dir),
+        ],
+    )
+    assert run_result.exit_code == 0
+    treatment_run_id = _only_new_run_id(runs_dir, set())
+    candidate_id = load_candidate_ledger(runs_dir).entries[0].candidate_id
+    runs_before = _snapshot_tree(runs_dir)
+
+    result = runner.invoke(
+        app,
+        [
+            "candidate-usefulness",
+            candidate_id,
+            "--runs-dir",
+            str(runs_dir),
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--baseline-run-id",
+            treatment_run_id,
+            "--treatment-run-id",
+            treatment_run_id,
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)
+    assert data["baseline_comparison_available"] is False
+    assert data["comparison"]["outcome"] == "invalid_comparison"
+    assert "baseline_uses_candidate_skill" in data["comparison"]["blockers"]
+    assert "baseline_comparison_invalid" in data["warnings"]
+    _assert_no_mutation_flags(data)
+    assert _snapshot_tree(runs_dir) == runs_before
+
+
 def test_candidate_usefulness_reports_repair_required_candidate(
     copied_seed_skills,
     tmp_path,
@@ -324,6 +461,19 @@ def _assert_no_mutation_flags(data: dict) -> None:
     assert data["durable_skills_mutated"] is False
     assert data["registry_mutated"] is False
     assert data["governor_steering_enabled"] is False
+
+
+def _run_ids(runs_dir: Path) -> list[str]:
+    return [
+        str(json.loads(path.read_text(encoding="utf-8"))["run_id"])
+        for path in sorted(runs_dir.glob("run_*.json"))
+    ]
+
+
+def _only_new_run_id(runs_dir: Path, before: set[str]) -> str:
+    new_run_ids = set(_run_ids(runs_dir)) - before
+    assert len(new_run_ids) == 1
+    return next(iter(new_run_ids))
 
 
 def _snapshot_tree(path: Path) -> dict[str, bytes]:

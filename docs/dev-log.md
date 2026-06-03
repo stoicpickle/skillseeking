@@ -767,3 +767,219 @@ Boundaries:
 
 - The packet does not compute statistical lift or claim paired baseline comparison yet.
 - No durable skill copy/install, stable promotion, permission widening, unsafe execution, ledger rewrite, registry mutation, or governor steering was added.
+
+## 2026-06-03 Proof-Carrying Capability Roadmap And Paired Usefulness
+
+Translated the external deep-research recommendations into a repo-local proof-carrying capability roadmap and shipped the first utility-proof slice.
+
+Added:
+
+- `docs/plans/proof-carrying-capability-roadmap-2026-06-03.md` with goals for paired utility proof, plan-digest approval, permission/dependency diffs, managed shadow activation, rollback, negative evidence, tamper-evident checkpoints, and a future non-steering evidence governor.
+- Optional `--baseline-run-id` and `--treatment-run-id` flags on `skill-agent candidate-usefulness`.
+- A read-only `comparison` object that records baseline/treatment result categories, exit codes, candidate-request matching, temporary-skill loading, comparison outcome, blockers, warnings, and summary.
+- Tests proving a blocked no-temporary-skill baseline plus successful temporary-skill treatment reports `improved`, while a contaminated baseline is rejected.
+
+Boundaries:
+
+- A single paired comparison is evidence for that pinned pair, not statistical lift.
+- The command remains read-only: no run logs, candidate ledgers, input request resolution ledgers, durable skills, snapshots, staging files, registry state, or governor behavior are mutated.
+- No durable skill copy/install, stable promotion, permission widening, unsafe execution, or active governor steering was added.
+
+## 2026-06-03 Exact Admission Plan Digest Approval
+
+Added the next proof layer for future durable admission write mode.
+
+Added:
+
+- Stable `sha256` plan digest output on `admit-candidate --dry-run`.
+- `--plan-approval-id` to pin a resolved `approve_review` record when needed.
+- Approval-note verification for `plan_digest=<digest>` and non-expired `expires_at=<timestamp>`.
+- Plan digest coverage over candidate ID, planned operation, source path/hash, target path, snapshot path, destination staging path, collision policy, permission policy, permission approval ID, permission widening, and write-evidence preparation options.
+- Tests proving matching approval enables readiness, mismatched approval is rejected, expired approval is rejected, source drift invalidates the old digest, and `--prepare-write-evidence` does not create run-scoped snapshot/staging evidence until the exact plan digest is approved.
+
+Boundaries:
+
+- `--no-dry-run` remains rejected.
+- Plan-digest approval is preview evidence only; it is not durable copy/install, stable promotion, permission widening, registry mutation, or governor steering.
+- Durable `skills/` remains untouched.
+
+## 2026-06-03 Permission And Dependency Diff Packet
+
+Added a semantic permission/dependency evidence packet to durable admission preview.
+
+Added:
+
+- `permission_dependency_diff` in `admit-candidate --dry-run` write plans.
+- Permission class diffs for `read_files`, `write_files`, `network`, `secrets`, and `execute_code`.
+- Tool diffs for declared `allowed_tools`.
+- Dependency declaration evidence for unsupported `dependencies`, `dependency_lock`, `dependency_realization`, `requirements`, and `packages` frontmatter keys.
+- Blocking behavior for dependency declarations without an exact realization/lock contract.
+- Tests proving normal Markdown candidates have no dependency declarations, permission widening is visible as an added class, and dependency declarations are blocked without mutating durable skills or evidence history.
+
+Boundaries:
+
+- No dependency resolver, package install, lockfile generation, durable skill copy/install, stable promotion, permission widening, registry mutation, or governor steering was added.
+- The packet is dry-run evidence only.
+
+## 2026-06-03 Exact Dependency Realization Evidence
+
+Extended the dependency diff packet with an exact realization contract.
+
+Added:
+
+- Optional `dependency_realization` manifest entries with `name`, `version`, `sha256`, and `source`.
+- Dependency diff fields for realized and unresolved dependency names.
+- Distinct blockers for missing realization (`dependency_realization_missing`) versus exact realization with unsupported install semantics (`dependency_install_unsupported`).
+- Tests proving exact realization clears the missing-realization blocker while still blocking any future install/copy readiness.
+
+Boundaries:
+
+- No dependency resolution, dependency installation, package download, durable skill copy/install, permission widening, registry mutation, stable promotion, or governor steering was added.
+
+## 2026-06-03 Counterfactual Skill Receipt
+
+Added a read-only proof bundle surface for one candidate.
+
+Added:
+
+- `skill-agent skill-receipt <candidate-id>` with human and `--json` output.
+- `SkillReceiptReport` and `SkillReceiptProof` contracts.
+- Proof categories for origin, utility, containment, compatibility, approval, and reversibility.
+- Nested candidate usefulness and durable admission preview evidence so a reviewer can inspect the current proof bundle from one command.
+- Tests proving a receipt can use paired baseline/treatment utility evidence while keeping missing promotion approval, plan approval, and rollback support visible as blocked, missing, or partial proof.
+
+Boundaries:
+
+- The receipt is read-only and does not rewrite run logs, mutate candidate ledgers, append resolution records, create snapshots, stage destination files, copy/install durable skills, mutate the registry, widen permissions, or steer the governor.
+- Receipt `ready`, `incomplete`, or `blocked` is audit evidence only; it is not durable admission approval and does not enable write mode.
+
+## 2026-06-03 Negative Evidence Report
+
+Added a read-only report for unfavorable or limiting evidence that already exists in the repo ledgers.
+
+Added:
+
+- `skill-agent negative-evidence` with human and `--json` output.
+- `NegativeEvidenceReport` and `NegativeEvidenceItem` contracts.
+- Reporting for reject, defer, block, and repair input request resolution history from `runs/input_request_resolutions.json`.
+- Reporting for blocked/quarantined, repair-required, and duplicate candidate evidence from `runs/skill_candidate_ledger.json`.
+- Optional `--candidate-id` filtering.
+- Tests proving deferred and rejected resolution history plus blocked candidate evidence remain queryable without rewriting either ledger.
+
+Boundaries:
+
+- No new negative-evidence ledger was introduced; the command reads existing append-only or summary evidence.
+- The report does not append resolutions, rewrite run logs, mutate candidate ledgers, create snapshots, stage destination files, copy/install durable skills, mutate the registry, widen permissions, or steer the governor.
+
+## 2026-06-03 Managed Shadow Activation Plan
+
+Added a dry-run plan for the future managed-prefix activation path.
+
+Added:
+
+- `skill-agent shadow-activation-plan <candidate-id>` with human and `--json` output.
+- `ShadowActivationPlanReport` contract.
+- Content-addressed managed store path planning under a managed prefix.
+- Profile generation planning with activation pointer, previous generation, planned generation, and rollback target.
+- A stable shadow plan digest that binds candidate ID, source hash, durable plan digest, managed prefix, store path, generation path, previous generation, rollback target, activation policy, and canary scope.
+- Tests proving the command can read an existing generation directory to compute the next generation and rollback target without creating store files, generation files, profile pointers, or durable skills.
+
+Boundaries:
+
+- The command is read-only: it does not create the managed prefix, write store objects, switch activation pointers, rewrite run logs, mutate candidate or resolution ledgers, copy/install durable skills, mutate the registry, widen permissions, or steer the governor.
+- Shadow activation remains a future write-mode design; this slice only makes the exact plan inspectable.
+
+## 2026-06-03 Shadow Rollback Plan
+
+Added a read-only verifier for future managed-prefix rollback.
+
+Added:
+
+- `skill-agent shadow-rollback-plan <candidate-id>` with human and `--json` output.
+- `ShadowRollbackPlanReport` contract.
+- Activation pointer inspection for symlink or text-file pointer evidence.
+- Current/planned/rollback generation reporting.
+- Rollback target existence checks and a stable rollback plan digest.
+- Blockers for missing rollback generation, missing rollback target, missing activation pointer, or activation pointer target mismatch.
+- Tests proving verifiable and blocked rollback plans do not create managed-prefix store files, generation directories, durable skills, run logs, candidate ledger entries, resolution ledger entries, registry mutations, or governor steering.
+
+Boundaries:
+
+- The command is read-only: it does not create the managed prefix, write store objects, switch activation pointers, rewrite run logs, mutate candidate or resolution ledgers, copy/install durable skills, mutate the registry, widen permissions, or steer the governor.
+- Real profile switching, interruption handling, and rollback execution remain future write-mode work.
+
+## 2026-06-03 Managed-Prefix Activation Acceptance Harness
+
+Added a controlled acceptance harness for future managed-prefix write mode.
+
+Added:
+
+- `skill-agent shadow-activation-acceptance <candidate-id>` with human and `--json` output.
+- `ShadowActivationAcceptanceReport` contract.
+- Default planned mode that reports run-scoped acceptance paths without writing evidence.
+- `--prepare-acceptance-evidence`, which may create or reuse matching acceptance evidence under `runs/` only.
+- Acceptance store and generation `SKILL.md` copies from the approved source artifact.
+- Simulated activation pointer switching to the planned generation followed by rollback to the previous generation.
+- Pointer-before reporting, interrupted activation recovery when the acceptance pointer already targets the planned generation, and conflict detection for unexpected pointer targets.
+- Stable acceptance plan digest binding candidate, planned managed prefix, acceptance prefix, source hash, store path, generation path, pointer path, rollback target, and shadow plan digest.
+- Blockers for acceptance prefixes outside `--runs-dir`, source hash drift, missing rollback generation, missing acceptance paths, conflicting existing acceptance files, and unexpected pointer preconditions.
+- Tests proving activation and rollback are verified inside the acceptance prefix, interrupted pointer states recover to rollback, conflicts block without partial rewrites, and durable `skills/`, the real managed prefix, run logs, candidate ledgers, resolution ledgers, registry, permissions, and governor behavior stay untouched.
+
+Boundaries:
+
+- This is not real durable activation. It writes only controlled acceptance evidence under `runs/`.
+- No arbitrary destination writes, durable skill copy/install, stable promotion, real profile switching, permission widening, registry mutation, ledger mutation, or governor steering was added.
+
+## 2026-06-03 Shadow Write Gate Verifier
+
+Added a read-only human gate verifier for future managed-prefix write mode.
+
+Added:
+
+- `skill-agent shadow-write-gate <candidate-id>` with human and `--json` output.
+- `ShadowWriteGateReport` contract.
+- Composition of durable admission, shadow activation, shadow rollback, and prepared acceptance evidence.
+- Verification for unchanged source hash, acceptance store copy, acceptance generation copy, restored acceptance pointer, rollback marker, rollback evidence, and supplied exact `--acceptance-plan-digest`.
+- Tests proving the gate becomes ready only after prepared acceptance evidence exists, blocks missing evidence, blocks digest mismatch, and does not mutate durable `skills/`, run logs, candidate ledgers, resolution ledgers, the real managed prefix, registry, permissions, or governor behavior.
+
+Boundaries:
+
+- The command does not prepare acceptance evidence and does not enable real durable activation.
+- No arbitrary destination writes, durable skill copy/install, stable promotion, real profile switching, permission widening, registry mutation, ledger mutation, or governor steering was added.
+
+## 2026-06-03 Evidence Checkpoint Hash Chain
+
+Added local tamper-evident checkpoints over core run evidence.
+
+Added:
+
+- `skill-agent evidence-checkpoint` with human and `--json` output.
+- `EvidenceCheckpointReport`, `EvidenceCheckpointRecord`, `EvidenceCheckpointFile`, and `EvidenceCheckpointLedger` contracts.
+- Dry-run checkpoint creation that computes the next checkpoint hash without writing.
+- `--no-dry-run` append support for `runs/evidence_checkpoints.json` only.
+- `--verify` support for checkpoint-chain validation and current-evidence comparison against the latest checkpoint.
+- Scope filtering that includes core `runs/` evidence while excluding eval reports, locks, temporary checkpoint writes, and the checkpoint ledger itself.
+- Tests proving dry-run writes nothing, append writes only the checkpoint ledger, repeated checkpoints preserve the previous hash, current evidence tampering is detected, and checkpoint-ledger tampering is detected.
+
+Boundaries:
+
+- This is local tamper-evidence only; it does not sign evidence, prove trust, approve durable admission, or enable real durable activation.
+- No run logs, candidate ledgers, resolution ledgers, durable skills, registry records, permissions, managed prefixes, or governor behavior were mutated by checkpoint verification.
+
+## 2026-06-03 Non-Steering Evidence Governor
+
+Added a read-only evidence governor report for candidate review.
+
+Added:
+
+- `skill-agent evidence-governor <candidate-id>` with human and `--json` output.
+- `EvidenceGovernorReport` and `EvidenceGovernorSignal` contracts.
+- Composition of `skill-receipt`, `negative-evidence`, and `evidence-checkpoint --verify` surfaces.
+- Deterministic advisory recommendations limited to `ask`, `test_more`, `deny`, and `defer`.
+- Explicit no-authority fields for approval, install, promotion, permission widening, route steering, and governor steering.
+- Tests proving the recommendation ladder for missing proof, missing approval, negative reject evidence, and strongest-current-proof deferral while preserving no-mutation flags.
+
+Boundaries:
+
+- The command is advisory only. It does not grant approval, authorize install/copy, promote candidates, widen permissions, route work, or steer execution.
+- No run logs, candidate ledgers, resolution ledgers, checkpoint ledgers, durable skills, registry records, permissions, managed prefixes, or active governor behavior were mutated.

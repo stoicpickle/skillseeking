@@ -1,9 +1,12 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from tempfile import NamedTemporaryFile
+from typing import Any
 
 from app.admission_plan import AdmissionPlanError, build_admission_plan
 from app.input_resolution_ledger import (
@@ -13,6 +16,10 @@ from app.input_resolution_ledger import (
 )
 from app.models import (
     AdmissionPlanReport,
+    AdmissionPermissionDependencyDiff,
+    AdmissionPermissionDiffItem,
+    AdmissionDependencyDiff,
+    AdmissionSourceArtifact,
     DurableAdmissionPreviewOutcome,
     DurableAdmissionPreviewReport,
     DurableAdmissionWriteOperation,
@@ -25,6 +32,15 @@ VALID_COLLISION_POLICIES: set[str] = {
     "allow_replace_with_approval",
 }
 
+APPROVAL_BLOCKERS: set[str] = {
+    "durable_review_resolution_missing",
+    "plan_digest_approval_missing",
+    "plan_digest_approval_invalid",
+    "plan_digest_approval_mismatch",
+    "plan_digest_approval_expiry_missing",
+    "plan_digest_approval_expired",
+}
+
 
 def build_durable_admission_preview(
     candidate_id: str,
@@ -34,6 +50,7 @@ def build_durable_admission_preview(
     dry_run: bool = True,
     collision_policy: str = "block_existing",
     permission_approval_id: str | None = None,
+    plan_approval_id: str | None = None,
     prepare_write_evidence: bool = False,
     expected_source_sha256: str | None = None,
 ) -> DurableAdmissionPreviewReport:
@@ -69,6 +86,7 @@ def build_durable_admission_preview(
         "promotion_approved_by",
         "promotion_approved_at",
         "durable_admission_review approve_review resolution",
+        "plan digest approval resolution",
     ]
     permission_widening = list(admission_plan.durable_registry.permission_widening)
     if permission_widening:
@@ -104,6 +122,8 @@ def build_durable_admission_preview(
         and permission_approval_id
         and _has_permission_approval_resolution(permission_approval_id, runs_dir)
     )
+    permission_dependency_diff = _permission_dependency_diff(admission_plan)
+    write_blockers.extend(permission_dependency_diff.blockers)
 
     if replacement_approved:
         write_blockers = [
@@ -132,6 +152,42 @@ def build_durable_admission_preview(
         destination_stage_path=destination_stage_path,
     )
     write_blockers = _unique(write_blockers)
+    plan_operation = _write_operation(
+        blockers=_plan_blockers_for_digest(
+            write_blockers,
+            name_collision=name_collision,
+            collision_policy=collision_policy,
+        ),
+        name_collision=name_collision,
+        collision_policy=collision_policy,
+    )
+    plan_digest = _plan_digest(
+        candidate_id=candidate_id,
+        operation=plan_operation,
+        source_path=source_path,
+        source_sha256=source_sha256,
+        target_dir=target_dir,
+        target_path=target_path,
+        snapshot_dir=snapshot_dir,
+        snapshot_path=snapshot_path,
+        destination_stage_dir=destination_stage_dir,
+        destination_stage_path=destination_stage_path,
+        collision_policy=collision_policy,
+        permission_approval_id=permission_approval_id,
+        permission_dependency_diff=permission_dependency_diff,
+        permission_widening=permission_widening,
+        prepare_write_evidence=prepare_write_evidence,
+        expected_source_sha256=expected_source_sha256,
+    )
+    plan_approval = _find_plan_approval_resolution(
+        plan_digest=plan_digest,
+        candidate_id=candidate_id,
+        runs_dir=runs_dir,
+        plan_approval_id=plan_approval_id,
+    )
+    if not plan_approval.verified:
+        write_blockers.append(plan_approval.blocker)
+    write_blockers = _unique(write_blockers)
     if prepare_write_evidence and not write_blockers:
         evidence_blockers, evidence_state = _prepare_write_evidence(
             source_path=source_path,
@@ -148,6 +204,11 @@ def build_durable_admission_preview(
     )
     write_plan = DurableAdmissionWritePlan(
         operation=operation,
+        plan_digest=plan_digest,
+        plan_approval_id=plan_approval.resolution_id,
+        plan_approval_digest=plan_approval.digest,
+        plan_approval_expires_at=plan_approval.expires_at,
+        plan_approval_verified=plan_approval.verified,
         source_skill_path=str(source_path) if source_path is not None else None,
         source_sha256=source_sha256,
         target_skill_dir=str(target_dir) if target_dir is not None else None,
@@ -166,6 +227,7 @@ def build_durable_admission_preview(
         destination_stage_created=evidence_state.destination_stage_created,
         collision_policy=collision_policy,
         permission_approval_id=permission_approval_id,
+        permission_dependency_diff=permission_dependency_diff,
         replacement_approved=replacement_approved,
         permission_widening_approved=permission_widening_approved,
         blockers=write_blockers,
@@ -266,6 +328,339 @@ def _has_permission_approval_resolution(
         and resolution.decision in {"approve_review", "approve_workflow"}
         and resolution.status == "resolved"
     )
+
+
+def _permission_dependency_diff(
+    report: AdmissionPlanReport,
+) -> AdmissionPermissionDependencyDiff:
+    source = _selected_source_artifact(report)
+    current_permissions = _current_permissions(report)
+    current_tools = _current_tools(report)
+    requested_permissions = source.permissions if source is not None else {}
+    requested_tools = source.allowed_tools if source is not None else []
+
+    permission_changes = [
+        _permission_diff_item(
+            class_name=class_name,
+            current_enabled=bool(current_permissions.get(class_name, False)),
+            requested_enabled=bool(requested_permissions.get(class_name, False)),
+        )
+        for class_name in [
+            "read_files",
+            "write_files",
+            "network",
+            "secrets",
+            "execute_code",
+        ]
+    ]
+    added_permissions = [
+        item.class_name for item in permission_changes if item.change == "added"
+    ]
+    removed_permissions = [
+        item.class_name for item in permission_changes if item.change == "removed"
+    ]
+    added_tools = sorted(set(requested_tools) - set(current_tools))
+    removed_tools = sorted(set(current_tools) - set(requested_tools))
+
+    dependency_declarations = source.dependency_declarations if source is not None else {}
+    dependency_blockers: list[str] = []
+    dependency_warnings: list[str] = []
+    dependency_names = _dependency_names(dependency_declarations)
+    realized_names = _realized_dependency_names(dependency_declarations)
+    unresolved_names = sorted(set(dependency_names) - set(realized_names))
+    exact_realization_available = bool(dependency_names) and not unresolved_names
+    if dependency_declarations:
+        if unresolved_names:
+            dependency_blockers.append("dependency_realization_missing")
+        else:
+            dependency_blockers.append("dependency_install_unsupported")
+
+    blockers = list(dependency_blockers)
+    if added_tools:
+        blockers.append("tool_widening_approval_missing")
+
+    return AdmissionPermissionDependencyDiff(
+        permission_changes=permission_changes,
+        added_permission_classes=added_permissions,
+        removed_permission_classes=removed_permissions,
+        added_tools=added_tools,
+        removed_tools=removed_tools,
+        permission_approval_required=bool(added_permissions or added_tools),
+        dependency_diff=AdmissionDependencyDiff(
+            dependencies_declared=bool(dependency_declarations),
+            declaration_keys=sorted(dependency_declarations),
+            exact_realization_available=(
+                exact_realization_available if dependency_declarations else True
+            ),
+            added=dependency_names,
+            blockers=dependency_blockers,
+            realized=realized_names,
+            unresolved=unresolved_names,
+            warnings=dependency_warnings,
+        ),
+        blockers=_unique(blockers),
+        warnings=dependency_warnings,
+    )
+
+
+def _dependency_names(declarations: dict[str, Any]) -> list[str]:
+    names: set[str] = set()
+    for key in ["dependencies", "requirements", "packages"]:
+        names.update(_dependency_names_from_value(declarations.get(key)))
+    lock_value = declarations.get("dependency_lock")
+    if isinstance(lock_value, dict):
+        for key in ["dependencies", "packages"]:
+            names.update(_dependency_names_from_value(lock_value.get(key)))
+    return sorted(names)
+
+
+def _dependency_names_from_value(value: Any) -> set[str]:
+    if isinstance(value, list):
+        return {
+            name
+            for item in value
+            if (name := _dependency_name_from_value(item))
+        }
+    if isinstance(value, dict):
+        names: set[str] = set()
+        for key, item in value.items():
+            if isinstance(item, dict) and item.get("name"):
+                names.add(str(item["name"]))
+            else:
+                names.add(str(key))
+        return names
+    return set()
+
+
+def _dependency_name_from_value(value: Any) -> str:
+    if isinstance(value, str):
+        return value.split("==", 1)[0].split(">=", 1)[0].split("<=", 1)[0].strip()
+    if isinstance(value, dict) and value.get("name"):
+        return str(value["name"])
+    return ""
+
+
+def _realized_dependency_names(declarations: dict[str, Any]) -> list[str]:
+    realization = declarations.get("dependency_realization")
+    if isinstance(realization, list):
+        return sorted(
+            {
+                str(item["name"])
+                for item in realization
+                if isinstance(item, dict)
+                and item.get("name")
+                and item.get("version")
+                and item.get("sha256")
+            }
+        )
+    if isinstance(realization, dict):
+        return sorted(
+            str(name)
+            for name, item in realization.items()
+            if isinstance(item, dict) and item.get("version") and item.get("sha256")
+        )
+    return []
+
+
+def _permission_diff_item(
+    *,
+    class_name: str,
+    current_enabled: bool,
+    requested_enabled: bool,
+) -> AdmissionPermissionDiffItem:
+    change = "unchanged"
+    if requested_enabled and not current_enabled:
+        change = "added"
+    elif current_enabled and not requested_enabled:
+        change = "removed"
+    return AdmissionPermissionDiffItem(
+        class_name=class_name,
+        current_enabled=current_enabled,
+        requested_enabled=requested_enabled,
+        change=change,
+        approval_required=change == "added",
+    )
+
+
+def _selected_source_artifact(
+    report: AdmissionPlanReport,
+) -> AdmissionSourceArtifact | None:
+    if report.selected_source_artifact:
+        for artifact in report.source_artifacts:
+            if artifact.skill_path == report.selected_source_artifact:
+                return artifact
+    return report.source_artifacts[0] if report.source_artifacts else None
+
+
+def _current_permissions(report: AdmissionPlanReport) -> dict[str, bool]:
+    collision = report.durable_registry.name_collision or {}
+    permissions = collision.get("permissions")
+    if isinstance(permissions, dict):
+        return {str(key): bool(value) for key, value in permissions.items()}
+    return {}
+
+
+def _current_tools(report: AdmissionPlanReport) -> list[str]:
+    collision = report.durable_registry.name_collision or {}
+    tools = collision.get("allowed_tools")
+    if isinstance(tools, list):
+        return [str(tool) for tool in tools]
+    return []
+
+
+@dataclass(frozen=True)
+class _PlanApprovalEvidence:
+    verified: bool
+    blocker: str
+    resolution_id: str | None = None
+    digest: str | None = None
+    expires_at: str | None = None
+
+
+def _find_plan_approval_resolution(
+    *,
+    plan_digest: str | None,
+    candidate_id: str,
+    runs_dir: Path,
+    plan_approval_id: str | None,
+) -> _PlanApprovalEvidence:
+    if plan_digest is None:
+        return _PlanApprovalEvidence(False, "plan_digest_missing")
+    try:
+        ledger = load_input_request_resolution_ledger(runs_dir)
+    except InputResolutionLedgerError:
+        return _PlanApprovalEvidence(False, "plan_digest_approval_missing")
+
+    matches = [
+        record
+        for record in ledger.resolutions
+        if (
+            (plan_approval_id is None or record.id == plan_approval_id or record.input_request_id == plan_approval_id)
+            and record.decision == "approve_review"
+            and record.status == "resolved"
+            and record.source_request.kind == "durable_admission_review"
+            and record.source_request.related_candidate_id == candidate_id
+        )
+    ]
+    if not matches:
+        return _PlanApprovalEvidence(
+            False,
+            "plan_digest_approval_invalid" if plan_approval_id else "plan_digest_approval_missing",
+            resolution_id=plan_approval_id,
+        )
+
+    mismatch_seen: _PlanApprovalEvidence | None = None
+    expired_seen: _PlanApprovalEvidence | None = None
+    missing_expiry_seen: _PlanApprovalEvidence | None = None
+    for record in reversed(matches):
+        digest = _note_token(record.notes, "plan_digest")
+        expires_at = _note_token(record.notes, "expires_at")
+        resolution_id = record.id
+        if digest != plan_digest:
+            mismatch_seen = _PlanApprovalEvidence(
+                False,
+                "plan_digest_approval_mismatch",
+                resolution_id=resolution_id,
+                digest=digest,
+                expires_at=expires_at,
+            )
+            continue
+        if not expires_at:
+            missing_expiry_seen = _PlanApprovalEvidence(
+                False,
+                "plan_digest_approval_expiry_missing",
+                resolution_id=resolution_id,
+                digest=digest,
+            )
+            continue
+        if _approval_expired(expires_at):
+            expired_seen = _PlanApprovalEvidence(
+                False,
+                "plan_digest_approval_expired",
+                resolution_id=resolution_id,
+                digest=digest,
+                expires_at=expires_at,
+            )
+            continue
+        return _PlanApprovalEvidence(
+            True,
+            "",
+            resolution_id=resolution_id,
+            digest=digest,
+            expires_at=expires_at,
+        )
+
+    return (
+        mismatch_seen
+        or expired_seen
+        or missing_expiry_seen
+        or _PlanApprovalEvidence(False, "plan_digest_approval_invalid", resolution_id=plan_approval_id)
+    )
+
+
+def _note_token(notes: str, key: str) -> str | None:
+    prefix = f"{key}="
+    for token in notes.replace(",", " ").split():
+        if token.startswith(prefix):
+            return token[len(prefix):].strip()
+    return None
+
+
+def _approval_expired(expires_at: str) -> bool:
+    try:
+        parsed = datetime.fromisoformat(expires_at.replace("Z", "+00:00"))
+    except ValueError:
+        return True
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc) <= datetime.now(timezone.utc)
+
+
+def _plan_digest(
+    *,
+    candidate_id: str,
+    operation: str,
+    source_path: Path | None,
+    source_sha256: str | None,
+    target_dir: Path | None,
+    target_path: Path | None,
+    snapshot_dir: Path | None,
+    snapshot_path: Path | None,
+    destination_stage_dir: Path | None,
+    destination_stage_path: Path | None,
+    collision_policy: str,
+    permission_approval_id: str | None,
+    permission_dependency_diff: AdmissionPermissionDependencyDiff,
+    permission_widening: list[str],
+    prepare_write_evidence: bool,
+    expected_source_sha256: str | None,
+) -> str:
+    payload: dict[str, Any] = {
+        "candidate_id": candidate_id,
+        "operation": operation,
+        "source_skill_path": str(source_path) if source_path is not None else None,
+        "source_sha256": source_sha256,
+        "target_skill_dir": str(target_dir) if target_dir is not None else None,
+        "target_skill_path": str(target_path) if target_path is not None else None,
+        "snapshot_dir": str(snapshot_dir) if snapshot_dir is not None else None,
+        "snapshot_skill_path": str(snapshot_path) if snapshot_path is not None else None,
+        "snapshot_sha256": source_sha256,
+        "destination_stage_dir": (
+            str(destination_stage_dir) if destination_stage_dir is not None else None
+        ),
+        "destination_stage_skill_path": (
+            str(destination_stage_path) if destination_stage_path is not None else None
+        ),
+        "collision_policy": collision_policy,
+        "permission_policy": "block_widening_without_approval",
+        "permission_approval_id": permission_approval_id,
+        "permission_dependency_diff": permission_dependency_diff.model_dump(mode="json"),
+        "permission_widening": sorted(permission_widening),
+        "prepare_write_evidence": prepare_write_evidence,
+        "expected_source_sha256": expected_source_sha256,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _sha256(path: Path) -> str | None:
@@ -441,9 +836,23 @@ def _write_operation(
 
 
 def _blocked_outcome(blockers: list[str]) -> DurableAdmissionPreviewOutcome:
-    if "durable_review_resolution_missing" in blockers:
+    if any(blocker in APPROVAL_BLOCKERS for blocker in blockers):
         return "approval_required"
     return "blocked"
+
+
+def _plan_blockers_for_digest(
+    blockers: list[str],
+    *,
+    name_collision: bool,
+    collision_policy: str,
+) -> list[str]:
+    plan_blockers = [blocker for blocker in blockers if blocker not in APPROVAL_BLOCKERS]
+    if name_collision and collision_policy == "allow_replace_with_approval":
+        plan_blockers = [
+            blocker for blocker in plan_blockers if blocker != "durable_name_collision"
+        ]
+    return plan_blockers
 
 
 def _next_steps(ready: bool) -> list[str]:
@@ -454,6 +863,7 @@ def _next_steps(ready: bool) -> list[str]:
         ]
     return [
         "Resolve admission blockers and record required human review evidence.",
+        "Record approve_review notes with plan_digest=<digest> and expires_at=<timestamp> before any future write-mode work.",
         "Rerun admit-candidate --dry-run before any future write-mode work.",
     ]
 

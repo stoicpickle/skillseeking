@@ -55,6 +55,12 @@ CandidateUsefulnessOutcome = Literal[
     "blocked",
     "evidence_missing",
 ]
+CandidateUsefulnessComparisonOutcome = Literal[
+    "improved",
+    "no_clear_improvement",
+    "regressed",
+    "invalid_comparison",
+]
 AdmissionCheckResult = Literal["pass", "warning", "blocker", "info"]
 InputRequestKind = Literal[
     "safety_approval",
@@ -86,6 +92,7 @@ SkillRequestStatus = Literal["requested"]
 SkillRepairRequestStatus = Literal["requested"]
 HealthSeverity = Literal["info", "warning", "critical"]
 SkillLifecycleStage = Literal["durable", "temporary", "generated", "requested"]
+EvidenceGovernorRecommendation = Literal["ask", "test_more", "deny", "defer"]
 RunResultCategory = Literal[
     "success",
     "blocked_missing_skill",
@@ -113,6 +120,10 @@ def new_default_run_id() -> str:
 
 def new_default_input_request_resolution_id() -> str:
     return f"resolution_{uuid.uuid4().hex[:12]}"
+
+
+def new_default_evidence_checkpoint_id() -> str:
+    return f"checkpoint_{uuid.uuid4().hex[:12]}"
 
 
 class SkillLifecycle(BaseModel):
@@ -157,6 +168,15 @@ class ScriptSpec(BaseModel):
     timeout_seconds: int = 5
 
 
+class DependencyRealization(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    version: str
+    sha256: str
+    source: str = "declared"
+
+
 class SkillManifest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -166,6 +186,8 @@ class SkillManifest(BaseModel):
     metadata: Metadata
     risk_level: RiskLevel
     compatibility: dict[str, str] = Field(default_factory=dict)
+    dependencies: list[str] = Field(default_factory=list)
+    dependency_realization: list[DependencyRealization] = Field(default_factory=list)
     allowed_tools: list[str] = Field(default_factory=list)
     permissions: Permissions = Field(default_factory=Permissions)
     input_schema: dict[str, str] = Field(default_factory=dict)
@@ -476,7 +498,10 @@ class AdmissionSourceArtifact(BaseModel):
     validation_reasons: list[str] = Field(default_factory=list)
     skill_name: str | None = None
     risk_level: str | None = None
+    allowed_tools: list[str] = Field(default_factory=list)
     permissions: dict[str, bool] = Field(default_factory=dict)
+    compatibility: dict[str, str] = Field(default_factory=dict)
+    dependency_declarations: dict[str, Any] = Field(default_factory=dict)
     input_schema: dict[str, str] = Field(default_factory=dict)
     output_schema: dict[str, str] = Field(default_factory=dict)
     scripted: bool = False
@@ -493,6 +518,44 @@ class AdmissionDurableRegistrySummary(BaseModel):
     permission_widening: list[str] = Field(default_factory=list)
     risk_or_status_differences: list[str] = Field(default_factory=list)
     scripted_implications: list[str] = Field(default_factory=list)
+
+
+class AdmissionPermissionDiffItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    class_name: str
+    current_enabled: bool = False
+    requested_enabled: bool = False
+    change: str = "unchanged"
+    approval_required: bool = False
+
+
+class AdmissionDependencyDiff(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dependencies_declared: bool = False
+    declaration_keys: list[str] = Field(default_factory=list)
+    exact_realization_available: bool = True
+    added: list[str] = Field(default_factory=list)
+    removed: list[str] = Field(default_factory=list)
+    realized: list[str] = Field(default_factory=list)
+    unresolved: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class AdmissionPermissionDependencyDiff(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    permission_changes: list[AdmissionPermissionDiffItem] = Field(default_factory=list)
+    added_permission_classes: list[str] = Field(default_factory=list)
+    removed_permission_classes: list[str] = Field(default_factory=list)
+    added_tools: list[str] = Field(default_factory=list)
+    removed_tools: list[str] = Field(default_factory=list)
+    permission_approval_required: bool = False
+    dependency_diff: AdmissionDependencyDiff = Field(default_factory=AdmissionDependencyDiff)
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
 
 
 class InputRequest(BaseModel):
@@ -607,6 +670,12 @@ class DurableAdmissionWritePlan(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     operation: DurableAdmissionWriteOperation
+    plan_digest_algorithm: str = "sha256"
+    plan_digest: str | None = None
+    plan_approval_id: str | None = None
+    plan_approval_digest: str | None = None
+    plan_approval_expires_at: str | None = None
+    plan_approval_verified: bool = False
     source_skill_path: str | None = None
     source_sha256: str | None = None
     target_skill_dir: str | None = None
@@ -625,6 +694,9 @@ class DurableAdmissionWritePlan(BaseModel):
     collision_policy: DurableAdmissionCollisionPolicy = "block_existing"
     permission_policy: DurableAdmissionPermissionPolicy = "block_widening_without_approval"
     permission_approval_id: str | None = None
+    permission_dependency_diff: AdmissionPermissionDependencyDiff = Field(
+        default_factory=AdmissionPermissionDependencyDiff
+    )
     replacement_approved: bool = False
     permission_widening_approved: bool = False
     durable_skill_installed: bool = False
@@ -677,6 +749,29 @@ class CandidateUsefulnessEvidenceRun(BaseModel):
     repair_requested: bool = False
 
 
+class CandidateUsefulnessComparison(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    baseline_run_id: str
+    baseline_run_log_path: str | None = None
+    baseline_result_category: str | None = None
+    baseline_exit_code: int | None = None
+    baseline_matches_candidate_request: bool = False
+    baseline_temporary_skill_present: bool = False
+    baseline_temporary_skill_loaded: bool = False
+    treatment_run_id: str
+    treatment_run_log_path: str | None = None
+    treatment_result_category: str | None = None
+    treatment_exit_code: int | None = None
+    treatment_matches_candidate_request: bool = False
+    treatment_temporary_skill_present: bool = False
+    treatment_temporary_skill_loaded: bool = False
+    outcome: CandidateUsefulnessComparisonOutcome
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    summary: str
+
+
 class CandidateUsefulnessReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -691,6 +786,7 @@ class CandidateUsefulnessReport(BaseModel):
     validation_failure_count: int = 0
     matching_successful_run_ids: list[str] = Field(default_factory=list)
     evidence_runs: list[CandidateUsefulnessEvidenceRun] = Field(default_factory=list)
+    comparison: CandidateUsefulnessComparison | None = None
     admission_plan_outcome: AdmissionPlanOutcome | None = None
     admission_plan_ready: bool = False
     dry_run: bool = True
@@ -702,6 +798,351 @@ class CandidateUsefulnessReport(BaseModel):
     blockers: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     next_steps: list[str] = Field(default_factory=list)
+
+
+class SkillReceiptProof(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    category: str
+    status: str
+    summary: str
+    evidence_refs: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class SkillReceiptReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_id: str
+    skill_name: str
+    capability: str
+    status: str
+    outcome: str
+    proofs: list[SkillReceiptProof] = Field(default_factory=list)
+    candidate_usefulness: CandidateUsefulnessReport
+    durable_admission_preview: DurableAdmissionPreviewReport
+    dry_run: bool = True
+    run_logs_mutated: bool = False
+    candidate_ledger_mutated: bool = False
+    resolution_ledger_mutated: bool = False
+    durable_skills_mutated: bool = False
+    registry_mutated: bool = False
+    governor_steering_enabled: bool = False
+    next_steps: list[str] = Field(default_factory=list)
+
+
+class NegativeEvidenceItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    evidence_type: str
+    candidate_id: str | None = None
+    skill_name: str | None = None
+    input_request_id: str | None = None
+    decision: str | None = None
+    resolution_class: str | None = None
+    status: str | None = None
+    reason: str
+    notes: str | None = None
+    source: str
+    evidence_refs: list[str] = Field(default_factory=list)
+    remaining_blocked_scope: str | None = None
+    created_at: datetime | None = None
+
+
+class NegativeEvidenceReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    runs_dir: str
+    candidate_id: str | None = None
+    evidence_count: int = 0
+    counts_by_type: dict[str, int] = Field(default_factory=dict)
+    items: list[NegativeEvidenceItem] = Field(default_factory=list)
+    dry_run: bool = True
+    run_logs_mutated: bool = False
+    candidate_ledger_mutated: bool = False
+    resolution_ledger_mutated: bool = False
+    durable_skills_mutated: bool = False
+    registry_mutated: bool = False
+    governor_steering_enabled: bool = False
+
+
+class EvidenceCheckpointFile(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    path: str
+    sha256: str
+    size_bytes: int
+
+
+class EvidenceCheckpointRecord(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str = Field(default_factory=new_default_evidence_checkpoint_id)
+    created_at: datetime = Field(default_factory=datetime.now)
+    scope: str = "runs_core"
+    previous_checkpoint_hash: str | None = None
+    checkpoint_hash_algorithm: str = "sha256"
+    checkpoint_hash: str
+    evidence_file_count: int = 0
+    evidence_files: list[EvidenceCheckpointFile] = Field(default_factory=list)
+
+
+class EvidenceCheckpointLedger(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: int = SCHEMA_VERSION
+    checkpoints: list[EvidenceCheckpointRecord] = Field(default_factory=list)
+
+
+class EvidenceCheckpointReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    runs_dir: str
+    ledger_path: str
+    mode: str
+    outcome: str
+    dry_run: bool = True
+    scope: str = "runs_core"
+    checkpoint_id: str | None = None
+    checkpoint_hash_algorithm: str = "sha256"
+    checkpoint_hash: str | None = None
+    previous_checkpoint_hash: str | None = None
+    latest_checkpoint_hash: str | None = None
+    evidence_file_count: int = 0
+    evidence_files: list[EvidenceCheckpointFile] = Field(default_factory=list)
+    checkpoint_count: int = 0
+    checkpoints_verified: int = 0
+    chain_valid: bool = False
+    current_evidence_matches_latest: bool = False
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+    checkpoint_ledger_mutated: bool = False
+    run_logs_mutated: bool = False
+    candidate_ledger_mutated: bool = False
+    resolution_ledger_mutated: bool = False
+    durable_skills_mutated: bool = False
+    registry_mutated: bool = False
+    governor_steering_enabled: bool = False
+
+
+class EvidenceGovernorSignal(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    status: str
+    summary: str
+    evidence_refs: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class EvidenceGovernorReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_id: str
+    skill_name: str | None = None
+    recommendation: EvidenceGovernorRecommendation
+    recommendation_reason: str
+    allowed_recommendations: list[EvidenceGovernorRecommendation] = Field(
+        default_factory=lambda: ["ask", "test_more", "deny", "defer"]
+    )
+    dry_run: bool = True
+    advisory_only: bool = True
+    approval_granted: bool = False
+    install_authorized: bool = False
+    promotion_authorized: bool = False
+    permission_widening_authorized: bool = False
+    route_steering_enabled: bool = False
+    signals: list[EvidenceGovernorSignal] = Field(default_factory=list)
+    skill_receipt: SkillReceiptReport
+    negative_evidence: NegativeEvidenceReport
+    evidence_checkpoint: EvidenceCheckpointReport
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+    run_logs_mutated: bool = False
+    candidate_ledger_mutated: bool = False
+    resolution_ledger_mutated: bool = False
+    checkpoint_ledger_mutated: bool = False
+    durable_skills_mutated: bool = False
+    registry_mutated: bool = False
+    governor_steering_enabled: bool = False
+
+
+class ShadowActivationPlanReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_id: str
+    skill_name: str | None = None
+    outcome: str
+    ready_for_shadow_activation_preview: bool = False
+    dry_run: bool = True
+    mutation_supported: bool = False
+    managed_prefix: str
+    managed_prefix_exists: bool = False
+    store_dir: str | None = None
+    store_skill_path: str | None = None
+    profile_name: str = "default"
+    profile_dir: str | None = None
+    activation_pointer: str | None = None
+    planned_generation: int | None = None
+    generation_dir: str | None = None
+    generation_skill_path: str | None = None
+    previous_generation: int | None = None
+    rollback_target: str | None = None
+    source_sha256: str | None = None
+    durable_plan_digest: str | None = None
+    shadow_plan_digest_algorithm: str = "sha256"
+    shadow_plan_digest: str | None = None
+    collision_policy: str = "shadow_managed_prefix_only"
+    activation_policy: str = "profile_pointer_switch"
+    canary_scope: str = "manual"
+    durable_admission_preview: DurableAdmissionPreviewReport
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+    managed_prefix_mutated: bool = False
+    profile_mutated: bool = False
+    run_logs_mutated: bool = False
+    candidate_ledger_mutated: bool = False
+    resolution_ledger_mutated: bool = False
+    durable_skills_mutated: bool = False
+    registry_mutated: bool = False
+    governor_steering_enabled: bool = False
+
+
+class ShadowRollbackPlanReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_id: str
+    skill_name: str | None = None
+    outcome: str
+    rollback_verifiable: bool = False
+    dry_run: bool = True
+    mutation_supported: bool = False
+    managed_prefix: str
+    profile_name: str = "default"
+    profile_dir: str | None = None
+    activation_pointer: str | None = None
+    activation_pointer_exists: bool = False
+    activation_pointer_target: str | None = None
+    current_generation: int | None = None
+    planned_generation: int | None = None
+    rollback_generation: int | None = None
+    rollback_target: str | None = None
+    rollback_target_exists: bool = False
+    shadow_plan_digest: str | None = None
+    rollback_plan_digest_algorithm: str = "sha256"
+    rollback_plan_digest: str | None = None
+    shadow_activation_plan: ShadowActivationPlanReport
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+    managed_prefix_mutated: bool = False
+    profile_mutated: bool = False
+    run_logs_mutated: bool = False
+    candidate_ledger_mutated: bool = False
+    resolution_ledger_mutated: bool = False
+    durable_skills_mutated: bool = False
+    registry_mutated: bool = False
+    governor_steering_enabled: bool = False
+
+
+class ShadowActivationAcceptanceReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_id: str
+    skill_name: str | None = None
+    outcome: str
+    acceptance_prepared: bool = False
+    activation_verified: bool = False
+    rollback_verified: bool = False
+    dry_run: bool = True
+    mutation_supported: bool = False
+    planned_managed_prefix: str
+    acceptance_prefix: str
+    acceptance_prefix_exists: bool = False
+    profile_name: str = "default"
+    source_skill_path: str | None = None
+    source_sha256: str | None = None
+    acceptance_store_skill_path: str | None = None
+    acceptance_generation_skill_path: str | None = None
+    acceptance_activation_pointer: str | None = None
+    previous_generation: int | None = None
+    planned_generation: int | None = None
+    acceptance_rollback_target: str | None = None
+    activation_pointer_before: str | None = None
+    activation_pointer_after_activation: str | None = None
+    activation_pointer_after_rollback: str | None = None
+    interrupted_activation_recovered: bool = False
+    acceptance_conflict_detected: bool = False
+    shadow_plan_digest: str | None = None
+    acceptance_plan_digest_algorithm: str = "sha256"
+    acceptance_plan_digest: str | None = None
+    shadow_activation_plan: ShadowActivationPlanReport
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+    acceptance_prefix_mutated: bool = False
+    managed_prefix_mutated: bool = False
+    profile_mutated: bool = False
+    run_logs_mutated: bool = False
+    candidate_ledger_mutated: bool = False
+    resolution_ledger_mutated: bool = False
+    durable_skills_mutated: bool = False
+    registry_mutated: bool = False
+    governor_steering_enabled: bool = False
+
+
+class ShadowWriteGateReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_id: str
+    skill_name: str | None = None
+    outcome: str
+    ready_for_human_managed_prefix_write: bool = False
+    dry_run: bool = True
+    mutation_supported: bool = False
+    managed_prefix: str
+    acceptance_prefix: str
+    profile_name: str = "default"
+    source_skill_path: str | None = None
+    source_sha256: str | None = None
+    source_hash_verified: bool = False
+    acceptance_store_skill_path: str | None = None
+    acceptance_store_verified: bool = False
+    acceptance_generation_skill_path: str | None = None
+    acceptance_generation_verified: bool = False
+    acceptance_activation_pointer: str | None = None
+    acceptance_pointer_restored: bool = False
+    acceptance_pointer_target: str | None = None
+    acceptance_rollback_target: str | None = None
+    acceptance_rollback_marker_verified: bool = False
+    durable_plan_digest: str | None = None
+    shadow_plan_digest: str | None = None
+    rollback_plan_digest: str | None = None
+    acceptance_plan_digest_algorithm: str = "sha256"
+    acceptance_plan_digest: str | None = None
+    expected_acceptance_plan_digest: str | None = None
+    acceptance_plan_digest_verified: bool = False
+    shadow_activation_plan: ShadowActivationPlanReport
+    shadow_rollback_plan: ShadowRollbackPlanReport
+    shadow_activation_acceptance: ShadowActivationAcceptanceReport
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+    acceptance_prefix_mutated: bool = False
+    managed_prefix_mutated: bool = False
+    profile_mutated: bool = False
+    run_logs_mutated: bool = False
+    candidate_ledger_mutated: bool = False
+    resolution_ledger_mutated: bool = False
+    durable_skills_mutated: bool = False
+    registry_mutated: bool = False
+    governor_steering_enabled: bool = False
 
 
 class RunLog(BaseModel):

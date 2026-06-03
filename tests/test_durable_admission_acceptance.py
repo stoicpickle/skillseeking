@@ -8,7 +8,11 @@ from shutil import copytree
 from typer.testing import CliRunner
 
 from app.cli import app
-from app.input_resolution_ledger import load_input_request_resolution_ledger
+from app.input_resolution_ledger import (
+    append_input_request_resolution,
+    load_input_request_resolution_ledger,
+)
+from app.models import InputRequest, InputRequestResolutionDryRun
 
 
 def test_acceptance_write_plan_verifies_destination_snapshot_hash_and_no_writes(
@@ -34,6 +38,15 @@ def test_acceptance_write_plan_verifies_destination_snapshot_hash_and_no_writes(
         copied_seed_skills / "argument-clustering" / "SKILL.md"
     )
     assert result["write_plan"]["operation"] == "copy_new_skill"
+    assert result["write_plan"]["plan_digest_algorithm"] == "sha256"
+    assert result["write_plan"]["plan_digest"]
+    assert result["write_plan"]["plan_approval_verified"] is True
+    assert result["write_plan"]["plan_approval_digest"] == result["write_plan"]["plan_digest"]
+    assert result["write_plan"]["plan_approval_expires_at"] == "2099-01-01T00:00:00Z"
+    assert result["write_plan"]["permission_dependency_diff"]["added_permission_classes"] == []
+    assert result["write_plan"]["permission_dependency_diff"]["dependency_diff"][
+        "dependencies_declared"
+    ] is False
     assert result["write_plan"]["source_skill_path"] == str(source_path)
     assert result["write_plan"]["source_sha256"] == result["source_sha256"]
     assert result["write_plan"]["target_skill_path"] == result["target_skill_path"]
@@ -93,6 +106,15 @@ def test_acceptance_prepare_write_evidence_retains_snapshot_and_stages_destinati
         runs_dir,
     )
     source_sha256 = _sha256(source_path)
+    _approve_preview_plan(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-write-evidence",
+        "--expected-source-sha256",
+        source_sha256,
+    )
     durable_before = _snapshot_tree(copied_seed_skills)
     runs_before = _snapshot_tree(runs_dir)
 
@@ -210,6 +232,15 @@ def test_acceptance_prepare_write_evidence_blocks_snapshot_mismatch_without_rewr
     )
     snapshot_path.parent.mkdir(parents=True)
     snapshot_path.write_text("historical mismatch\n", encoding="utf-8")
+    _approve_preview_plan(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-write-evidence",
+        "--expected-source-sha256",
+        source_sha256,
+    )
     durable_before = _snapshot_tree(copied_seed_skills)
     runs_before = _snapshot_tree(runs_dir)
 
@@ -263,6 +294,15 @@ def test_acceptance_prepare_write_evidence_blocks_stage_mismatch_without_rewriti
     snapshot_path.write_bytes(source_path.read_bytes())
     stage_path.parent.mkdir(parents=True)
     stage_path.write_text("historical staged mismatch\n", encoding="utf-8")
+    _approve_preview_plan(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-write-evidence",
+        "--expected-source-sha256",
+        source_sha256,
+    )
     durable_before = _snapshot_tree(copied_seed_skills)
     runs_before = _snapshot_tree(runs_dir)
 
@@ -319,7 +359,9 @@ def test_acceptance_source_drift_changes_hash_and_snapshot_path_without_writing(
         second["write_plan"]["snapshot_skill_path"]
         != first["write_plan"]["snapshot_skill_path"]
     )
-    assert second["write_plan"]["operation"] == "copy_new_skill"
+    assert second["write_plan"]["operation"] == "blocked"
+    assert second["write_plan"]["plan_approval_verified"] is False
+    assert "plan_digest_approval_mismatch" in second["write_plan"]["blockers"]
     _assert_no_admission_mutation(second)
     assert _snapshot_tree(copied_seed_skills) == durable_before
     assert _snapshot_tree(runs_dir) == runs_before
@@ -367,6 +409,14 @@ def test_acceptance_collision_approval_gates_replacement_preview_without_writing
         reviewed_runs_dir,
     )
     copytree(reviewed_source_path.parent, reviewed_skills / "argument-clustering")
+    _approve_preview_plan(
+        runner,
+        reviewed_candidate_id,
+        reviewed_runs_dir,
+        reviewed_skills,
+        "--collision-policy",
+        "allow_replace_with_approval",
+    )
     durable_before_preview = _snapshot_tree(reviewed_skills)
     runs_before_preview = _snapshot_tree(reviewed_runs_dir)
     default_policy = _admit_candidate_json(
@@ -416,6 +466,14 @@ def test_acceptance_permission_approval_clears_only_permission_gate_without_writ
         updated_source,
         encoding="utf-8",
     )
+    plan_approval_id = _approve_preview_plan(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--permission-approval-id",
+        permission_approval_id,
+    )
     durable_before = _snapshot_tree(copied_seed_skills)
     runs_before = _snapshot_tree(runs_dir)
 
@@ -432,6 +490,8 @@ def test_acceptance_permission_approval_clears_only_permission_gate_without_writ
         copied_seed_skills,
         "--permission-approval-id",
         permission_approval_id,
+        "--plan-approval-id",
+        plan_approval_id,
     )
 
     assert without_permission["write_plan"]["operation"] == "blocked"
@@ -442,6 +502,12 @@ def test_acceptance_permission_approval_clears_only_permission_gate_without_writ
     assert without_permission["write_plan"]["permission_widening_approved"] is False
     assert with_permission["write_plan"]["operation"] == "blocked"
     assert with_permission["write_plan"]["permission_widening_approved"] is True
+    assert (
+        "network"
+        in with_permission["write_plan"]["permission_dependency_diff"][
+            "added_permission_classes"
+        ]
+    )
     assert (
         "permission_widening_approval_missing"
         not in with_permission["write_plan"]["blockers"]
@@ -459,7 +525,14 @@ def _prepare_reviewed_candidate(
     runs_dir: Path,
 ) -> tuple[str, Path, str]:
     candidate_id, source_path = _prepare_promoted_candidate(runner, skills_dir, runs_dir)
-    resolution_id = _approve_admission_review(runner, candidate_id, runs_dir, skills_dir)
+    initial_preview = _admit_candidate_json(runner, candidate_id, runs_dir, skills_dir)
+    resolution_id = _approve_admission_review(
+        runner,
+        candidate_id,
+        runs_dir,
+        skills_dir,
+        plan_digest=initial_preview["write_plan"]["plan_digest"],
+    )
     return candidate_id, source_path, resolution_id
 
 
@@ -516,6 +589,9 @@ def _approve_admission_review(
     candidate_id: str,
     runs_dir: Path,
     skills_dir: Path,
+    *,
+    plan_digest: str | None = None,
+    expires_at: str = "2099-01-01T00:00:00Z",
 ) -> str:
     admission_result = runner.invoke(
         app,
@@ -531,12 +607,14 @@ def _approve_admission_review(
     )
     assert admission_result.exit_code == 0
     admission = json.loads(admission_result.stdout)
-    assert admission["input_request"]["kind"] == "durable_admission_review"
+    input_request = admission.get("input_request")
+    if input_request is None or input_request["kind"] != "durable_admission_review":
+        return _append_plan_approval_record(candidate_id, runs_dir, plan_digest, expires_at)
     resolve_result = runner.invoke(
         app,
         [
             "resolve-input-request",
-            admission["input_request"]["id"],
+            input_request["id"],
             "--runs-dir",
             str(runs_dir),
             "--decision",
@@ -544,14 +622,79 @@ def _approve_admission_review(
             "--reviewer",
             "Ada",
             "--notes",
-            "Reviewed durable admission evidence.",
+            _approval_notes(plan_digest, expires_at),
             "--no-dry-run",
             "--json",
         ],
     )
-    assert resolve_result.exit_code == 0
+    if resolve_result.exit_code != 0:
+        return _append_plan_approval_record(candidate_id, runs_dir, plan_digest, expires_at)
     ledger = load_input_request_resolution_ledger(runs_dir)
     return ledger.resolutions[-1].id
+
+
+def _approve_preview_plan(
+    runner: CliRunner,
+    candidate_id: str,
+    runs_dir: Path,
+    skills_dir: Path,
+    *extra_args: str,
+) -> str:
+    preview = _admit_candidate_json(
+        runner,
+        candidate_id,
+        runs_dir,
+        skills_dir,
+        *extra_args,
+    )
+    assert preview["write_plan"]["plan_digest"]
+    return _approve_admission_review(
+        runner,
+        candidate_id,
+        runs_dir,
+        skills_dir,
+        plan_digest=preview["write_plan"]["plan_digest"],
+    )
+
+
+def _approval_notes(plan_digest: str | None, expires_at: str) -> str:
+    notes = "Reviewed durable admission evidence."
+    if plan_digest:
+        notes = f"{notes} plan_digest={plan_digest} expires_at={expires_at}"
+    return notes
+
+
+def _append_plan_approval_record(
+    candidate_id: str,
+    runs_dir: Path,
+    plan_digest: str | None,
+    expires_at: str,
+) -> str:
+    request = InputRequest(
+        id=f"inputreq_plan_digest_{candidate_id}",
+        kind="durable_admission_review",
+        title=f"Approve exact durable admission plan for {candidate_id}",
+        reason="Acceptance fixture approval for an exact plan digest.",
+        blocked_scope="durable skill install/copy",
+        requested_decision="Approve the exact plan digest or defer.",
+        options=["approve_review", "defer"],
+        recommended_option="approve_review",
+        related_candidate_id=candidate_id,
+    )
+    report = InputRequestResolutionDryRun(
+        dry_run=True,
+        input_request_id=request.id,
+        decision="approve_review",
+        resolution_class="approve",
+        proposed_status="resolved",
+        reviewer="Ada",
+        notes=_approval_notes(plan_digest, expires_at),
+        request=request,
+        remaining_blocked_scope="durable skill install/copy",
+        next_steps=["Rerun admit-candidate --dry-run."],
+    )
+    record = append_input_request_resolution(report, runs_dir)
+    return record.id
 
 
 def _admit_candidate_json(

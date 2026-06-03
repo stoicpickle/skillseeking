@@ -110,7 +110,7 @@ Candidate output and health output may include queue counts and per-entry queue 
 
 ## Candidate Usefulness
 
-`skill-agent candidate-usefulness <candidate-id>` is a read-only candidate evidence packet. It derives usefulness support from existing candidate ledger counters and matching run-log evidence. It does not rewrite run logs, mutate the candidate ledger, mutate the resolution ledger, copy or install durable skills, mutate the registry, create snapshots, create staging files, widen permissions, or steer the governor.
+`skill-agent candidate-usefulness <candidate-id>` is a read-only candidate evidence packet. It derives usefulness support from existing candidate ledger counters and matching run-log evidence. Optional `--baseline-run-id` and `--treatment-run-id` flags add a pinned paired comparison when the baseline is a no-temporary-skill control and the treatment is a matching temporary-skill run. The command does not rewrite run logs, mutate the candidate ledger, mutate the resolution ledger, copy or install durable skills, mutate the registry, create snapshots, create staging files, widen permissions, or steer the governor.
 
 ```json
 {
@@ -140,6 +140,7 @@ Candidate output and health output may include queue counts and per-entry queue 
       "repair_requested": false
     }
   ],
+  "comparison": null,
   "admission_plan_outcome": "needs_promotion_approval",
   "admission_plan_ready": false,
   "dry_run": true,
@@ -154,7 +155,436 @@ Candidate output and health output may include queue counts and per-entry queue 
 }
 ```
 
-Allowed outcomes are `usefulness_supported`, `needs_successful_temporary_use`, `repair_required`, `blocked`, and `evidence_missing`. `usefulness_supported` means matching preserved run-log evidence shows a temporary skill validated, loaded, and the run completed with `result_category: success`. `evidence_missing` covers missing evidence run IDs, missing run-log files, or run logs without a matching request. It is not durable admission approval. `baseline_comparison_available` remains `false` in this slice because paired baseline/temporary comparisons are not implemented yet.
+When a pinned paired comparison is available, `comparison` has this shape:
+
+```json
+{
+  "baseline_run_id": "run_baseline",
+  "baseline_run_log_path": "runs/run_20260603_baseline.json",
+  "baseline_result_category": "blocked_missing_skill",
+  "baseline_exit_code": 1,
+  "baseline_matches_candidate_request": true,
+  "baseline_temporary_skill_present": false,
+  "baseline_temporary_skill_loaded": false,
+  "treatment_run_id": "run_treatment",
+  "treatment_run_log_path": "runs/run_20260603_treatment.json",
+  "treatment_result_category": "success",
+  "treatment_exit_code": 0,
+  "treatment_matches_candidate_request": true,
+  "treatment_temporary_skill_present": true,
+  "treatment_temporary_skill_loaded": true,
+  "outcome": "improved",
+  "blockers": [],
+  "warnings": [],
+  "summary": "Treatment succeeded with the candidate temporary skill while the baseline ended as blocked_missing_skill."
+}
+```
+
+Allowed candidate usefulness outcomes are `usefulness_supported`, `needs_successful_temporary_use`, `repair_required`, `blocked`, and `evidence_missing`. `usefulness_supported` means matching preserved run-log evidence shows a temporary skill validated, loaded, and the run completed with `result_category: success`. `evidence_missing` covers missing evidence run IDs, missing run-log files, or run logs without a matching request. It is not durable admission approval.
+
+Allowed comparison outcomes are `improved`, `no_clear_improvement`, `regressed`, and `invalid_comparison`. `baseline_comparison_available` is `true` only when the pinned pair is valid. A valid baseline must match the candidate request and must not include the candidate temporary skill. A contaminated baseline produces `invalid_comparison` with blocker `baseline_uses_candidate_skill`. A single valid pair is causal evidence for that pair only; it is not statistical lift or durable admission approval.
+
+## Skill Receipt
+
+`skill-agent skill-receipt <candidate-id>` is a read-only proof bundle for one candidate. It aggregates `candidate-usefulness` and `admit-candidate --dry-run` evidence into origin, utility, containment, compatibility, approval, and reversibility proof categories. The command does not rewrite run logs, mutate candidate ledgers, mutate resolution ledgers, copy or install durable skills, mutate the registry, create snapshots, create staging files, widen permissions, or steer the governor.
+
+```json
+{
+  "candidate_id": "candidate_abc123def456",
+  "skill_name": "argument-clustering",
+  "capability": "argument clustering",
+  "status": "temporary",
+  "outcome": "blocked",
+  "proofs": [
+    {
+      "category": "origin",
+      "status": "present",
+      "summary": "Source artifact, source hash, and future snapshot path are inspectable.",
+      "evidence_refs": [
+        "runs/artifacts/run_abc123/skills/argument-clustering/SKILL.md",
+        "sha256:abc123..."
+      ],
+      "blockers": [],
+      "warnings": []
+    },
+    {
+      "category": "utility",
+      "status": "present",
+      "summary": "Pinned baseline/treatment evidence is available for this candidate.",
+      "evidence_refs": ["run_treatment"],
+      "blockers": [],
+      "warnings": []
+    },
+    {
+      "category": "approval",
+      "status": "missing",
+      "summary": "Human review or exact plan-digest approval is still missing.",
+      "evidence_refs": ["def456..."],
+      "blockers": [
+        "durable_review_resolution_missing",
+        "plan_digest_approval_missing"
+      ],
+      "warnings": []
+    }
+  ],
+  "candidate_usefulness": {},
+  "durable_admission_preview": {},
+  "dry_run": true,
+  "run_logs_mutated": false,
+  "candidate_ledger_mutated": false,
+  "resolution_ledger_mutated": false,
+  "durable_skills_mutated": false,
+  "registry_mutated": false,
+  "governor_steering_enabled": false,
+  "next_steps": ["Resolve missing or blocked proof categories before durable admission."]
+}
+```
+
+Allowed receipt outcomes are `ready`, `incomplete`, and `blocked`. `ready` means every receipt proof category is present, but it is still review evidence only; it is not durable copy/install approval and does not enable write mode. `incomplete` means at least one category is missing or partial. `blocked` means at least one category has an explicit blocker such as missing promotion approval, dependency install unsupported, or absent write-mode rollback execution.
+
+## Negative Evidence
+
+`skill-agent negative-evidence` is a read-only report over preserved unfavorable or limiting evidence. It reads `runs/input_request_resolutions.json` and `runs/skill_candidate_ledger.json` to surface rejected, deferred, blocked, and repair-class input request resolutions plus blocked, quarantined, duplicate, or repair-required candidate records. It does not append resolutions, rewrite run logs, mutate candidate ledgers, copy or install durable skills, mutate the registry, create snapshots, create staging files, widen permissions, or steer the governor.
+
+```json
+{
+  "runs_dir": "runs",
+  "candidate_id": null,
+  "evidence_count": 2,
+  "counts_by_type": {
+    "resolution_defer": 1,
+    "resolution_reject": 1
+  },
+  "items": [
+    {
+      "id": "resolution_abc123",
+      "evidence_type": "resolution_reject",
+      "candidate_id": "candidate_abc123def456",
+      "skill_name": null,
+      "input_request_id": "inputreq_abc123",
+      "decision": "reject_candidate",
+      "resolution_class": "reject",
+      "status": "resolved",
+      "reason": "Temporary evidence is ready for human promotion review.",
+      "notes": "Do not promote this candidate.",
+      "source": "runs/input_request_resolutions.json",
+      "evidence_refs": ["run_abc123"],
+      "remaining_blocked_scope": "durable promotion only",
+      "created_at": "2026-06-03T12:00:00"
+    }
+  ],
+  "dry_run": true,
+  "run_logs_mutated": false,
+  "candidate_ledger_mutated": false,
+  "resolution_ledger_mutated": false,
+  "durable_skills_mutated": false,
+  "registry_mutated": false,
+  "governor_steering_enabled": false
+}
+```
+
+Negative evidence types are additive. Current types include `resolution_reject`, `resolution_defer`, `resolution_block`, `resolution_repair`, `candidate_blocked`, `candidate_repair_required`, and `candidate_duplicate`. The optional `--candidate-id` filter limits items to evidence tied to one candidate.
+
+## Evidence Checkpoint
+
+`skill-agent evidence-checkpoint` creates or verifies a local hash-chain over core evidence files under `runs/`. The current scope excludes eval reports, lock files, temporary checkpoint writes, and `runs/evidence_checkpoints.json` itself. It includes run logs, candidate/input-request ledgers, run artifacts, admission snapshots/staging evidence, and managed-prefix acceptance evidence when present. It is local tamper-evidence only; it does not sign evidence, prove trust, approve durable admission, mutate run logs, mutate candidate or resolution ledgers, copy or install durable skills, mutate the registry, widen permissions, or steer the governor.
+
+```json
+{
+  "runs_dir": "runs",
+  "ledger_path": "runs/evidence_checkpoints.json",
+  "mode": "create",
+  "outcome": "checkpoint_appended",
+  "dry_run": false,
+  "scope": "runs_core",
+  "checkpoint_id": "checkpoint_abc123def456",
+  "checkpoint_hash_algorithm": "sha256",
+  "checkpoint_hash": "abc123...",
+  "previous_checkpoint_hash": null,
+  "latest_checkpoint_hash": "abc123...",
+  "evidence_file_count": 3,
+  "evidence_files": [
+    {
+      "path": "run_20260603_120000_abcd1234.json",
+      "sha256": "def456...",
+      "size_bytes": 1024
+    }
+  ],
+  "checkpoint_count": 1,
+  "checkpoints_verified": 0,
+  "chain_valid": true,
+  "current_evidence_matches_latest": true,
+  "blockers": [],
+  "warnings": [],
+  "next_steps": [
+    "Use this checkpoint hash as local tamper-evidence only."
+  ],
+  "checkpoint_ledger_mutated": true,
+  "run_logs_mutated": false,
+  "candidate_ledger_mutated": false,
+  "resolution_ledger_mutated": false,
+  "durable_skills_mutated": false,
+  "registry_mutated": false,
+  "governor_steering_enabled": false
+}
+```
+
+Allowed create outcomes are `checkpoint_ready`, `checkpoint_appended`, and `blocked`. `checkpoint_ready` is the default dry-run result and writes nothing. `checkpoint_appended` appends one record to `runs/evidence_checkpoints.json` only. `blocked` means the existing chain is invalid and a new checkpoint was not appended.
+
+With `--verify`, allowed outcomes are `verified` and `blocked`. `verified` means every checkpoint hash links to the previous checkpoint and current evidence matches the latest checkpoint. `blocked` means the chain or current evidence changed, with blockers such as `checkpoint_hash_mismatch:<id>`, `checkpoint_previous_hash_mismatch:<id>`, `checkpoint_ledger_empty`, or `current_evidence_differs_from_latest_checkpoint`.
+
+## Evidence Governor
+
+`skill-agent evidence-governor <candidate-id>` is a read-only advisory report for one candidate. It composes `skill-receipt`, `negative-evidence`, and `evidence-checkpoint --verify` surfaces into a deterministic recommendation. Allowed recommendations are `ask`, `test_more`, `deny`, and `defer`. The command never grants approval, authorizes install/copy, promotes candidates, widens permissions, changes routing, rewrites evidence, or enables active governor steering.
+
+```json
+{
+  "candidate_id": "candidate_abc123def456",
+  "skill_name": "argument-clustering",
+  "recommendation": "ask",
+  "recommendation_reason": "Human review or exact plan-digest approval is missing.",
+  "allowed_recommendations": ["ask", "test_more", "deny", "defer"],
+  "dry_run": true,
+  "advisory_only": true,
+  "approval_granted": false,
+  "install_authorized": false,
+  "promotion_authorized": false,
+  "permission_widening_authorized": false,
+  "route_steering_enabled": false,
+  "signals": [
+    {
+      "name": "receipt:approval",
+      "status": "missing",
+      "summary": "Human review or exact plan-digest approval is still missing.",
+      "evidence_refs": ["def456..."],
+      "blockers": ["plan_digest_approval_missing"],
+      "warnings": []
+    }
+  ],
+  "skill_receipt": {},
+  "negative_evidence": {},
+  "evidence_checkpoint": {},
+  "blockers": ["receipt:approval:plan_digest_approval_missing"],
+  "warnings": [],
+  "next_steps": [
+    "Ask a human for the missing review or exact digest-bound approval."
+  ],
+  "run_logs_mutated": false,
+  "candidate_ledger_mutated": false,
+  "resolution_ledger_mutated": false,
+  "checkpoint_ledger_mutated": false,
+  "durable_skills_mutated": false,
+  "registry_mutated": false,
+  "governor_steering_enabled": false
+}
+```
+
+Recommendation rules are deterministic and advisory. Reject or block evidence recommends `deny`. Missing or blocked utility proof, missing checkpoint proof, or other incomplete proof recommends `test_more`. Missing human review or exact digest-bound approval recommends `ask`. If the strongest available proof is present but write-mode activation or rollback execution remains absent, the recommendation is `defer`. The report is not an approval record and is not consulted by routing or durable admission commands.
+
+## Shadow Activation Plan
+
+`skill-agent shadow-activation-plan <candidate-id>` is a read-only plan for future managed-prefix activation. It composes `admit-candidate --dry-run` evidence with a content-addressed store path, profile generation, activation pointer, previous generation, rollback target, and shadow plan digest. It does not create the managed prefix, write a store object, switch an activation pointer, rewrite run logs, mutate candidate or resolution ledgers, copy or install durable skills, mutate the registry, widen permissions, or steer the governor.
+
+```json
+{
+  "candidate_id": "candidate_abc123def456",
+  "skill_name": "argument-clustering",
+  "outcome": "ready_for_shadow_activation_preview",
+  "ready_for_shadow_activation_preview": true,
+  "dry_run": true,
+  "mutation_supported": false,
+  "managed_prefix": "runs/managed_shadow",
+  "managed_prefix_exists": false,
+  "store_dir": "runs/managed_shadow/store/sha256-abc123.../skills/argument-clustering",
+  "store_skill_path": "runs/managed_shadow/store/sha256-abc123.../skills/argument-clustering/SKILL.md",
+  "profile_name": "default",
+  "profile_dir": "runs/managed_shadow/profiles/default",
+  "activation_pointer": "runs/managed_shadow/profiles/default/current",
+  "planned_generation": 1,
+  "generation_dir": "runs/managed_shadow/profiles/default/generations/1",
+  "generation_skill_path": "runs/managed_shadow/profiles/default/generations/1/skills/argument-clustering/SKILL.md",
+  "previous_generation": null,
+  "rollback_target": null,
+  "source_sha256": "abc123...",
+  "durable_plan_digest": "def456...",
+  "shadow_plan_digest_algorithm": "sha256",
+  "shadow_plan_digest": "789abc...",
+  "collision_policy": "shadow_managed_prefix_only",
+  "activation_policy": "profile_pointer_switch",
+  "canary_scope": "manual",
+  "durable_admission_preview": {},
+  "blockers": [],
+  "warnings": [],
+  "next_steps": [
+    "Use this as a dry-run activation plan only; no managed prefix writes are enabled."
+  ],
+  "managed_prefix_mutated": false,
+  "profile_mutated": false,
+  "run_logs_mutated": false,
+  "candidate_ledger_mutated": false,
+  "resolution_ledger_mutated": false,
+  "durable_skills_mutated": false,
+  "registry_mutated": false,
+  "governor_steering_enabled": false
+}
+```
+
+Allowed outcomes are `ready_for_shadow_activation_preview` and `blocked`. A plan can become ready only when the nested durable admission preview is unblocked. Existing managed-prefix generations may be read to calculate `previous_generation`, `planned_generation`, and `rollback_target`, but no generation directories, store files, profile pointers, or durable `skills/` files are created.
+
+## Shadow Rollback Plan
+
+`skill-agent shadow-rollback-plan <candidate-id>` is a read-only verifier for future managed-prefix rollback. It composes `shadow-activation-plan` evidence with the current activation pointer and existing profile generations to prove whether a later write-mode activation could restore the previous generation. It does not create the managed prefix, write a store object, switch an activation pointer, rewrite run logs, mutate candidate or resolution ledgers, copy or install durable skills, mutate the registry, widen permissions, or steer the governor.
+
+```json
+{
+  "candidate_id": "candidate_abc123def456",
+  "skill_name": "argument-clustering",
+  "outcome": "rollback_verifiable",
+  "rollback_verifiable": true,
+  "dry_run": true,
+  "mutation_supported": false,
+  "managed_prefix": "runs/managed_shadow",
+  "profile_name": "default",
+  "profile_dir": "runs/managed_shadow/profiles/default",
+  "activation_pointer": "runs/managed_shadow/profiles/default/current",
+  "activation_pointer_exists": true,
+  "activation_pointer_target": "runs/managed_shadow/profiles/default/generations/3",
+  "current_generation": 3,
+  "planned_generation": 4,
+  "rollback_generation": 3,
+  "rollback_target": "runs/managed_shadow/profiles/default/generations/3",
+  "rollback_target_exists": true,
+  "shadow_plan_digest": "789abc...",
+  "rollback_plan_digest_algorithm": "sha256",
+  "rollback_plan_digest": "012def...",
+  "shadow_activation_plan": {},
+  "blockers": [],
+  "warnings": [],
+  "next_steps": [
+    "Use this as rollback proof only; profile switching remains unavailable."
+  ],
+  "managed_prefix_mutated": false,
+  "profile_mutated": false,
+  "run_logs_mutated": false,
+  "candidate_ledger_mutated": false,
+  "resolution_ledger_mutated": false,
+  "durable_skills_mutated": false,
+  "registry_mutated": false,
+  "governor_steering_enabled": false
+}
+```
+
+Allowed outcomes are `rollback_verifiable` and `blocked`. A rollback plan can become verifiable only when the nested shadow activation plan is unblocked, an existing rollback generation directory is present, and the current activation pointer targets that rollback generation. If no previous generation exists, `rollback_generation_missing` blocks the plan. If the expected rollback target path is absent, `rollback_target_missing` blocks the plan. If the activation pointer is absent, `activation_pointer_missing` blocks the plan. If the pointer targets a different path, `activation_pointer_target_mismatch` blocks the plan. Existing activation pointers may be read as symlinks or text pointer files, but no pointer is created or changed.
+
+## Shadow Activation Acceptance
+
+`skill-agent shadow-activation-acceptance <candidate-id>` is a controlled acceptance harness for future managed-prefix write mode. It composes `shadow-activation-plan` evidence with a run-scoped acceptance prefix. By default it only reports the acceptance paths. With `--prepare-acceptance-evidence`, it may create or reuse matching files under `runs/shadow_activation_acceptance/` or another `--acceptance-prefix` inside `--runs-dir`, copy the source `SKILL.md` into an acceptance store and generation, simulate activation pointer switching, and restore the pointer to the rollback generation. It can recover an acceptance pointer that was already left on the planned generation, and it blocks rather than overwriting conflicting acceptance files or unexpected pointer targets. It refuses prefixes outside `--runs-dir`. It does not create or mutate the real managed prefix, rewrite run logs, mutate candidate or resolution ledgers, copy or install durable skills, mutate the registry, widen permissions, or steer the governor.
+
+```json
+{
+  "candidate_id": "candidate_abc123def456",
+  "skill_name": "argument-clustering",
+  "outcome": "accepted",
+  "acceptance_prepared": true,
+  "activation_verified": true,
+  "rollback_verified": true,
+  "dry_run": true,
+  "mutation_supported": true,
+  "planned_managed_prefix": "runs/managed_shadow",
+  "acceptance_prefix": "runs/shadow_activation_acceptance/candidate_abc123_789abc",
+  "acceptance_prefix_exists": true,
+  "profile_name": "default",
+  "source_skill_path": "runs/artifacts/run_id/skills/argument-clustering/SKILL.md",
+  "source_sha256": "abc123...",
+  "acceptance_store_skill_path": "runs/shadow_activation_acceptance/candidate_abc123_789abc/store/sha256-abc123.../skills/argument-clustering/SKILL.md",
+  "acceptance_generation_skill_path": "runs/shadow_activation_acceptance/candidate_abc123_789abc/profiles/default/generations/4/skills/argument-clustering/SKILL.md",
+  "acceptance_activation_pointer": "runs/shadow_activation_acceptance/candidate_abc123_789abc/profiles/default/current",
+  "previous_generation": 3,
+  "planned_generation": 4,
+  "acceptance_rollback_target": "runs/shadow_activation_acceptance/candidate_abc123_789abc/profiles/default/generations/3",
+  "activation_pointer_before": null,
+  "activation_pointer_after_activation": "runs/shadow_activation_acceptance/candidate_abc123_789abc/profiles/default/generations/4",
+  "activation_pointer_after_rollback": "runs/shadow_activation_acceptance/candidate_abc123_789abc/profiles/default/generations/3",
+  "interrupted_activation_recovered": false,
+  "acceptance_conflict_detected": false,
+  "shadow_plan_digest": "789abc...",
+  "acceptance_plan_digest_algorithm": "sha256",
+  "acceptance_plan_digest": "fedcba...",
+  "shadow_activation_plan": {},
+  "blockers": [],
+  "warnings": [],
+  "next_steps": [
+    "Use this as controlled-prefix acceptance evidence only; durable skills remain untouched."
+  ],
+  "acceptance_prefix_mutated": true,
+  "managed_prefix_mutated": false,
+  "profile_mutated": false,
+  "run_logs_mutated": false,
+  "candidate_ledger_mutated": false,
+  "resolution_ledger_mutated": false,
+  "durable_skills_mutated": false,
+  "registry_mutated": false,
+  "governor_steering_enabled": false
+}
+```
+
+Allowed outcomes are `planned`, `accepted`, and `blocked`. `planned` means the acceptance paths and digest are inspectable but no acceptance evidence was written. `accepted` means the run-scoped harness copied or reused the source in an acceptance store/generation, switched the acceptance pointer to the planned generation, restored it to the rollback generation, and verified both pointer states. `blocked` means the harness could not prepare evidence, for example because the acceptance prefix was outside `--runs-dir`, the source hash drifted, rollback generation evidence was missing, existing acceptance files conflicted with the expected source bytes, or the acceptance pointer started at an unexpected target. A pointer already targeting the planned generation is treated as an interrupted activation and must be restored to the rollback target before the report can be accepted.
+
+## Shadow Write Gate
+
+`skill-agent shadow-write-gate <candidate-id>` is a read-only verifier for the future human-approved managed-prefix write boundary. It composes `shadow-activation-plan`, `shadow-rollback-plan`, and `shadow-activation-acceptance` evidence, then verifies that the already prepared acceptance evidence still matches the expected source hash, content-addressed store copy, profile generation copy, rollback marker, restored acceptance pointer, and supplied exact `--acceptance-plan-digest`. Without that expected digest it remains an inspection-only blocked report. The command does not prepare acceptance evidence, create or mutate the real managed prefix, rewrite run logs, mutate candidate or resolution ledgers, copy or install durable skills, mutate the registry, widen permissions, or steer the governor.
+
+```json
+{
+  "candidate_id": "candidate_abc123def456",
+  "skill_name": "argument-clustering",
+  "outcome": "ready_for_human_managed_prefix_write",
+  "ready_for_human_managed_prefix_write": true,
+  "dry_run": true,
+  "mutation_supported": false,
+  "managed_prefix": "runs/managed_shadow",
+  "acceptance_prefix": "runs/shadow_activation_acceptance/candidate_abc123_789abc",
+  "profile_name": "default",
+  "source_skill_path": "runs/artifacts/run_id/skills/argument-clustering/SKILL.md",
+  "source_sha256": "abc123...",
+  "source_hash_verified": true,
+  "acceptance_store_skill_path": "runs/shadow_activation_acceptance/candidate_abc123_789abc/store/sha256-abc123.../skills/argument-clustering/SKILL.md",
+  "acceptance_store_verified": true,
+  "acceptance_generation_skill_path": "runs/shadow_activation_acceptance/candidate_abc123_789abc/profiles/default/generations/4/skills/argument-clustering/SKILL.md",
+  "acceptance_generation_verified": true,
+  "acceptance_activation_pointer": "runs/shadow_activation_acceptance/candidate_abc123_789abc/profiles/default/current",
+  "acceptance_pointer_restored": true,
+  "acceptance_pointer_target": "runs/shadow_activation_acceptance/candidate_abc123_789abc/profiles/default/generations/3",
+  "acceptance_rollback_target": "runs/shadow_activation_acceptance/candidate_abc123_789abc/profiles/default/generations/3",
+  "acceptance_rollback_marker_verified": true,
+  "durable_plan_digest": "def456...",
+  "shadow_plan_digest": "789abc...",
+  "rollback_plan_digest": "012def...",
+  "acceptance_plan_digest_algorithm": "sha256",
+  "acceptance_plan_digest": "fedcba...",
+  "expected_acceptance_plan_digest": "fedcba...",
+  "acceptance_plan_digest_verified": true,
+  "shadow_activation_plan": {},
+  "shadow_rollback_plan": {},
+  "shadow_activation_acceptance": {},
+  "blockers": [],
+  "warnings": [],
+  "next_steps": [
+    "Use this report as a human approval gate only; no managed-prefix write is enabled."
+  ],
+  "acceptance_prefix_mutated": false,
+  "managed_prefix_mutated": false,
+  "profile_mutated": false,
+  "run_logs_mutated": false,
+  "candidate_ledger_mutated": false,
+  "resolution_ledger_mutated": false,
+  "durable_skills_mutated": false,
+  "registry_mutated": false,
+  "governor_steering_enabled": false
+}
+```
+
+Allowed outcomes are `ready_for_human_managed_prefix_write` and `blocked`. `ready_for_human_managed_prefix_write` means the exact durable plan, shadow plan, rollback plan, supplied acceptance digest, and prepared acceptance evidence are all inspectable and hash-consistent, but no real write mode has been enabled. `blocked` means at least one precondition is missing or stale, such as missing acceptance files, source hash drift, an unrestored acceptance pointer, missing rollback marker, missing rollback evidence in the real managed prefix, `acceptance_plan_digest_expected_missing`, or `acceptance_plan_digest_mismatch`.
 
 ## Input Request
 
@@ -366,8 +796,13 @@ Dry-run options:
 - `--collision-policy block_existing` is the default and blocks same-name durable skills.
 - `--collision-policy allow_replace_with_approval` may preview `replace_existing_skill` only when append-only `approve_review` evidence exists for the same candidate.
 - `--permission-approval-id <resolution-id>` optionally names separate resolved approval evidence for permission widening. Without that evidence, permission widening remains blocked. Older dry-run callers may still pass the source `input_request_id`, but new records include a stable `resolution_<id>` value.
+- `--plan-approval-id <resolution-id>` optionally pins the resolved `approve_review` record that approved the exact dry-run plan digest.
 - `--prepare-write-evidence` retains the source snapshot and stages the destination copy under `runs/` only when the dry-run write plan is otherwise unblocked.
 - `--expected-source-sha256 <sha256>` optionally pins evidence preparation to a previously reviewed source fingerprint. A mismatch blocks snapshot retention and staging.
+
+Plan-digest approval notes must include `plan_digest=<sha256>` and `expires_at=<timestamp>`. The approval record must be a resolved `approve_review` resolution for a `durable_admission_review` input request related to the same candidate. If `--plan-approval-id` is omitted, the preview searches append-only resolution evidence for a matching non-expired approval. A source hash change, destination change, collision-policy change, permission-approval change, or evidence-preparation option change produces a different digest and invalidates the old approval for the new plan.
+
+The nested permission/dependency diff packet is evidence only. It classifies declared permission classes (`read_files`, `write_files`, `network`, `secrets`, `execute_code`), declared tools, dependency declaration keys, and dependency names from `dependencies`, `requirements`, `packages`, and direct dependency/package entries in `dependency_lock`. A dependency declaration can include exact realization evidence through `dependency_realization` entries with `name`, `version`, and `sha256`. Exact realization clears `dependency_realization_missing`, but dependency install remains blocked until a future no-write install contract exists.
 
 ```json
 {
@@ -387,6 +822,12 @@ Dry-run options:
   "target_skill_path": "skills/argument-clustering/SKILL.md",
   "write_plan": {
     "operation": "blocked",
+    "plan_digest_algorithm": "sha256",
+    "plan_digest": "def456...",
+    "plan_approval_id": null,
+    "plan_approval_digest": null,
+    "plan_approval_expires_at": null,
+    "plan_approval_verified": false,
     "source_skill_path": "runs/artifacts/run_id/skills/argument-clustering/SKILL.md",
     "source_sha256": "abc123...",
     "target_skill_dir": "skills/argument-clustering",
@@ -405,6 +846,35 @@ Dry-run options:
     "collision_policy": "block_existing",
     "permission_policy": "block_widening_without_approval",
     "permission_approval_id": null,
+    "permission_dependency_diff": {
+      "permission_changes": [
+        {
+          "class_name": "network",
+          "current_enabled": false,
+          "requested_enabled": false,
+          "change": "unchanged",
+          "approval_required": false
+        }
+      ],
+      "added_permission_classes": [],
+      "removed_permission_classes": [],
+      "added_tools": [],
+      "removed_tools": [],
+      "permission_approval_required": false,
+      "dependency_diff": {
+        "dependencies_declared": false,
+        "declaration_keys": [],
+        "exact_realization_available": true,
+        "added": [],
+        "removed": [],
+        "realized": [],
+        "unresolved": [],
+        "blockers": [],
+        "warnings": []
+      },
+      "blockers": [],
+      "warnings": []
+    },
     "replacement_approved": false,
     "permission_widening_approved": false,
     "durable_skill_installed": false,
@@ -419,7 +889,8 @@ Dry-run options:
   "required_human_records": [
     "promotion_approved_by",
     "promotion_approved_at",
-    "durable_admission_review approve_review resolution"
+    "durable_admission_review approve_review resolution",
+    "plan digest approval resolution"
   ],
   "blockers": ["durable_review_resolution_missing"],
   "warnings": [],
@@ -431,11 +902,11 @@ Dry-run options:
 }
 ```
 
-Allowed preview outcomes are `ready_for_mutation_preview`, `approval_required`, and `blocked`. Allowed write-plan operations are `copy_new_skill`, `replace_existing_skill`, and `blocked`. A preview can reach `ready_for_mutation_preview` only after `admission-plan` is ready or the only admission-plan blocker is a same-name collision explicitly handled by `allow_replace_with_approval`, the append-only input request resolution ledger contains resolved `approve_review` evidence for the same candidate, and the write plan has no blockers.
+Allowed preview outcomes are `ready_for_mutation_preview`, `approval_required`, and `blocked`. Allowed write-plan operations are `copy_new_skill`, `replace_existing_skill`, and `blocked`. A preview can reach `ready_for_mutation_preview` only after `admission-plan` is ready or the only admission-plan blocker is a same-name collision explicitly handled by `allow_replace_with_approval`, the append-only input request resolution ledger contains resolved `approve_review` evidence for the same candidate, a non-expired approval record matches the exact plan digest, the permission/dependency diff has no blockers, and the write plan has no blockers. Dependency diff blockers include `dependency_realization_missing` when a dependency lacks hash-backed realization and `dependency_install_unsupported` when exact realization exists but install semantics are still intentionally absent.
 
-Source snapshot retention and destination staging are opt-in dry-run evidence preparation steps. Without `--prepare-write-evidence`, `snapshot_dir`, `snapshot_skill_path`, `snapshot_sha256`, `destination_stage_dir`, and `destination_stage_skill_path` describe future evidence paths and all creation flags remain `false`. With `--prepare-write-evidence`, the command verifies the current source hash, reuses matching existing evidence, creates missing run-scoped snapshot/staging files, and blocks rather than overwriting if an existing evidence file has a different hash.
+Source snapshot retention and destination staging are opt-in dry-run evidence preparation steps. Without `--prepare-write-evidence`, `snapshot_dir`, `snapshot_skill_path`, `snapshot_sha256`, `destination_stage_dir`, and `destination_stage_skill_path` describe future evidence paths and all creation flags remain `false`. With `--prepare-write-evidence`, the command verifies the current source hash, verifies the exact plan-digest approval first, reuses matching existing evidence, creates missing run-scoped snapshot/staging files, and blocks rather than overwriting if an existing evidence file has a different hash.
 
-Acceptance coverage for the future write mode lives in `tests/test_durable_admission_acceptance.py`. It proves source hash drift, snapshot path planning, run-scoped source retention, destination staging, collision approval, permission approval, and `--no-dry-run` rejection without copying into durable `skills/`, installing, or rewriting historical evidence.
+Acceptance coverage for the future write mode lives in `tests/test_durable_admission_acceptance.py`. It proves source hash drift, snapshot path planning, run-scoped source retention, destination staging, collision approval, permission approval, exact plan-digest approval, and `--no-dry-run` rejection without copying into durable `skills/`, installing, or rewriting historical evidence.
 
 ## Capability Decision
 
@@ -556,6 +1027,14 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `skill-agent input-requests --json` emits `{ "runs_dir": "...", "input_request_count": 0, "input_request_kind_counts": {}, "warnings": [], "input_requests": [], "input_request_items": [] }`. `input_requests` is the flat compatibility list; `input_request_items` includes source diagnostics.
 - `skill-agent resolve-input-request --json` emits the resolution report for one input request and proposed decision. With `--dry-run`, it does not mutate local evidence. With `--no-dry-run`, it appends to `runs/input_request_resolutions.json` only.
 - `skill-agent admit-candidate --dry-run --json` emits the durable admission preview report with its nested write plan. `--no-dry-run` is intentionally rejected.
+- `skill-agent skill-receipt --json` emits the read-only proof bundle for one candidate, including nested candidate usefulness and durable admission preview evidence.
+- `skill-agent negative-evidence --json` emits read-only unfavorable/limiting evidence from candidate and resolution ledgers.
+- `skill-agent evidence-checkpoint --json` emits the local evidence checkpoint create or verify report. `--no-dry-run` appends only to `runs/evidence_checkpoints.json`; `--verify` is read-only.
+- `skill-agent evidence-governor --json` emits the read-only advisory recommendation report for one candidate. It never grants approval or steers execution.
+- `skill-agent shadow-activation-plan --json` emits the read-only managed-prefix activation plan for one candidate.
+- `skill-agent shadow-rollback-plan --json` emits the read-only managed-prefix rollback verifier for one candidate.
+- `skill-agent shadow-activation-acceptance --json` emits the controlled acceptance harness report for one candidate. With `--prepare-acceptance-evidence`, it may write matching acceptance evidence under `runs/` only.
+- `skill-agent shadow-write-gate --json` emits the read-only human write-gate verifier for prepared acceptance evidence. It never prepares evidence or mutates the real managed prefix.
 - `skill-agent eval --json` emits the eval suite path, timestamp, per-task run-log paths, task pass/fail status, routing decisions, skill requests, input requests, request-quality scores, diagnostic dimensions, and aggregate counts.
 - `skill-agent explain <run-log.json>` reads an existing run log and prints a human-readable trace summary. It does not mutate the run log.
 
