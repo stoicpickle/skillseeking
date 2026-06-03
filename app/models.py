@@ -36,6 +36,18 @@ DurableAdmissionPreviewOutcome = Literal[
     "approval_required",
     "blocked",
 ]
+DurableAdmissionWriteOperation = Literal[
+    "copy_new_skill",
+    "replace_existing_skill",
+    "blocked",
+]
+DurableAdmissionCollisionPolicy = Literal[
+    "block_existing",
+    "allow_replace_with_approval",
+]
+DurableAdmissionPermissionPolicy = Literal[
+    "block_widening_without_approval",
+]
 AdmissionCheckResult = Literal["pass", "warning", "blocker", "info"]
 InputRequestKind = Literal[
     "safety_approval",
@@ -90,6 +102,10 @@ SCHEMA_VERSION = 3
 
 def new_default_run_id() -> str:
     return uuid.uuid4().hex[:8]
+
+
+def new_default_input_request_resolution_id() -> str:
+    return f"resolution_{uuid.uuid4().hex[:12]}"
 
 
 class SkillLifecycle(BaseModel):
@@ -531,6 +547,7 @@ class InputRequestResolutionDryRun(BaseModel):
 class InputRequestResolutionRecord(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
+    id: str = Field(default_factory=new_default_input_request_resolution_id)
     input_request_id: str
     decision: str
     resolution_class: InputRequestResolutionClass
@@ -579,6 +596,32 @@ class AdmissionPlanReport(BaseModel):
     input_request: InputRequest | None = None
 
 
+class DurableAdmissionWritePlan(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    operation: DurableAdmissionWriteOperation
+    source_skill_path: str | None = None
+    source_sha256: str | None = None
+    target_skill_dir: str | None = None
+    target_skill_path: str | None = None
+    snapshot_dir: str | None = None
+    snapshot_skill_path: str | None = None
+    snapshot_sha256: str | None = None
+    collision_policy: DurableAdmissionCollisionPolicy = "block_existing"
+    permission_policy: DurableAdmissionPermissionPolicy = "block_widening_without_approval"
+    permission_approval_id: str | None = None
+    replacement_approved: bool = False
+    permission_widening_approved: bool = False
+    durable_skill_installed: bool = False
+    ledger_mutated: bool = False
+    registry_mutated: bool = False
+    resolution_ledger_mutated: bool = False
+    source_snapshot_created: bool = False
+    governor_steering_enabled: bool = False
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
 class DurableAdmissionPreviewReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -596,6 +639,7 @@ class DurableAdmissionPreviewReport(BaseModel):
     source_sha256: str | None = None
     target_skill_dir: str | None = None
     target_skill_path: str | None = None
+    write_plan: DurableAdmissionWritePlan
     required_human_records: list[str] = Field(default_factory=list)
     blockers: list[str] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)

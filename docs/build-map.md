@@ -461,6 +461,7 @@ Slices:
 | Resolution-ledger eval expectations | complete | `evals/agent_diagnostic_v0.jsonl` proves deferred requests remain active, resolved requests leave the active queue, and repeated resolution history is append-only |
 | Durable admission workflow design | complete | `docs/plans/durable-admission-workflow-design-2026-06-03.md` defines candidate -> review gate -> admission-plan dry run -> required proof -> human approval boundary before any future install/copy work |
 | Dry-run durable admission mutation preview | complete | `skill-agent admit-candidate --dry-run` reports source fingerprint, target durable path, required approval evidence, and false mutation flags while `--no-dry-run` is rejected |
+| Durable admission write-plan contract | complete | `admit-candidate --dry-run` now emits a nested write plan with collision policy, destination paths, source snapshot retention paths, permission approval evidence, write blockers, and false mutation flags |
 | Roadmap checkpoint docs | complete | README and operating roadmap distinguish local testing readiness from production readiness |
 
 Boundaries:

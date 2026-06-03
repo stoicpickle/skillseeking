@@ -140,6 +140,7 @@ def test_resolve_input_request_non_dry_run_appends_and_updates_queue(tmp_path):
     ledger = load_input_request_resolution_ledger(runs_dir)
     assert len(ledger.resolutions) == 1
     record = ledger.resolutions[0]
+    assert record.id.startswith("resolution_")
     assert record.input_request_id == "inputreq_safety"
     assert record.decision == "approve_workflow"
     assert record.status == "resolved"

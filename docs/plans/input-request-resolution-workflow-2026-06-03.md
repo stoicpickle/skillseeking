@@ -50,6 +50,7 @@ Dry-run resolution remains non-mutating. Non-dry-run resolution appends a record
   "schema_version": 1,
   "resolutions": [
     {
+      "id": "resolution_abc123def456",
       "input_request_id": "inputreq_abc123",
       "decision": "defer",
       "status": "open",

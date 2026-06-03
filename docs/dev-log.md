@@ -701,3 +701,20 @@ Boundaries:
 - No historical run logs are rewritten.
 - Candidate ledgers are not mutated by resolution.
 - No durable skill install/copy, permission widening, stable promotion, unsafe execution, or governor steering was added.
+
+## 2026-06-03 Durable Admission Write-Plan Contract
+
+Extended the dry-run durable admission preview into a concrete future write-mode contract.
+
+Added:
+
+- Nested `write_plan` output on `skill-agent admit-candidate --dry-run`.
+- Collision policy preview with `block_existing` by default and `allow_replace_with_approval` for explicitly reviewed replacement plans.
+- Destination write plan fields for source path/hash, target durable path, and future source snapshot retention path.
+- Permission approval evidence hook through `--permission-approval-id`.
+- Tests proving dry runs do not rewrite run logs, candidate ledgers, input request resolution ledgers, durable skill files, or snapshot directories.
+
+Boundaries:
+
+- `--no-dry-run` is still rejected.
+- No durable skill copy/install, source snapshot creation, stable promotion, permission widening, unsafe execution, or governor steering was added.

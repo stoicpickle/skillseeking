@@ -18,10 +18,13 @@ def test_durable_admission_workflow_design_preserves_advisory_boundary(repo_root
         "approve_review",
         "does not copy, install, admit, promote to stable, widen permissions, or steer the governor",
         "Do not copy or install a durable skill in this slice.",
-        "Do not mutate historical run logs, candidate ledgers, or input request resolution ledgers.",
+        "Do not mutate historical run logs, candidate ledgers, input request resolution ledgers, source snapshots, or durable skill files.",
         "Do not widen permissions.",
         "Do not add active governor steering.",
         "admit-candidate --dry-run mutation preview",
+        "Dry-Run Write-Mode Contract",
+        "Collision policy:",
+        "Source snapshot retention:",
         "--no-dry-run` is rejected",
     ]
     for phrase in required_phrases:

@@ -177,6 +177,26 @@ def emit_durable_admission_preview_output(report: DurableAdmissionPreviewReport)
     typer.echo(f"Target SKILL.md: {report.target_skill_path or '-'}")
 
     typer.echo("")
+    typer.echo("WRITE_PLAN")
+    typer.echo(f"Operation: {report.write_plan.operation}")
+    typer.echo(f"Collision policy: {report.write_plan.collision_policy}")
+    typer.echo(f"Permission policy: {report.write_plan.permission_policy}")
+    typer.echo(f"Permission approval ID: {report.write_plan.permission_approval_id or '-'}")
+    typer.echo(f"Replacement approved: {str(report.write_plan.replacement_approved).lower()}")
+    typer.echo(
+        "Permission widening approved: "
+        f"{str(report.write_plan.permission_widening_approved).lower()}"
+    )
+    typer.echo(f"Snapshot dir: {report.write_plan.snapshot_dir or '-'}")
+    typer.echo(f"Snapshot SKILL.md: {report.write_plan.snapshot_skill_path or '-'}")
+    typer.echo(f"Snapshot sha256: {report.write_plan.snapshot_sha256 or '-'}")
+    typer.echo(
+        f"Source snapshot created: {str(report.write_plan.source_snapshot_created).lower()}"
+    )
+    typer.echo("Write blockers:")
+    _emit_string_items(report.write_plan.blockers)
+
+    typer.echo("")
     typer.echo("REQUIRED_HUMAN_RECORDS")
     _emit_string_items(report.required_human_records)
 

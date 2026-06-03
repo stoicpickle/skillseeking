@@ -70,8 +70,8 @@ Promotion remains human-governed:
    - Keep queues advisory; do not let them steer routing, promotion, registry admission, or governor behavior.
 
 2. **Human promotion workflow design**
-   - Current progress: `promote-candidate` records reviewer/notes approval and can move eligible temporary ledger entries to `candidate` evidence status; `admission-plan` can inspect durable review readiness without mutating durable skills; durable admission workflow design defines the required proof gates; `admit-candidate --dry-run` previews source fingerprint, target path, and required approval records while rejecting write mode.
-   - Next coverage: durable copy/install design, candidate-to-stable workflow, and promotion review queues.
+   - Current progress: `promote-candidate` records reviewer/notes approval and can move eligible temporary ledger entries to `candidate` evidence status; `admission-plan` can inspect durable review readiness without mutating durable skills; durable admission workflow design defines the required proof gates; `admit-candidate --dry-run` previews source fingerprint, target path, source snapshot retention path, collision policy, permission approval evidence, write blockers, and required approval records while rejecting write mode.
+   - Next coverage: dry-run write-mode acceptance tests for a future snapshot/copy implementation, candidate-to-stable workflow, and promotion review queues.
    - Keep permission widening human-gated and evidence-backed.
 
 3. **Lifecycle review queues and health expansion**
@@ -117,14 +117,14 @@ Status: passed for local validation; the current CLI prototype is ready for loca
 
 | Check | Command | Result | Notes |
 | --- | --- | --- | --- |
-| Full test suite | `.venv/bin/python -m pytest -q` | passed | `163 passed in 30.56s`. |
+| Full test suite | `.venv/bin/python -m pytest -q` | passed | `167 passed in 11.90s`. |
 | Compile app | `.venv/bin/python -m compileall -q app` | passed | No compile errors. |
 | Diff check | `git diff --check` | passed | No whitespace errors. |
-| Smoke eval | `.venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`; report: `runs/evals/eval_report_20260603_101457_857405.json`. |
-| v0 eval | `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `20/20` passed, task pass rate `1.0`, trace completeness `20 / 20`; report: `runs/evals/eval_report_20260603_101504_507704.json`. |
-| Lifecycle eval | `.venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`; report: `runs/evals/eval_report_20260603_101511_303768.json`. |
-| Agent diagnostic eval | `.venv/bin/skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `16/16` passed, task pass rate `1.0`, trace completeness `16 / 16`; report: `runs/evals/eval_report_20260603_101519_539514.json`. |
-| CodeRabbit review | `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` | stalled | Latest durable admission preview attempt reached `tools_completed` and stopped returning output; the process was terminated. No findings were returned. |
+| Smoke eval | `.venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`; report: `runs/evals/eval_report_20260603_112621_064081.json`. |
+| v0 eval | `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `20/20` passed, task pass rate `1.0`, trace completeness `20 / 20`; report: `runs/evals/eval_report_20260603_112625_527105.json`. |
+| Lifecycle eval | `.venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`; report: `runs/evals/eval_report_20260603_112630_169642.json`. |
+| Agent diagnostic eval | `.venv/bin/skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `16/16` passed, task pass rate `1.0`, trace completeness `16 / 16`; report: `runs/evals/eval_report_20260603_112634_668251.json`. |
+| CodeRabbit review | `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` | stalled | Latest durable admission write-plan contract attempt reached `tools_completed` and then stopped returning output; the process was terminated. No findings were returned. |
 
 ### Baseline proof state — 2026-06-01
 
@@ -164,6 +164,7 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-03: Added resolution-ledger eval expectations proving deferred requests stay active, resolved requests leave the active queue, and repeated resolution history appends new evidence.
 - 2026-06-03: Added durable admission workflow design; `ready_for_durable_review` and `approve_review` remain review checkpoints, not install/copy approval.
 - 2026-06-03: Added `admit-candidate --dry-run` durable admission mutation preview; target path/source hash are inspectable, but `--no-dry-run` is rejected and no durable files or ledgers are mutated.
+- 2026-06-03: Extended `admit-candidate --dry-run` with a durable write-plan contract for collision policy, destination paths, source snapshot retention, permission approval evidence, and historical-evidence immutability before any real copy/install mode exists.
 - 2026-06-01: Reaffirmed that auto-promotion and permission widening remain out of scope without human approval.
 - 2026-06-01: Required full test, smoke eval, and v0 eval baseline before runtime ledger changes.
 - 2026-06-01: Recorded passing baseline: full tests `107 passed`, smoke eval `4/4`, and v0 eval `20/20`.

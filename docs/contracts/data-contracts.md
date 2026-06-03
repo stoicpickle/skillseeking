@@ -225,6 +225,7 @@ The append-only resolution ledger stores historical decision evidence:
   "schema_version": 1,
   "resolutions": [
     {
+      "id": "resolution_abc123def456",
       "input_request_id": "inputreq_abc123def456",
       "decision": "repair_candidate",
       "resolution_class": "repair",
@@ -310,7 +311,13 @@ Durable admission workflow design lives in `docs/plans/durable-admission-workflo
 
 ## Durable Admission Preview
 
-`admit-candidate --dry-run` previews the future durable admission mutation contract. It requires the existing admission-plan proof and reports what would be needed before a future write-mode command could exist. It does not copy, install, admit, mutate ledgers, mutate the registry, promote to stable, widen permissions, or steer the governor. `--no-dry-run` exits with an error because durable admission mutation is intentionally unavailable.
+`admit-candidate --dry-run` previews the future durable admission mutation contract. It requires the existing admission-plan proof and reports what would be needed before a future write-mode command could exist. It does not copy, install, admit, mutate ledgers, mutate the registry, promote to stable, widen permissions, create snapshots, or steer the governor. `--no-dry-run` exits with an error because durable admission mutation is intentionally unavailable.
+
+Dry-run options:
+
+- `--collision-policy block_existing` is the default and blocks same-name durable skills.
+- `--collision-policy allow_replace_with_approval` may preview `replace_existing_skill` only when append-only `approve_review` evidence exists for the same candidate.
+- `--permission-approval-id <resolution-id>` optionally names separate resolved approval evidence for permission widening. Without that evidence, permission widening remains blocked. Older dry-run callers may still pass the source `input_request_id`, but new records include a stable `resolution_<id>` value.
 
 ```json
 {
@@ -328,6 +335,29 @@ Durable admission workflow design lives in `docs/plans/durable-admission-workflo
   "source_sha256": "abc123...",
   "target_skill_dir": "skills/argument-clustering",
   "target_skill_path": "skills/argument-clustering/SKILL.md",
+  "write_plan": {
+    "operation": "blocked",
+    "source_skill_path": "runs/artifacts/run_id/skills/argument-clustering/SKILL.md",
+    "source_sha256": "abc123...",
+    "target_skill_dir": "skills/argument-clustering",
+    "target_skill_path": "skills/argument-clustering/SKILL.md",
+    "snapshot_dir": "runs/admission_snapshots/candidate_abc123def456/abc123...",
+    "snapshot_skill_path": "runs/admission_snapshots/candidate_abc123def456/abc123.../SKILL.md",
+    "snapshot_sha256": "abc123...",
+    "collision_policy": "block_existing",
+    "permission_policy": "block_widening_without_approval",
+    "permission_approval_id": null,
+    "replacement_approved": false,
+    "permission_widening_approved": false,
+    "durable_skill_installed": false,
+    "ledger_mutated": false,
+    "registry_mutated": false,
+    "resolution_ledger_mutated": false,
+    "source_snapshot_created": false,
+    "governor_steering_enabled": false,
+    "blockers": ["durable_review_resolution_missing"],
+    "warnings": []
+  },
   "required_human_records": [
     "promotion_approved_by",
     "promotion_approved_at",
@@ -343,7 +373,9 @@ Durable admission workflow design lives in `docs/plans/durable-admission-workflo
 }
 ```
 
-Allowed outcomes are `ready_for_mutation_preview`, `approval_required`, and `blocked`. A preview can reach `ready_for_mutation_preview` only after `admission-plan` is ready and the append-only input request resolution ledger contains a resolved `approve_review` decision for the matching `durable_admission_review` input request.
+Allowed preview outcomes are `ready_for_mutation_preview`, `approval_required`, and `blocked`. Allowed write-plan operations are `copy_new_skill`, `replace_existing_skill`, and `blocked`. A preview can reach `ready_for_mutation_preview` only after `admission-plan` is ready or the only admission-plan blocker is a same-name collision explicitly handled by `allow_replace_with_approval`, the append-only input request resolution ledger contains resolved `approve_review` evidence for the same candidate, and the write plan has no blockers.
+
+Source snapshot retention is previewed but not executed in this slice. `snapshot_dir`, `snapshot_skill_path`, and `snapshot_sha256` describe the future retained source copy under `runs/admission_snapshots/<candidate_id>/<source_sha256>/`; `source_snapshot_created` remains `false`.
 
 ## Capability Decision
 
@@ -463,7 +495,7 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `skill-agent health --json` is additive and includes v2 metrics such as result categories, temporary outcomes, repair counts, safety stops, human approval waits, route/load failures, script failure categories, and input request counts.
 - `skill-agent input-requests --json` emits `{ "runs_dir": "...", "input_request_count": 0, "input_request_kind_counts": {}, "warnings": [], "input_requests": [], "input_request_items": [] }`. `input_requests` is the flat compatibility list; `input_request_items` includes source diagnostics.
 - `skill-agent resolve-input-request --json` emits the resolution report for one input request and proposed decision. With `--dry-run`, it does not mutate local evidence. With `--no-dry-run`, it appends to `runs/input_request_resolutions.json` only.
-- `skill-agent admit-candidate --dry-run --json` emits the durable admission preview report. `--no-dry-run` is intentionally rejected.
+- `skill-agent admit-candidate --dry-run --json` emits the durable admission preview report with its nested write plan. `--no-dry-run` is intentionally rejected.
 - `skill-agent eval --json` emits the eval suite path, timestamp, per-task run-log paths, task pass/fail status, routing decisions, skill requests, input requests, request-quality scores, diagnostic dimensions, and aggregate counts.
 - `skill-agent explain <run-log.json>` reads an existing run log and prints a human-readable trace summary. It does not mutate the run log.
 

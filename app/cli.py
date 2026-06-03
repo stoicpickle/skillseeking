@@ -373,6 +373,20 @@ def admit_candidate(
             help="Preview durable admission mutation. Write mode is intentionally unavailable.",
         ),
     ] = True,
+    collision_policy: Annotated[
+        str,
+        typer.Option(
+            "--collision-policy",
+            help="Dry-run destination collision policy: block_existing or allow_replace_with_approval.",
+        ),
+    ] = "block_existing",
+    permission_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--permission-approval-id",
+            help="Optional resolved input request resolution ID authorizing permission widening for the dry-run write plan.",
+        ),
+    ] = "",
     json_output: Annotated[
         bool,
         typer.Option("--json", help="Print the durable admission preview as JSON."),
@@ -384,6 +398,8 @@ def admit_candidate(
             runs_dir=runs_dir,
             skills_dir=skills_dir,
             dry_run=dry_run,
+            collision_policy=collision_policy,
+            permission_approval_id=permission_approval_id or None,
         )
     except AdmissionPlanError as exc:
         typer.echo(str(exc))
