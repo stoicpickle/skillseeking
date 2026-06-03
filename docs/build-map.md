@@ -459,6 +459,7 @@ Slices:
 | Dry-run input resolution | complete | `skill-agent resolve-input-request` classifies every declared human decision option while tests prove run logs and candidate ledgers remain unchanged and mutation flags stay false |
 | Append-only input resolution ledger | complete | `skill-agent resolve-input-request --no-dry-run` appends `runs/input_request_resolutions.json` records and `input-requests` applies the latest status without mutating run logs, candidate ledgers, durable skills, or governor behavior |
 | Resolution-ledger eval expectations | complete | `evals/agent_diagnostic_v0.jsonl` proves deferred requests remain active, resolved requests leave the active queue, and repeated resolution history is append-only |
+| Durable admission workflow design | complete | `docs/plans/durable-admission-workflow-design-2026-06-03.md` defines candidate -> review gate -> admission-plan dry run -> required proof -> human approval boundary before any future install/copy work |
 | Roadmap checkpoint docs | complete | README and operating roadmap distinguish local testing readiness from production readiness |
 
 Boundaries:

@@ -306,6 +306,8 @@ Admission plans are output-only dry-run reports. They inspect candidate ledger e
 
 Allowed outcomes are `ready_for_durable_review`, `needs_promotion_approval`, `evidence_incomplete`, and `blocked`. Missing candidates or unreadable ledgers are command errors; missing run logs, missing source paths, missing source files, source validation failures, permission widening, scripted candidates, and same-name durable collisions are report blockers.
 
+Durable admission workflow design lives in `docs/plans/durable-admission-workflow-design-2026-06-03.md`. That workflow treats `ready_for_durable_review` and `approve_review` resolution evidence as review checkpoints only. They are not durable install/copy approval, registry admission, stable promotion, permission widening, or governor steering.
+
 ## Capability Decision
 
 ```json

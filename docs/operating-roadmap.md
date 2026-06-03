@@ -66,12 +66,12 @@ Promotion remains human-governed:
 
 1. **Remote progress and input focus**
    - Current progress: input-needed evidence is normalized across safety approvals, repair review, candidate promotion approval, and durable admission review. Queue output now includes run-log, candidate-ledger, and resolution-ledger source diagnostics, missing-evidence fixture coverage, dry-run decision resolution, append-only resolution evidence, and eval rows for deferred/resolved/repeated resolution states.
-   - Next coverage: durable admission workflow design.
+   - Next coverage: keep resolution and admission evidence in sync as future durable-admission proof gates are added.
    - Keep queues advisory; do not let them steer routing, promotion, registry admission, or governor behavior.
 
 2. **Human promotion workflow design**
-   - Current progress: `promote-candidate` records reviewer/notes approval and can move eligible temporary ledger entries to `candidate` evidence status; `admission-plan` can now inspect durable review readiness without mutating durable skills.
-   - Next coverage: durable copy/install design, candidate-to-stable workflow, and promotion review queues.
+   - Current progress: `promote-candidate` records reviewer/notes approval and can move eligible temporary ledger entries to `candidate` evidence status; `admission-plan` can inspect durable review readiness without mutating durable skills; durable admission workflow design now defines the required proof gates before any future install/copy work.
+   - Next coverage: dry-run durable admission mutation preview, durable copy/install design, candidate-to-stable workflow, and promotion review queues.
    - Keep permission widening human-gated and evidence-backed.
 
 3. **Lifecycle review queues and health expansion**
@@ -113,18 +113,18 @@ The repo is ready for local testing and iteration of the current CLI prototype w
 
 ### Readiness proof state — 2026-06-03
 
-Status: passed for local validation; the current CLI prototype is ready for local testing and iteration inside the documented boundaries. CodeRabbit review was attempted twice for this slice but did not return findings.
+Status: passed for local validation; the current CLI prototype is ready for local testing and iteration inside the documented boundaries. CodeRabbit review has repeatedly stalled after `tools_completed` on recent slices, so local validation and manual review are the current reliable proof path.
 
 | Check | Command | Result | Notes |
 | --- | --- | --- | --- |
-| Full test suite | `.venv/bin/python -m pytest -q` | passed | `158 passed in 12.83s`. |
+| Full test suite | `.venv/bin/python -m pytest -q` | passed | `160 passed in 12.50s`. |
 | Compile app | `.venv/bin/python -m compileall -q app` | passed | No compile errors. |
 | Diff check | `git diff --check` | passed | No whitespace errors. |
 | Smoke eval | `.venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`; report: `runs/evals/eval_report_20260603_051144_171621.json`. |
 | v0 eval | `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `20/20` passed, task pass rate `1.0`, trace completeness `20 / 20`; report: `runs/evals/eval_report_20260603_051149_697116.json`. |
 | Lifecycle eval | `.venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`; report: `runs/evals/eval_report_20260603_051157_626822.json`. |
 | Agent diagnostic eval | `.venv/bin/skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `16/16` passed, task pass rate `1.0`, trace completeness `16 / 16`; report: `runs/evals/eval_report_20260603_051204_837683.json`. |
-| CodeRabbit review | `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` | stalled | Two attempts reached `tools_completed` and then stopped returning output; both processes were terminated. No findings were returned. |
+| CodeRabbit review | `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` | stalled | Latest docs slice attempt reached `tools_completed` and stopped returning output; the process was terminated. No findings were returned. |
 
 ### Baseline proof state — 2026-06-01
 
@@ -162,6 +162,7 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-03: Added Remote Progress and Input Focus as the next slice: input-needed evidence is explicit and read-only across run logs, queue output, health, explain, admission plans, and eval assertions.
 - 2026-06-03: Added append-only input request resolution evidence through `runs/input_request_resolutions.json`; source run logs, candidate ledgers, durable skills, and governor behavior remain untouched.
 - 2026-06-03: Added resolution-ledger eval expectations proving deferred requests stay active, resolved requests leave the active queue, and repeated resolution history appends new evidence.
+- 2026-06-03: Added durable admission workflow design; `ready_for_durable_review` and `approve_review` remain review checkpoints, not install/copy approval.
 - 2026-06-01: Reaffirmed that auto-promotion and permission widening remain out of scope without human approval.
 - 2026-06-01: Required full test, smoke eval, and v0 eval baseline before runtime ledger changes.
 - 2026-06-01: Recorded passing baseline: full tests `107 passed`, smoke eval `4/4`, and v0 eval `20/20`.
