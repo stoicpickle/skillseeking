@@ -171,6 +171,55 @@ Input request queue items wrap a request with read-time source diagnostics:
 
 Allowed source types are `run_log` and `candidate_ledger`.
 
+## Input Request Resolution Dry Run
+
+Dry-run resolution classifies a proposed human decision for an input request. It does not write run logs, candidate ledgers, resolution ledgers, durable skills, or governor state.
+
+```json
+{
+  "dry_run": true,
+  "input_request_id": "inputreq_abc123def456",
+  "decision": "repair_candidate",
+  "resolution_class": "repair",
+  "proposed_status": "resolved",
+  "reviewer": "Ada",
+  "notes": "Reviewed evidence and requested repair.",
+  "request": {
+    "id": "inputreq_abc123def456",
+    "kind": "repair_review",
+    "status": "open",
+    "title": "Review repairs for argument-clustering",
+    "reason": "Candidate has validation failures or repair requirements.",
+    "blocked_scope": "durable promotion and candidate admission",
+    "requested_decision": "Repair, reject, or defer this candidate.",
+    "options": ["repair_candidate", "reject_candidate", "defer"],
+    "recommended_option": "repair_candidate",
+    "evidence_refs": ["run_abc123"],
+    "next_commands": ["Inspect candidate repair requirements and source evidence."],
+    "related_run_id": null,
+    "related_candidate_id": "candidate_abc123",
+    "related_skill_request_id": null,
+    "created_at": "2026-06-03T12:00:00"
+  },
+  "sources": [
+    {
+      "source_type": "candidate_ledger",
+      "source_path": "runs/skill_candidate_ledger.json",
+      "source_detail": "candidate_abc123"
+    }
+  ],
+  "remaining_blocked_scope": "durable promotion and candidate admission",
+  "next_steps": ["Repair the candidate evidence, then rerun the originating command."],
+  "run_logs_mutated": false,
+  "candidate_ledger_mutated": false,
+  "resolution_ledger_mutated": false,
+  "durable_skills_mutated": false,
+  "governor_steering_enabled": false
+}
+```
+
+Allowed resolution classes are `approve`, `revise`, `repair`, `reject`, `defer`, `block`, `recover`, `merge`, and `keep_separate`. Decisions must be one of the input request's declared `options`. `proposed_status` describes the input request state after the decision: `defer` remains `open`, while explicit decisions are `resolved`; `remaining_blocked_scope` describes any underlying work that still cannot proceed. `--no-dry-run` is rejected in this slice.
+
 ## Admission Plan
 
 Admission plans are output-only dry-run reports. They inspect candidate ledger evidence, run logs, run-scoped temporary skill artifacts, and the durable registry, but they do not write the ledger, copy files, install skills, admit registry records, steer the governor, or promote anything to stable.
@@ -329,6 +378,7 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `skill-agent registry --json` emits `{ "accepted": [...], "rejected": [...] }`.
 - `skill-agent health --json` is additive and includes v2 metrics such as result categories, temporary outcomes, repair counts, safety stops, human approval waits, route/load failures, script failure categories, and input request counts.
 - `skill-agent input-requests --json` emits `{ "runs_dir": "...", "input_request_count": 0, "input_request_kind_counts": {}, "warnings": [], "input_requests": [], "input_request_items": [] }`. `input_requests` is the flat compatibility list; `input_request_items` includes source diagnostics.
+- `skill-agent resolve-input-request --json` emits the dry-run resolution report for one input request and proposed decision. It does not mutate local evidence.
 - `skill-agent eval --json` emits the eval suite path, timestamp, per-task run-log paths, task pass/fail status, routing decisions, skill requests, input requests, request-quality scores, diagnostic dimensions, and aggregate counts.
 - `skill-agent explain <run-log.json>` reads an existing run log and prints a human-readable trace summary. It does not mutate the run log.
 

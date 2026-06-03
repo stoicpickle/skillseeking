@@ -456,6 +456,7 @@ Slices:
 | Agent diagnostic eval | complete | `evals/agent_diagnostic_v0.jsonl` groups routing, request, safety, approval, adversarial, lifecycle, repair, and admission-readiness signals by diagnostic dimension |
 | Remote progress input focus | complete | `InputRequest`, `skill-agent input-requests`, `INPUT_NEEDED`, health `INPUT_FOCUS`, admission-plan summaries, and eval expectations expose human decision boundaries without durable mutation |
 | Input queue source diagnostics | complete | `skill-agent input-requests --json` includes `input_request_items` with `run_log` and `candidate_ledger` source paths, plus warnings for unreadable ledger evidence |
+| Dry-run input resolution | complete | `skill-agent resolve-input-request` classifies every declared human decision option while tests prove run logs and candidate ledgers remain unchanged and mutation flags stay false |
 | Roadmap checkpoint docs | complete | README and operating roadmap distinguish local testing readiness from production readiness |
 
 Boundaries:

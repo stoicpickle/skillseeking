@@ -65,8 +65,8 @@ Promotion remains human-governed:
 ## Next Three Milestones
 
 1. **Remote progress and input focus**
-   - Current progress: input-needed evidence is normalized across safety approvals, repair review, candidate promotion approval, and durable admission review. Queue output now includes run-log and candidate-ledger source diagnostics, missing-evidence fixture coverage, and a design-only resolution workflow.
-   - Next coverage: dry-run resolution command and append-only resolution ledger design validation.
+   - Current progress: input-needed evidence is normalized across safety approvals, repair review, candidate promotion approval, and durable admission review. Queue output now includes run-log and candidate-ledger source diagnostics, missing-evidence fixture coverage, and dry-run decision resolution that proves classification without mutation.
+   - Next coverage: append-only resolution ledger design validation.
    - Keep queues advisory; do not let them steer routing, promotion, registry admission, or governor behavior.
 
 2. **Human promotion workflow design**
@@ -117,14 +117,14 @@ Status: passed; the current CLI prototype is ready for local testing and iterati
 
 | Check | Command | Result | Notes |
 | --- | --- | --- | --- |
-| Full test suite | `.venv/bin/python -m pytest -q` | passed | `151 passed in 19.87s`. |
+| Full test suite | `.venv/bin/python -m pytest -q` | passed | `154 passed in 16.03s`. |
 | Compile app | `.venv/bin/python -m compileall -q app` | passed | No compile errors. |
 | Diff check | `git diff --check` | passed | No whitespace errors. |
-| Smoke eval | `.venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`. |
-| v0 eval | `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `20/20` passed, task pass rate `1.0`, trace completeness `20 / 20`. |
-| Lifecycle eval | `.venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`. |
-| Agent diagnostic eval | `.venv/bin/skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `13/13` passed, task pass rate `1.0`, trace completeness `13 / 13`. |
-| CodeRabbit review | `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` | passed | `0 findings` for the input queue source diagnostics diff. |
+| Smoke eval | `.venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`; report: `runs/evals/eval_report_20260603_034846_977438.json`. |
+| v0 eval | `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `20/20` passed, task pass rate `1.0`, trace completeness `20 / 20`; report: `runs/evals/eval_report_20260603_034847_411926.json`. |
+| Lifecycle eval | `.venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`; report: `runs/evals/eval_report_20260603_034847_070296.json`. |
+| Agent diagnostic eval | `.venv/bin/skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `13/13` passed, task pass rate `1.0`, trace completeness `13 / 13`; report: `runs/evals/eval_report_20260603_034847_292785.json`. |
+| CodeRabbit review | `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` | passed | `0 findings` for the dry-run input resolution diff. |
 
 ### Baseline proof state — 2026-06-01
 

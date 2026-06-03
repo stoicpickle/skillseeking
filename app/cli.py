@@ -24,6 +24,7 @@ from app.input_focus import (
     input_request_kind_counts,
     input_request_source_warnings,
 )
+from app.input_resolution import InputResolutionError, build_input_resolution_dry_run
 from app.librarian import analyze_library
 from app.skill_candidate_ledger import (
     SkillCandidateLedgerError,
@@ -220,6 +221,61 @@ def input_requests(
             typer.echo("Recommended command:")
             for command in request.next_commands:
                 typer.echo(f"  {command}")
+
+
+@app.command("resolve-input-request")
+def resolve_input_request(
+    input_request_id: Annotated[str, typer.Argument(help="Input request ID from skill-agent input-requests.")],
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory to scan for input requests.")] = Path("runs"),
+    decision: Annotated[str, typer.Option("--decision", help="Resolution decision to classify.")] = "",
+    reviewer: Annotated[str, typer.Option("--reviewer", help="Human reviewer for the dry-run decision.")] = "",
+    notes: Annotated[str, typer.Option("--notes", help="Human notes tying the decision to evidence.")] = "",
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run/--no-dry-run",
+            help="Only dry-run resolution is supported in this slice.",
+        ),
+    ] = True,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the dry-run resolution report as JSON."),
+    ] = False,
+) -> None:
+    try:
+        report = build_input_resolution_dry_run(
+            input_request_id,
+            runs_dir=runs_dir,
+            decision=decision,
+            reviewer=reviewer,
+            notes=notes,
+            dry_run=dry_run,
+        )
+    except InputResolutionError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+        return
+
+    typer.echo("INPUT_REQUEST_RESOLUTION_DRY_RUN")
+    typer.echo(f"Input: {report.input_request_id}")
+    typer.echo(f"Decision: {report.decision}")
+    typer.echo(f"Resolution class: {report.resolution_class}")
+    typer.echo(f"Proposed status: {report.proposed_status}")
+    typer.echo(f"Reviewer: {report.reviewer}")
+    typer.echo(f"Dry run: {str(report.dry_run).lower()}")
+    typer.echo(f"Remaining blocked scope: {report.remaining_blocked_scope or '-'}")
+    typer.echo("Mutations: none")
+    if report.sources:
+        typer.echo("Sources:")
+        for source in report.sources:
+            detail = f" ({source.source_detail})" if source.source_detail else ""
+            typer.echo(f"  {source.source_type}: {source.source_path}{detail}")
+    typer.echo("NEXT_STEPS")
+    for step in report.next_steps:
+        typer.echo(f"- {step}")
 
 
 @app.command()

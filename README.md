@@ -253,6 +253,12 @@ Inspect read-only human-input queues with:
 This normalizes safety approvals, repair reviews, candidate promotion approvals, duplicate/ambiguity decisions, and durable admission review blockers without mutating durable skills.
 Use `--json` when you need source diagnostics; the JSON output includes `input_request_items` with run-log or candidate-ledger provenance.
 
+Classify a proposed human decision without mutating evidence:
+
+```bash
+.venv/bin/skill-agent resolve-input-request <input-request-id> --runs-dir runs --decision defer --reviewer "Ada" --notes "Reviewed evidence." --dry-run
+```
+
 Local testing/iteration readiness for the current CLI prototype is proven with:
 
 ```bash

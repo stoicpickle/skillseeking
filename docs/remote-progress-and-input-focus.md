@@ -35,6 +35,7 @@ Every input request includes a stable ID, kind, status, title, reason, blocked s
 - `skill-agent run --json` includes `input_requests`.
 - `skill-agent input-requests --runs-dir runs` scans run logs and candidate ledger evidence into a read-only queue, including source paths for each request.
 - `skill-agent input-requests --json` emits the same queue as JSON with `input_request_items`, plus source warnings when a ledger cannot be read.
+- `skill-agent resolve-input-request <input-request-id> --dry-run` classifies a proposed human decision without mutating run logs, candidate ledgers, durable skills, resolution ledgers, or governor behavior.
 - `skill-agent health` prints `INPUT_FOCUS` counts.
 - `skill-agent health --json` includes `input_request_count` and `input_request_kind_counts`.
 - `skill-agent explain <run-log.json>` prints the run-local input-needed summary.
@@ -56,4 +57,4 @@ The diagnostic and lifecycle suites assert safety approval, promotion approval, 
 
 ## Resolution Workflow
 
-Resolution is design-only in this slice. The proposed future workflow is documented in [Input Request Resolution Workflow Design](plans/input-request-resolution-workflow-2026-06-03.md). It defines a dry-run `resolve-input-request` command shape, decision/status mapping, and a future append-only resolution ledger without adding mutation now.
+Dry-run resolution is implemented for classification only. The workflow is documented in [Input Request Resolution Workflow Design](plans/input-request-resolution-workflow-2026-06-03.md). It defines the `resolve-input-request` command shape, decision/status mapping, and a future append-only resolution ledger without adding mutation now.

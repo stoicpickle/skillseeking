@@ -664,3 +664,22 @@ Boundaries:
 
 - Resolution remains design-only.
 - No resolution ledger, durable copy/install, stable promotion, permission widening, unsafe execution, or governor steering was added.
+
+## 2026-06-03 Dry-Run Input Resolution
+
+Added dry-run resolution classification for input requests.
+
+Added:
+
+- `skill-agent resolve-input-request <input-request-id>` with required `--decision`, `--reviewer`, `--notes`, and dry-run-only execution.
+- Decision classification into `approve`, `revise`, `repair`, `reject`, `defer`, `block`, `recover`, `merge`, and `keep_separate`.
+- Dry-run report fields for proposed status, remaining blocked scope, evidence sources, next steps, and mutation flags.
+- Tests covering all six input request kinds, every declared decision option, and candidate-ledger requests while proving evidence files are unchanged.
+- Rejection tests for invalid decisions and `--no-dry-run`.
+- Contract and workflow docs updated from design-only to dry-run implemented.
+- `AGENTS.md` added as tracked repo guidance for future Codex work.
+
+Boundaries:
+
+- The resolver does not write run logs, candidate ledgers, resolution ledgers, durable skills, or governor state.
+- The append-only resolution ledger remains future work.

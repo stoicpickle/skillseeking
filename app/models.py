@@ -42,6 +42,17 @@ InputRequestKind = Literal[
 ]
 InputRequestStatus = Literal["open", "resolved", "blocked"]
 InputRequestSourceType = Literal["run_log", "candidate_ledger"]
+InputRequestResolutionClass = Literal[
+    "approve",
+    "revise",
+    "repair",
+    "reject",
+    "defer",
+    "block",
+    "recover",
+    "merge",
+    "keep_separate",
+]
 RiskLevel = Literal["low", "medium", "high"]
 CapabilityDecisionType = Literal["USE_SKILL", "REQUEST_SKILL", "ASK_HUMAN", "ABORT_UNSAFE"]
 Reversibility = Literal["reversible", "partially_reversible", "irreversible", "unknown"]
@@ -489,6 +500,27 @@ class InputRequestQueueItem(BaseModel):
 
     request: InputRequest
     sources: list[InputRequestSource] = Field(default_factory=list)
+
+
+class InputRequestResolutionDryRun(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    dry_run: bool = True
+    input_request_id: str
+    decision: str
+    resolution_class: InputRequestResolutionClass
+    proposed_status: InputRequestStatus
+    reviewer: str
+    notes: str
+    request: InputRequest
+    sources: list[InputRequestSource] = Field(default_factory=list)
+    remaining_blocked_scope: str | None = None
+    next_steps: list[str] = Field(default_factory=list)
+    run_logs_mutated: bool = False
+    candidate_ledger_mutated: bool = False
+    resolution_ledger_mutated: bool = False
+    durable_skills_mutated: bool = False
+    governor_steering_enabled: bool = False
 
 
 class AdmissionPlanReport(BaseModel):
