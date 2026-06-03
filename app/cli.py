@@ -13,10 +13,13 @@ from app.cli_output import (
     emit_admission_plan_output,
     emit_candidates_json,
     emit_candidates_output,
+    emit_durable_admission_preview_json,
+    emit_durable_admission_preview_output,
     emit_run_json,
     emit_registry_json,
     emit_run_output,
 )
+from app.durable_admission import build_durable_admission_preview
 from app.eval_runner import EvalSuiteError, run_eval_suite, write_eval_reports
 from app.explain import ExplainError, explain_run_log
 from app.input_focus import (
@@ -356,6 +359,40 @@ def admission_plan(
         emit_admission_plan_json(report)
     else:
         emit_admission_plan_output(report)
+
+
+@app.command("admit-candidate")
+def admit_candidate(
+    candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to preview for durable admission.")],
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory containing the skill candidate ledger.")] = Path("runs"),
+    skills_dir: Annotated[Path, typer.Option(help="Durable local skills directory.")] = Path("skills"),
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run/--no-dry-run",
+            help="Preview durable admission mutation. Write mode is intentionally unavailable.",
+        ),
+    ] = True,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the durable admission preview as JSON."),
+    ] = False,
+) -> None:
+    try:
+        report = build_durable_admission_preview(
+            candidate_id,
+            runs_dir=runs_dir,
+            skills_dir=skills_dir,
+            dry_run=dry_run,
+        )
+    except AdmissionPlanError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        emit_durable_admission_preview_json(report)
+    else:
+        emit_durable_admission_preview_output(report)
 
 
 @app.command("eval")

@@ -31,6 +31,7 @@ temporary evidence
   -> admission-plan dry run
   -> durable_admission_review input request
   -> optional append-only approve_review resolution evidence
+  -> admit-candidate --dry-run mutation preview
   -> future durable install/copy slice, only after new proof gates exist
 ```
 
@@ -45,13 +46,14 @@ temporary evidence
 | Registry proof | Durable registry checks report accepted/rejected same-name collisions and contract overlaps | Collisions block or warn; no registry record is admitted |
 | Input request proof | `durable_admission_review` or blocker input request is visible through `input-requests` | Queue remains advisory |
 | Resolution proof | Optional `approve_review` record is appended to `input_request_resolutions.json` | Resolution evidence is not install/copy approval |
+| Mutation preview proof | `admit-candidate --dry-run` reports source hash, target durable path, required human records, and false mutation flags | `--no-dry-run` is rejected |
 
 ## Future Install/Copy Preconditions
 
 A future durable install/copy slice must first add proof that is not present today:
 
-- A new explicit command or subcommand contract for durable admission mutation.
-- A dry-run mode for that command before any write mode.
+- A new explicit command or subcommand contract for durable admission mutation. Status: `admit-candidate --dry-run` preview exists.
+- A dry-run mode for that command before any write mode. Status: write mode is unavailable and `--no-dry-run` is rejected.
 - A destination preview that names the exact target path under durable `skills/`.
 - A source snapshot hash or equivalent immutable source evidence reference.
 - A collision policy for same-name durable skills and rejected durable records.

@@ -31,6 +31,11 @@ AdmissionPlanOutcome = Literal[
     "evidence_incomplete",
     "blocked",
 ]
+DurableAdmissionPreviewOutcome = Literal[
+    "ready_for_mutation_preview",
+    "approval_required",
+    "blocked",
+]
 AdmissionCheckResult = Literal["pass", "warning", "blocker", "info"]
 InputRequestKind = Literal[
     "safety_approval",
@@ -572,6 +577,30 @@ class AdmissionPlanReport(BaseModel):
     warnings: list[str]
     next_steps: list[str]
     input_request: InputRequest | None = None
+
+
+class DurableAdmissionPreviewReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_id: str
+    dry_run: bool = True
+    mutation_supported: bool = False
+    durable_skill_installed: bool = False
+    ledger_mutated: bool = False
+    registry_mutated: bool = False
+    resolution_ledger_mutated: bool = False
+    governor_steering_enabled: bool = False
+    outcome: DurableAdmissionPreviewOutcome
+    ready_for_mutation_preview: bool
+    source_skill_path: str | None = None
+    source_sha256: str | None = None
+    target_skill_dir: str | None = None
+    target_skill_path: str | None = None
+    required_human_records: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+    admission_plan: AdmissionPlanReport
 
 
 class RunLog(BaseModel):

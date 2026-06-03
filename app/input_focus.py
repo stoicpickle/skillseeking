@@ -124,6 +124,36 @@ def candidate_input_requests(entry: SkillCandidateLedgerEntry) -> list[InputRequ
                 next_commands=["Inspect duplicate evidence before promotion review."],
             )
         )
+    if (
+        entry.status == "candidate"
+        and entry.promotion_approved_by
+        and entry.promotion_approved_at is not None
+        and not entry.block_reason
+        and not entry.quarantine_reason
+        and not entry.duplicate_of
+    ):
+        requests.append(
+            InputRequest(
+                id=_input_request_id(
+                    "durable_admission_review",
+                    entry.candidate_id,
+                    "ready_for_durable_review",
+                ),
+                kind="durable_admission_review",
+                title=f"Review durable admission for {entry.skill_name}",
+                reason="Candidate promotion evidence is ready for admission-plan review.",
+                blocked_scope="durable skill install/copy",
+                requested_decision="Approve durable admission review, request repair, block, or defer.",
+                options=["approve_review", "repair_candidate", "block", "defer"],
+                recommended_option="approve_review",
+                evidence_refs=list(entry.evidence_run_ids),
+                next_commands=[
+                    f"skill-agent admission-plan {entry.candidate_id} --runs-dir <runs> --skills-dir <skills>"
+                ],
+                related_candidate_id=entry.candidate_id,
+                created_at=entry.promotion_approved_at,
+            )
+        )
     return requests
 
 

@@ -308,6 +308,43 @@ Allowed outcomes are `ready_for_durable_review`, `needs_promotion_approval`, `ev
 
 Durable admission workflow design lives in `docs/plans/durable-admission-workflow-design-2026-06-03.md`. That workflow treats `ready_for_durable_review` and `approve_review` resolution evidence as review checkpoints only. They are not durable install/copy approval, registry admission, stable promotion, permission widening, or governor steering.
 
+## Durable Admission Preview
+
+`admit-candidate --dry-run` previews the future durable admission mutation contract. It requires the existing admission-plan proof and reports what would be needed before a future write-mode command could exist. It does not copy, install, admit, mutate ledgers, mutate the registry, promote to stable, widen permissions, or steer the governor. `--no-dry-run` exits with an error because durable admission mutation is intentionally unavailable.
+
+```json
+{
+  "candidate_id": "candidate_abc123def456",
+  "outcome": "approval_required",
+  "ready_for_mutation_preview": false,
+  "dry_run": true,
+  "mutation_supported": false,
+  "durable_skill_installed": false,
+  "ledger_mutated": false,
+  "registry_mutated": false,
+  "resolution_ledger_mutated": false,
+  "governor_steering_enabled": false,
+  "source_skill_path": "runs/artifacts/run_id/skills/argument-clustering/SKILL.md",
+  "source_sha256": "abc123...",
+  "target_skill_dir": "skills/argument-clustering",
+  "target_skill_path": "skills/argument-clustering/SKILL.md",
+  "required_human_records": [
+    "promotion_approved_by",
+    "promotion_approved_at",
+    "durable_admission_review approve_review resolution"
+  ],
+  "blockers": ["durable_review_resolution_missing"],
+  "warnings": [],
+  "next_steps": [
+    "Resolve admission blockers and record required human review evidence.",
+    "Rerun admit-candidate --dry-run before any future write-mode work."
+  ],
+  "admission_plan": {}
+}
+```
+
+Allowed outcomes are `ready_for_mutation_preview`, `approval_required`, and `blocked`. A preview can reach `ready_for_mutation_preview` only after `admission-plan` is ready and the append-only input request resolution ledger contains a resolved `approve_review` decision for the matching `durable_admission_review` input request.
+
 ## Capability Decision
 
 ```json
@@ -426,6 +463,7 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `skill-agent health --json` is additive and includes v2 metrics such as result categories, temporary outcomes, repair counts, safety stops, human approval waits, route/load failures, script failure categories, and input request counts.
 - `skill-agent input-requests --json` emits `{ "runs_dir": "...", "input_request_count": 0, "input_request_kind_counts": {}, "warnings": [], "input_requests": [], "input_request_items": [] }`. `input_requests` is the flat compatibility list; `input_request_items` includes source diagnostics.
 - `skill-agent resolve-input-request --json` emits the resolution report for one input request and proposed decision. With `--dry-run`, it does not mutate local evidence. With `--no-dry-run`, it appends to `runs/input_request_resolutions.json` only.
+- `skill-agent admit-candidate --dry-run --json` emits the durable admission preview report. `--no-dry-run` is intentionally rejected.
 - `skill-agent eval --json` emits the eval suite path, timestamp, per-task run-log paths, task pass/fail status, routing decisions, skill requests, input requests, request-quality scores, diagnostic dimensions, and aggregate counts.
 - `skill-agent explain <run-log.json>` reads an existing run log and prints a human-readable trace summary. It does not mutate the run log.
 

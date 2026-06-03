@@ -9,6 +9,7 @@ from app.models import (
     AdmissionPlanReport,
     AdmissionSourceArtifact,
     AgentRunResult,
+    DurableAdmissionPreviewReport,
     InputRequest,
     LoadedSkillLog,
     ScriptExecutionLog,
@@ -146,6 +147,50 @@ def emit_candidates_output(ledger: SkillCandidateLedger, ledger_path: str) -> No
 
 def emit_admission_plan_json(report: AdmissionPlanReport) -> None:
     typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_durable_admission_preview_json(report: DurableAdmissionPreviewReport) -> None:
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_durable_admission_preview_output(report: DurableAdmissionPreviewReport) -> None:
+    typer.echo("DURABLE_ADMISSION_PREVIEW")
+    typer.echo(f"Candidate: {report.candidate_id}")
+    typer.echo(f"Outcome: {report.outcome}")
+    typer.echo(f"Ready for mutation preview: {str(report.ready_for_mutation_preview).lower()}")
+    typer.echo(f"Dry run: {str(report.dry_run).lower()}")
+    typer.echo(f"Mutation supported: {str(report.mutation_supported).lower()}")
+    typer.echo(f"Durable skill installed: {str(report.durable_skill_installed).lower()}")
+    typer.echo(f"Ledger mutated: {str(report.ledger_mutated).lower()}")
+    typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
+    typer.echo(f"Resolution ledger mutated: {str(report.resolution_ledger_mutated).lower()}")
+    typer.echo(f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}")
+
+    typer.echo("")
+    typer.echo("SOURCE")
+    typer.echo(f"Source SKILL.md: {report.source_skill_path or '-'}")
+    typer.echo(f"Source sha256: {report.source_sha256 or '-'}")
+
+    typer.echo("")
+    typer.echo("TARGET")
+    typer.echo(f"Target skill dir: {report.target_skill_dir or '-'}")
+    typer.echo(f"Target SKILL.md: {report.target_skill_path or '-'}")
+
+    typer.echo("")
+    typer.echo("REQUIRED_HUMAN_RECORDS")
+    _emit_string_items(report.required_human_records)
+
+    typer.echo("")
+    typer.echo("BLOCKERS")
+    _emit_string_items(report.blockers)
+
+    typer.echo("")
+    typer.echo("WARNINGS")
+    _emit_string_items(report.warnings)
+
+    typer.echo("")
+    typer.echo("NEXT_STEPS")
+    _emit_string_items(report.next_steps)
 
 
 def emit_admission_plan_output(report: AdmissionPlanReport) -> None:

@@ -206,6 +206,7 @@ Inspect Skill Candidate Ledger evidence after missing-skill or temporary-skill r
 .venv/bin/skill-agent candidates --json
 .venv/bin/skill-agent promote-candidate candidate_<id> --reviewer "Your Name" --notes "Reviewed temporary evidence"
 .venv/bin/skill-agent admission-plan candidate_<id> --runs-dir runs --skills-dir skills
+.venv/bin/skill-agent admit-candidate candidate_<id> --runs-dir runs --skills-dir skills --dry-run
 ```
 
 Candidate entries are evidence for human review only. Auto-promotion is disabled, and `Promotion approval required` refers to durable skill promotion, not current-run execution. `promote-candidate` records human approval and moves an eligible ledger entry to `candidate` status; it does not copy or install a durable skill.
@@ -221,6 +222,8 @@ Candidate entries are evidence for human review only. Auto-promotion is disabled
 These queues are review aids only. They do not steer routing, promote skills, widen permissions, or change governor decisions.
 
 `admission-plan` is also a dry run. It inspects ledger evidence, run logs, source temporary `SKILL.md` artifacts, and durable registry collisions to decide whether a candidate is ready for human durable admission review. It does not copy, install, promote, or mutate anything.
+
+`admit-candidate --dry-run` previews the future durable admission mutation contract. It reports the selected source artifact, source SHA-256 fingerprint, target durable `skills/<name>/SKILL.md` path, missing human review records, and mutation flags. `--no-dry-run` is intentionally rejected; no durable copy/install write mode exists yet.
 
 Run the M6 malicious-skill rejection demo:
 

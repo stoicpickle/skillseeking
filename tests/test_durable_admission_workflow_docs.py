@@ -21,6 +21,8 @@ def test_durable_admission_workflow_design_preserves_advisory_boundary(repo_root
         "Do not mutate historical run logs, candidate ledgers, or input request resolution ledgers.",
         "Do not widen permissions.",
         "Do not add active governor steering.",
+        "admit-candidate --dry-run mutation preview",
+        "--no-dry-run` is rejected",
     ]
     for phrase in required_phrases:
         assert phrase in text
