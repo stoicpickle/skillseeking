@@ -646,3 +646,21 @@ Boundaries:
 - The queue is advisory and read-only.
 - No durable skill install/copy workflow was added.
 - No auto-promotion, stable promotion, permission widening, unsafe execution, or active governor steering was added.
+
+## 2026-06-03 Input Queue Source Diagnostics
+
+Added the next Remote Progress coverage slice.
+
+Added:
+
+- Source-aware input queue items with `run_log` and `candidate_ledger` provenance.
+- `skill-agent input-requests --json` `input_request_items` output while preserving the flat `input_requests` list.
+- Human queue output that prints source paths and source details for each open or blocked request.
+- Queue warnings for unreadable candidate ledger evidence.
+- Missing-evidence admission-plan assertions for blocked `missing_evidence` input requests.
+- Design-only input request resolution workflow at `docs/plans/input-request-resolution-workflow-2026-06-03.md`.
+
+Boundaries:
+
+- Resolution remains design-only.
+- No resolution ledger, durable copy/install, stable promotion, permission widening, unsafe execution, or governor steering was added.

@@ -41,6 +41,7 @@ InputRequestKind = Literal[
     "missing_evidence",
 ]
 InputRequestStatus = Literal["open", "resolved", "blocked"]
+InputRequestSourceType = Literal["run_log", "candidate_ledger"]
 RiskLevel = Literal["low", "medium", "high"]
 CapabilityDecisionType = Literal["USE_SKILL", "REQUEST_SKILL", "ASK_HUMAN", "ABORT_UNSAFE"]
 Reversibility = Literal["reversible", "partially_reversible", "irreversible", "unknown"]
@@ -473,6 +474,21 @@ class InputRequest(BaseModel):
     related_candidate_id: str | None = None
     related_skill_request_id: str | None = None
     created_at: datetime = Field(default_factory=datetime.now)
+
+
+class InputRequestSource(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_type: InputRequestSourceType
+    source_path: str
+    source_detail: str | None = None
+
+
+class InputRequestQueueItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    request: InputRequest
+    sources: list[InputRequestSource] = Field(default_factory=list)
 
 
 class AdmissionPlanReport(BaseModel):

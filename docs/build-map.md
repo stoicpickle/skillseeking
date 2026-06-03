@@ -455,6 +455,7 @@ Slices:
 | Lifecycle eval in validation bundle | complete | CI and the local validation bundle run `evals/skill_lifecycle_v0.jsonl` |
 | Agent diagnostic eval | complete | `evals/agent_diagnostic_v0.jsonl` groups routing, request, safety, approval, adversarial, lifecycle, repair, and admission-readiness signals by diagnostic dimension |
 | Remote progress input focus | complete | `InputRequest`, `skill-agent input-requests`, `INPUT_NEEDED`, health `INPUT_FOCUS`, admission-plan summaries, and eval expectations expose human decision boundaries without durable mutation |
+| Input queue source diagnostics | complete | `skill-agent input-requests --json` includes `input_request_items` with `run_log` and `candidate_ledger` source paths, plus warnings for unreadable ledger evidence |
 | Roadmap checkpoint docs | complete | README and operating roadmap distinguish local testing readiness from production readiness |
 
 Boundaries:

@@ -251,6 +251,7 @@ Inspect read-only human-input queues with:
 ```
 
 This normalizes safety approvals, repair reviews, candidate promotion approvals, duplicate/ambiguity decisions, and durable admission review blockers without mutating durable skills.
+Use `--json` when you need source diagnostics; the JSON output includes `input_request_items` with run-log or candidate-ledger provenance.
 
 Local testing/iteration readiness for the current CLI prototype is proven with:
 

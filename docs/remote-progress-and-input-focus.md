@@ -27,14 +27,14 @@ The system must surface an `InputRequest` when progress reaches a human decision
 - `ambiguity_resolution`: duplicate or ambiguous candidate evidence needs a decision.
 - `missing_evidence`: required evidence is absent before durable review can continue.
 
-Every input request includes a stable ID, kind, status, title, reason, blocked scope, requested decision, options, evidence refs, and suggested next command.
+Every input request includes a stable ID, kind, status, title, reason, blocked scope, requested decision, options, evidence refs, and suggested next command. The queue wraps each request with source diagnostics so humans can see whether the request came from a run log or candidate ledger evidence.
 
 ## Surfaces
 
 - `skill-agent run` prints `INPUT_NEEDED` when the run log contains input requests.
 - `skill-agent run --json` includes `input_requests`.
-- `skill-agent input-requests --runs-dir runs` scans run logs and candidate ledger evidence into a read-only queue.
-- `skill-agent input-requests --json` emits the same queue as JSON, plus source warnings when a ledger cannot be read.
+- `skill-agent input-requests --runs-dir runs` scans run logs and candidate ledger evidence into a read-only queue, including source paths for each request.
+- `skill-agent input-requests --json` emits the same queue as JSON with `input_request_items`, plus source warnings when a ledger cannot be read.
 - `skill-agent health` prints `INPUT_FOCUS` counts.
 - `skill-agent health --json` includes `input_request_count` and `input_request_kind_counts`.
 - `skill-agent explain <run-log.json>` prints the run-local input-needed summary.
@@ -53,3 +53,7 @@ Eval rows can require input-focus evidence with:
 - `input_request_status`
 
 The diagnostic and lifecycle suites assert safety approval, promotion approval, and repair-review input requests so the remote-progress queue cannot silently disappear.
+
+## Resolution Workflow
+
+Resolution is design-only in this slice. The proposed future workflow is documented in [Input Request Resolution Workflow Design](plans/input-request-resolution-workflow-2026-06-03.md). It defines a dry-run `resolve-input-request` command shape, decision/status mapping, and a future append-only resolution ledger without adding mutation now.

@@ -8,10 +8,17 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from app.models import InputRequest, InputRequestKind, SkillCandidateLedgerEntry
+from app.models import (
+    InputRequest,
+    InputRequestKind,
+    InputRequestQueueItem,
+    InputRequestSource,
+    SkillCandidateLedgerEntry,
+)
 from app.skill_candidate_ledger import (
     SkillCandidateLedgerError,
     candidate_review_queue_names,
+    ledger_path,
     load_candidate_ledger,
 )
 
@@ -174,19 +181,49 @@ def admission_input_request(
 
 
 def collect_input_requests(runs_dir: Path) -> list[InputRequest]:
-    requests: list[InputRequest] = []
-    for log in _load_run_logs(runs_dir):
-        requests.extend(input_requests_from_run_log(log))
+    return [item.request for item in collect_input_request_queue(runs_dir)]
+
+
+def collect_input_request_queue(runs_dir: Path) -> list[InputRequestQueueItem]:
+    items: list[InputRequestQueueItem] = []
+    for path, log in _load_run_log_records(runs_dir):
+        for request in input_requests_from_run_log(log):
+            run_id = str(log.get("run_id") or "") or None
+            items.append(
+                InputRequestQueueItem(
+                    request=request,
+                    sources=[
+                        InputRequestSource(
+                            source_type="run_log",
+                            source_path=str(path),
+                            source_detail=run_id,
+                        )
+                    ],
+                )
+            )
 
     try:
         ledger = load_candidate_ledger(runs_dir)
     except SkillCandidateLedgerError:
         ledger = None
     if ledger is not None:
+        path = str(ledger_path(runs_dir))
         for entry in ledger.entries:
-            requests.extend(candidate_input_requests(entry))
+            for request in candidate_input_requests(entry):
+                items.append(
+                    InputRequestQueueItem(
+                        request=request,
+                        sources=[
+                            InputRequestSource(
+                                source_type="candidate_ledger",
+                                source_path=path,
+                                source_detail=entry.candidate_id,
+                            )
+                        ],
+                    )
+                )
 
-    return _dedupe_requests(requests)
+    return _dedupe_queue_items(items)
 
 
 def input_request_source_warnings(runs_dir: Path) -> list[str]:
@@ -252,8 +289,8 @@ def _candidate_request(
     )
 
 
-def _load_run_logs(runs_dir: Path) -> list[dict[str, Any]]:
-    logs: list[dict[str, Any]] = []
+def _load_run_log_records(runs_dir: Path) -> list[tuple[Path, dict[str, Any]]]:
+    logs: list[tuple[Path, dict[str, Any]]] = []
     if not runs_dir.exists():
         return logs
     for path in sorted(runs_dir.rglob("run_*.json")):
@@ -262,7 +299,7 @@ def _load_run_logs(runs_dir: Path) -> list[dict[str, Any]]:
         except (OSError, json.JSONDecodeError):
             continue
         if isinstance(data, dict):
-            logs.append(data)
+            logs.append((path, data))
     return logs
 
 
@@ -271,6 +308,25 @@ def _dedupe_requests(requests: list[InputRequest]) -> list[InputRequest]:
     for request in requests:
         deduped.setdefault(request.id, request)
     return sorted(deduped.values(), key=lambda item: (item.kind, item.id))
+
+
+def _dedupe_queue_items(items: list[InputRequestQueueItem]) -> list[InputRequestQueueItem]:
+    deduped: dict[str, InputRequestQueueItem] = {}
+    for item in items:
+        existing = deduped.get(item.request.id)
+        if existing is None:
+            deduped[item.request.id] = item
+            continue
+        known = {
+            (source.source_type, source.source_path, source.source_detail)
+            for source in existing.sources
+        }
+        for source in item.sources:
+            key = (source.source_type, source.source_path, source.source_detail)
+            if key not in known:
+                existing.sources.append(source)
+                known.add(key)
+    return sorted(deduped.values(), key=lambda item: (item.request.kind, item.request.id))
 
 
 def _input_request_id(*parts: object) -> str:

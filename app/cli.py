@@ -20,7 +20,7 @@ from app.cli_output import (
 from app.eval_runner import EvalSuiteError, run_eval_suite, write_eval_reports
 from app.explain import ExplainError, explain_run_log
 from app.input_focus import (
-    collect_input_requests,
+    collect_input_request_queue,
     input_request_kind_counts,
     input_request_source_warnings,
 )
@@ -162,8 +162,9 @@ def input_requests(
         typer.Option("--json", help="Print input requests as JSON."),
     ] = False,
 ) -> None:
-    requests = collect_input_requests(runs_dir)
-    active = [request for request in requests if request.status != "resolved"]
+    queue_items = collect_input_request_queue(runs_dir)
+    active_items = [item for item in queue_items if item.request.status != "resolved"]
+    active = [item.request for item in active_items]
     warnings = input_request_source_warnings(runs_dir)
     if json_output:
         typer.echo(
@@ -175,6 +176,9 @@ def input_requests(
                     "warnings": warnings,
                     "input_requests": [
                         request.model_dump(mode="json") for request in active
+                    ],
+                    "input_request_items": [
+                        item.model_dump(mode="json") for item in active_items
                     ],
                 },
                 indent=2,
@@ -194,7 +198,8 @@ def input_requests(
     if not active:
         typer.echo("none")
         return
-    for request in active:
+    for item in active_items:
+        request = item.request
         typer.echo("")
         typer.echo(f"Input: {request.id}")
         typer.echo(f"Kind: {request.kind}")
@@ -202,6 +207,11 @@ def input_requests(
         typer.echo(f"Title: {request.title}")
         typer.echo(f"Blocked scope: {request.blocked_scope}")
         typer.echo(f"Requested decision: {request.requested_decision}")
+        if item.sources:
+            typer.echo("Sources:")
+            for source in item.sources:
+                detail = f" ({source.source_detail})" if source.source_detail else ""
+                typer.echo(f"  {source.source_type}: {source.source_path}{detail}")
         if request.recommended_option:
             typer.echo(f"Recommended option: {request.recommended_option}")
         if request.evidence_refs:

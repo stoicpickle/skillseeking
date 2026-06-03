@@ -136,6 +136,41 @@ Input requests normalize human-decision boundaries across run logs, safety decis
 
 Allowed kinds are `safety_approval`, `promotion_approval`, `durable_admission_review`, `repair_review`, `ambiguity_resolution`, and `missing_evidence`. Allowed statuses are `open`, `resolved`, and `blocked`. Requests synthesized from older run logs or candidate ledger entries use stable IDs and source evidence timestamps when available.
 
+Input request queue items wrap a request with read-time source diagnostics:
+
+```json
+{
+  "request": {
+    "id": "inputreq_abc123def456",
+    "kind": "promotion_approval",
+    "status": "open",
+    "title": "Review argument-clustering for candidate promotion",
+    "reason": "Temporary evidence is ready for human promotion review.",
+    "blocked_scope": "durable promotion only",
+    "requested_decision": "Approve, repair, reject, or defer candidate promotion.",
+    "options": ["approve_promotion", "repair_candidate", "reject_candidate", "defer"],
+    "recommended_option": "approve_promotion",
+    "evidence_refs": ["run_abc123"],
+    "next_commands": [
+      "skill-agent promote-candidate candidate_abc123 --reviewer <name> --notes <notes>"
+    ],
+    "related_run_id": null,
+    "related_candidate_id": "candidate_abc123",
+    "related_skill_request_id": null,
+    "created_at": "2026-06-03T12:00:00"
+  },
+  "sources": [
+    {
+      "source_type": "candidate_ledger",
+      "source_path": "runs/skill_candidate_ledger.json",
+      "source_detail": "candidate_abc123"
+    }
+  ]
+}
+```
+
+Allowed source types are `run_log` and `candidate_ledger`.
+
 ## Admission Plan
 
 Admission plans are output-only dry-run reports. They inspect candidate ledger evidence, run logs, run-scoped temporary skill artifacts, and the durable registry, but they do not write the ledger, copy files, install skills, admit registry records, steer the governor, or promote anything to stable.
@@ -293,7 +328,7 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `skill-agent run --json` emits run result data: IDs, exit code, result category, run-log path, execution summary, decisions, requests, repairs, input requests, loaded skills, rejected skills, trace events, and script executions.
 - `skill-agent registry --json` emits `{ "accepted": [...], "rejected": [...] }`.
 - `skill-agent health --json` is additive and includes v2 metrics such as result categories, temporary outcomes, repair counts, safety stops, human approval waits, route/load failures, script failure categories, and input request counts.
-- `skill-agent input-requests --json` emits `{ "runs_dir": "...", "input_request_count": 0, "input_request_kind_counts": {}, "warnings": [], "input_requests": [] }`.
+- `skill-agent input-requests --json` emits `{ "runs_dir": "...", "input_request_count": 0, "input_request_kind_counts": {}, "warnings": [], "input_requests": [], "input_request_items": [] }`. `input_requests` is the flat compatibility list; `input_request_items` includes source diagnostics.
 - `skill-agent eval --json` emits the eval suite path, timestamp, per-task run-log paths, task pass/fail status, routing decisions, skill requests, input requests, request-quality scores, diagnostic dimensions, and aggregate counts.
 - `skill-agent explain <run-log.json>` reads an existing run log and prints a human-readable trace summary. It does not mutate the run log.
 

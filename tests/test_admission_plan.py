@@ -117,6 +117,10 @@ def test_missing_run_log_creates_evidence_blocker(tmp_path):
     assert report.outcome == "evidence_incomplete"
     assert "evidence_run_log_missing" in report.blockers
     assert "source_skill_path_missing" in report.blockers
+    assert report.input_request is not None
+    assert report.input_request.kind == "missing_evidence"
+    assert report.input_request.status == "blocked"
+    assert "evidence_run_log_missing" in report.input_request.reason
 
 
 def test_missing_source_path_creates_source_blocker(tmp_path):
@@ -151,6 +155,10 @@ def test_missing_source_path_creates_source_blocker(tmp_path):
 
     assert report.outcome == "evidence_incomplete"
     assert "source_skill_path_missing" in report.blockers
+    assert report.input_request is not None
+    assert report.input_request.kind == "missing_evidence"
+    assert report.input_request.status == "blocked"
+    assert "source_skill_path_missing" in report.input_request.reason
 
 
 def test_missing_source_skill_file_creates_source_blocker(copied_seed_skills, tmp_path):

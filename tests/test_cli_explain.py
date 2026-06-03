@@ -220,9 +220,66 @@ def test_run_and_input_requests_surface_approval_queue(copied_seed_skills, tmp_p
     assert "INPUT_REQUESTS" in queue_result.stdout
     assert "Open: 2" in queue_result.stdout
     assert "Kind: safety_approval" in queue_result.stdout
+    assert "Sources:" in queue_result.stdout
+    assert "run_log:" in queue_result.stdout
     assert queue_json_result.exit_code == 0
     queue = json.loads(queue_json_result.stdout)
     assert queue["input_request_kind_counts"] == {"safety_approval": 2}
+    assert queue["input_request_items"][0]["sources"][0]["source_type"] == "run_log"
+    assert queue["input_request_items"][0]["sources"][0]["source_path"].endswith(".json")
+
+
+def test_input_requests_warns_when_candidate_ledger_is_unreadable(tmp_path):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    runs_dir.mkdir()
+    (runs_dir / "skill_candidate_ledger.json").write_text("{", encoding="utf-8")
+
+    text_result = runner.invoke(app, ["input-requests", "--runs-dir", str(runs_dir)])
+    json_result = runner.invoke(
+        app,
+        ["input-requests", "--runs-dir", str(runs_dir), "--json"],
+    )
+
+    assert text_result.exit_code == 0
+    assert "Warning: candidate ledger unavailable" in text_result.stdout
+    assert json_result.exit_code == 0
+    data = json.loads(json_result.stdout)
+    assert data["warnings"]
+    assert "candidate ledger unavailable" in data["warnings"][0]
+
+
+def test_input_requests_surfaces_candidate_ledger_source(copied_seed_skills, tmp_path):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    run_result = runner.invoke(
+        app,
+        [
+            "run",
+            "Cluster arguments from these sources.",
+            "--temporary-skills",
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--runs-dir",
+            str(runs_dir),
+        ],
+    )
+    assert run_result.exit_code == 0
+
+    queue_result = runner.invoke(
+        app,
+        ["input-requests", "--runs-dir", str(runs_dir), "--json"],
+    )
+
+    assert queue_result.exit_code == 0
+    queue = json.loads(queue_result.stdout)
+    item = next(
+        item
+        for item in queue["input_request_items"]
+        if item["request"]["kind"] == "promotion_approval"
+    )
+    assert item["sources"][0]["source_type"] == "candidate_ledger"
+    assert item["sources"][0]["source_path"].endswith("skill_candidate_ledger.json")
 
 
 def test_explain_malformed_trace_gives_useful_error(tmp_path):
