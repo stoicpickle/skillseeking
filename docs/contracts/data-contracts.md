@@ -377,6 +377,8 @@ Allowed preview outcomes are `ready_for_mutation_preview`, `approval_required`, 
 
 Source snapshot retention is previewed but not executed in this slice. `snapshot_dir`, `snapshot_skill_path`, and `snapshot_sha256` describe the future retained source copy under `runs/admission_snapshots/<candidate_id>/<source_sha256>/`; `source_snapshot_created` remains `false`.
 
+Acceptance coverage for the future write mode lives in `tests/test_durable_admission_acceptance.py`. It proves source hash drift, snapshot path planning, destination planning, collision approval, permission approval, and `--no-dry-run` rejection without copying, installing, creating snapshots, or rewriting historical evidence.
+
 ## Capability Decision
 
 ```json

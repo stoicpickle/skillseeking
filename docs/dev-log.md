@@ -718,3 +718,20 @@ Boundaries:
 
 - `--no-dry-run` is still rejected.
 - No durable skill copy/install, source snapshot creation, stable promotion, permission widening, unsafe execution, or governor steering was added.
+
+## 2026-06-03 No-Write Durable Admission Acceptance Harness
+
+Added acceptance-level proof for the future durable copy/install write mode while keeping the workflow dry-run only.
+
+Added:
+
+- CLI-driven acceptance tests for candidate creation, promotion approval, admission review resolution, and `admit-candidate --dry-run --json`.
+- Source hash and source-drift assertions proving future write mode can detect stale plans.
+- Destination and future snapshot path assertions under `runs/admission_snapshots/<candidate_id>/<source_sha>/`.
+- Collision approval and permission approval scenarios using append-only resolution evidence.
+- No-write assertions for durable skills, run logs, candidate ledgers, resolution ledgers, and snapshot directories.
+
+Boundaries:
+
+- `--no-dry-run` remains rejected.
+- No durable skill copy/install, source snapshot creation, stable promotion, permission widening, unsafe execution, or governor steering was added.
