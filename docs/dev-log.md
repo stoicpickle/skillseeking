@@ -608,3 +608,41 @@ Boundaries:
 - No durable copy/install workflow was added.
 - `ready_for_durable_review` remains human review evidence only.
 - Governor steering, stable promotion, permission widening, and true sandboxing remain out of scope.
+
+## 2026-06-02 Agent Diagnostic Eval
+
+Added the local iteration eval for deciding what to improve next.
+
+Added:
+
+- `evals/agent_diagnostic_v0.jsonl` covering existing-skill routing, missing-skill detection, request quality, safety aborts, approval waits, adversarial routing, lifecycle evidence, temporary success, and repair-required validation failure.
+- Eval aggregate diagnostic dimensions grouped by non-generic task tags.
+- Markdown and CLI output that surface weakest failing diagnostic dimensions.
+- Pytest coverage that runs the diagnostic suite, verifies report contract fields, and proves a human-approved diagnostic candidate can produce a read-only `admission-plan` report.
+
+Boundaries:
+
+- This is an insight eval, not a new autonomous behavior.
+- It does not copy/install durable skills, promote stable skills, or steer the governor.
+
+## 2026-06-03 Remote Progress And Input Focus
+
+Added the read-only input-needed layer for remote progress.
+
+Added:
+
+- `InputRequest` contracts on run logs and admission-plan reports.
+- Runtime input requests for `ASK_HUMAN` safety waits and repair-required temporary skill paths.
+- Candidate-derived input requests for promotion-ready, repair-needed, and duplicate-merge queues.
+- `skill-agent input-requests` and `skill-agent input-requests --json` for a consolidated queue.
+- `INPUT_NEEDED` output in run, explain, and admission-plan surfaces.
+- `INPUT_FOCUS` health counts and JSON fields for open input requests by kind.
+- Eval expectations for `must_have_input_request`, `input_request_kind`, and `input_request_status`.
+- Diagnostic and lifecycle eval rows that assert safety approval, promotion approval, and repair-review requests.
+- Remote progress docs and data-contract updates.
+
+Boundaries:
+
+- The queue is advisory and read-only.
+- No durable skill install/copy workflow was added.
+- No auto-promotion, stable promotion, permission widening, unsafe execution, or active governor steering was added.

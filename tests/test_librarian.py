@@ -61,6 +61,8 @@ def test_library_health_reads_usage_requests_failures_and_rejections(tmp_path, s
     assert report.temporary_outcomes["validation_failed"] == 1
     assert report.temporary_outcomes["request_not_loaded"] == 1
     assert report.repair_requests == 1
+    assert report.input_request_count == 1
+    assert report.input_request_kind_counts == {"repair_review": 1}
     assert report.script_failure_categories == {"nonzero_exit": 1}
     issue_codes = {issue.code for issue in report.issues}
     assert "temporary_validation_failed" in issue_codes
@@ -202,6 +204,11 @@ def test_library_health_surfaces_candidate_ledger_state(tmp_path, seed_skills_di
         "duplicate_merge_needed": 1,
         "repair_needed": 1,
     }
+    assert report.input_request_count == 2
+    assert report.input_request_kind_counts == {
+        "ambiguity_resolution": 1,
+        "repair_review": 1,
+    }
     issue_codes = {issue.code for issue in report.issues}
     assert "candidate_blocked" in issue_codes
     assert "candidate_duplicate" in issue_codes
@@ -226,6 +233,8 @@ def test_health_command_outputs_text_and_json(tmp_path, seed_skills_dir):
     assert text_result.exit_code == 0
     assert "LIBRARY_HEALTH" in text_result.stdout
     assert "CANDIDATE_LEDGER" in text_result.stdout
+    assert "INPUT_FOCUS" in text_result.stdout
+    assert "Open input requests: 0" in text_result.stdout
     assert "Candidates: 0" in text_result.stdout
     assert "Review queue counts: -" in text_result.stdout
     assert "SKILL_METRICS" in text_result.stdout
@@ -236,6 +245,8 @@ def test_health_command_outputs_text_and_json(tmp_path, seed_skills_dir):
     assert data["result_categories"] == {}
     assert data["repair_requests"] == 0
     assert data["script_failure_categories"] == {}
+    assert data["input_request_count"] == 0
+    assert data["input_request_kind_counts"] == {}
     assert data["candidate_count"] == 0
     assert data["candidate_status_counts"] == {}
     assert data["candidate_review_queue_counts"] == {}

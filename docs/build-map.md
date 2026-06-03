@@ -453,6 +453,8 @@ Slices:
 | --- | --- | --- |
 | Lifecycle/admission acceptance proof | complete | `tests/test_testing_iteration_readiness.py` covers temporary skill creation, candidate approval, and `admission-plan` dry run without durable skill mutation |
 | Lifecycle eval in validation bundle | complete | CI and the local validation bundle run `evals/skill_lifecycle_v0.jsonl` |
+| Agent diagnostic eval | complete | `evals/agent_diagnostic_v0.jsonl` groups routing, request, safety, approval, adversarial, lifecycle, repair, and admission-readiness signals by diagnostic dimension |
+| Remote progress input focus | complete | `InputRequest`, `skill-agent input-requests`, `INPUT_NEEDED`, health `INPUT_FOCUS`, admission-plan summaries, and eval expectations expose human decision boundaries without durable mutation |
 | Roadmap checkpoint docs | complete | README and operating roadmap distinguish local testing readiness from production readiness |
 
 Boundaries:

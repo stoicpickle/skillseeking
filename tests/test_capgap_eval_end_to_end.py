@@ -27,7 +27,7 @@ def test_capgap_eval_end_to_end_captures_core_calibration_paths(
     json_path, md_path = write_eval_reports(report, tmp_path / "reports")
 
     assert report["passed"]
-    assert report["aggregate"] == {
+    expected_aggregate = {
         "total": 4,
         "passed": 4,
         "failed": 0,
@@ -53,6 +53,13 @@ def test_capgap_eval_end_to_end_captures_core_calibration_paths(
         "trace_completeness": 1.0,
         "failure_categories": {},
     }
+    for key, value in expected_aggregate.items():
+        assert report["aggregate"][key] == value
+    assert report["aggregate"]["diagnostic_dimensions"]["existing_skill"]["total"] == 1
+    assert report["aggregate"]["diagnostic_dimensions"]["missing_skill"]["total"] == 1
+    assert report["aggregate"]["diagnostic_dimensions"]["unsafe"]["total"] == 1
+    assert report["aggregate"]["diagnostic_dimensions"]["approval_required"]["total"] == 1
+    assert report["aggregate"]["weakest_diagnostic_dimensions"] == []
 
     tasks = {task["id"]: task for task in report["tasks"]}
     existing = tasks["uses_existing_skill"]
@@ -113,6 +120,9 @@ def test_capgap_eval_end_to_end_captures_core_calibration_paths(
     assert "- Governor decision accuracy: 1.0 (4 / 4)" in markdown
     assert "- Lifecycle evidence accuracy: None (0 / 0)" in markdown
     assert "- Trace completeness: 4 / 4" in markdown
+    assert "## Diagnostic Dimensions" in markdown
+    assert "- existing_skill: pass_rate=1.0" in markdown
+    assert "## Weakest Diagnostic Dimensions" in markdown
     assert "- none" in markdown
     assert json_path.exists()
 

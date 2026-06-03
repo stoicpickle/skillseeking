@@ -32,6 +32,15 @@ AdmissionPlanOutcome = Literal[
     "blocked",
 ]
 AdmissionCheckResult = Literal["pass", "warning", "blocker", "info"]
+InputRequestKind = Literal[
+    "safety_approval",
+    "promotion_approval",
+    "durable_admission_review",
+    "repair_review",
+    "ambiguity_resolution",
+    "missing_evidence",
+]
+InputRequestStatus = Literal["open", "resolved", "blocked"]
 RiskLevel = Literal["low", "medium", "high"]
 CapabilityDecisionType = Literal["USE_SKILL", "REQUEST_SKILL", "ASK_HUMAN", "ABORT_UNSAFE"]
 Reversibility = Literal["reversible", "partially_reversible", "irreversible", "unknown"]
@@ -446,6 +455,26 @@ class AdmissionDurableRegistrySummary(BaseModel):
     scripted_implications: list[str] = Field(default_factory=list)
 
 
+class InputRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    id: str
+    kind: InputRequestKind
+    status: InputRequestStatus = "open"
+    title: str
+    reason: str
+    blocked_scope: str
+    requested_decision: str
+    options: list[str] = Field(default_factory=list)
+    recommended_option: str | None = None
+    evidence_refs: list[str] = Field(default_factory=list)
+    next_commands: list[str] = Field(default_factory=list)
+    related_run_id: str | None = None
+    related_candidate_id: str | None = None
+    related_skill_request_id: str | None = None
+    created_at: datetime = Field(default_factory=datetime.now)
+
+
 class AdmissionPlanReport(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -471,6 +500,7 @@ class AdmissionPlanReport(BaseModel):
     blockers: list[str]
     warnings: list[str]
     next_steps: list[str]
+    input_request: InputRequest | None = None
 
 
 class RunLog(BaseModel):
@@ -488,6 +518,7 @@ class RunLog(BaseModel):
     script_executions: list[ScriptExecutionLog] = Field(default_factory=list)
     skill_requests: list[dict] = Field(default_factory=list)
     skill_repair_requests: list[dict] = Field(default_factory=list)
+    input_requests: list[InputRequest] = Field(default_factory=list)
     rejected_skills: list[dict] = Field(default_factory=list)
     trace: list[str]
     trace_events: list[TraceEvent] = Field(default_factory=list)
@@ -542,6 +573,8 @@ class LibraryHealthReport(BaseModel):
     human_approval_waits: int = 0
     route_load_failures: int = 0
     script_failure_categories: dict[str, int] = Field(default_factory=dict)
+    input_request_count: int = 0
+    input_request_kind_counts: dict[str, int] = Field(default_factory=dict)
     candidate_count: int = 0
     candidate_status_counts: dict[str, int] = Field(default_factory=dict)
     blocked_candidate_count: int = 0

@@ -175,6 +175,7 @@ The runner executes the real `skill-agent run` pipeline for each task, writes pe
 - a JSON report for automation and regression checks,
 - a Markdown summary for review,
 - aggregate counts for task pass rate, missing-skill true/false positives, wrong skill loads, unsafe allowed, safe blocked, approval-required detection, adversarial attempted/blocked, average request quality, trace completeness, and failure categories.
+- diagnostic dimension summaries grouped by non-generic task tags such as `existing_skill`, `missing_skill`, `safety`, `approval_required`, `adversarial`, `lifecycle`, `temporary_success`, and `repair_required`.
 
 Failure categories are intentionally boring and machine-readable:
 
@@ -197,6 +198,16 @@ No new agent feature should be added before the 20-task calibration suite exists
 Request quality is scored without an LLM judge. The dimensions are specificity, input contract, output contract, success criteria, failure modes, risk-level correctness, and reuse potential. Each dimension is scored 0-2 and normalized to 0-5.
 
 Use `skill-agent explain <run-log.json>` to inspect any failed eval task. The trace is a first-class artifact: the desired flow is `BLOCKED -> REQUESTED -> VALIDATED -> LOADED/REJECTED -> CONTINUED`.
+
+## Agent Diagnostic Eval
+
+The diagnostic suite is the local iteration test for deciding what to improve next:
+
+```bash
+skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir runs/evals
+```
+
+It covers existing-skill routing, missing-skill detection, request quality, safety aborts, approval waits, adversarial routing resistance, lifecycle candidate evidence, temporary-skill success, repair-required validation failure, and the admission-plan follow-up through pytest. Its report should make the weakest behavior area visible without reading every run log first.
 
 ## Governor Evaluation
 

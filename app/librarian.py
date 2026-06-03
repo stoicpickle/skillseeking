@@ -5,6 +5,7 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Any
 
+from app.input_focus import collect_input_requests, input_request_kind_counts
 from app.models import LibraryHealthReport, SkillHealthIssue, SkillUsageMetrics
 from app.registry import SkillRegistry
 from app.skill_candidate_ledger import (
@@ -38,6 +39,10 @@ def analyze_library(
     duplicate_candidate_count = 0
     human_gated_candidate_count = 0
     review_queue_counts: dict[str, int] = {}
+    input_requests = collect_input_requests(runs_dir)
+    active_input_requests = [
+        request for request in input_requests if request.status != "resolved"
+    ]
 
     try:
         ledger = load_candidate_ledger(runs_dir)
@@ -219,6 +224,8 @@ def analyze_library(
         human_approval_waits=human_approval_waits,
         route_load_failures=route_load_failures,
         script_failure_categories=dict(sorted(script_failure_categories.items())),
+        input_request_count=len(active_input_requests),
+        input_request_kind_counts=input_request_kind_counts(active_input_requests),
         candidate_count=candidate_count,
         candidate_status_counts=dict(sorted(candidate_status_counts.items())),
         blocked_candidate_count=blocked_candidate_count,

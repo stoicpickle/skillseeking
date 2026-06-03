@@ -172,6 +172,57 @@ def test_explain_approval_governor_trace(copied_seed_skills, tmp_path):
     assert "ASK_HUMAN" in result.stdout
     assert "Dominant signal: approval_required" in result.stdout
     assert "Approval required: True" in result.stdout
+    assert "INPUT NEEDED" in result.stdout
+    assert "safety_approval" in result.stdout
+    assert "Requested decision: Approve a human-controlled workflow" in result.stdout
+
+
+def test_run_and_input_requests_surface_approval_queue(copied_seed_skills, tmp_path):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+
+    run_result = runner.invoke(
+        app,
+        [
+            "run",
+            "Read local files and summarize them.",
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--runs-dir",
+            str(runs_dir),
+        ],
+    )
+    json_result = runner.invoke(
+        app,
+        [
+            "run",
+            "Read local files and summarize them.",
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--runs-dir",
+            str(runs_dir),
+            "--json",
+        ],
+    )
+    queue_result = runner.invoke(app, ["input-requests", "--runs-dir", str(runs_dir)])
+    queue_json_result = runner.invoke(
+        app,
+        ["input-requests", "--runs-dir", str(runs_dir), "--json"],
+    )
+
+    assert run_result.exit_code == 1
+    assert "INPUT_NEEDED" in run_result.stdout
+    assert "Kind: safety_approval" in run_result.stdout
+    assert json_result.exit_code == 1
+    data = json.loads(json_result.stdout)
+    assert data["input_requests"][0]["kind"] == "safety_approval"
+    assert queue_result.exit_code == 0
+    assert "INPUT_REQUESTS" in queue_result.stdout
+    assert "Open: 2" in queue_result.stdout
+    assert "Kind: safety_approval" in queue_result.stdout
+    assert queue_json_result.exit_code == 0
+    queue = json.loads(queue_json_result.stdout)
+    assert queue["input_request_kind_counts"] == {"safety_approval": 2}
 
 
 def test_explain_malformed_trace_gives_useful_error(tmp_path):

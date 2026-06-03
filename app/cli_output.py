@@ -9,6 +9,7 @@ from app.models import (
     AdmissionPlanReport,
     AdmissionSourceArtifact,
     AgentRunResult,
+    InputRequest,
     LoadedSkillLog,
     ScriptExecutionLog,
     SkillCandidateLedger,
@@ -20,6 +21,7 @@ from app.skill_candidate_ledger import (
     candidate_review_queue_names,
     candidate_review_queues,
 )
+from app.input_focus import candidate_input_requests
 
 
 def emit_run_json(result: AgentRunResult) -> None:
@@ -39,6 +41,10 @@ def emit_run_json(result: AgentRunResult) -> None:
                 ],
                 "skill_requests": result.run_log.skill_requests,
                 "skill_repair_requests": result.run_log.skill_repair_requests,
+                "input_requests": [
+                    request.model_dump(mode="json")
+                    for request in result.run_log.input_requests
+                ],
                 "script_executions": [execution.model_dump(mode="json") for execution in result.run_log.script_executions],
                 "skills_loaded": [skill.model_dump(mode="json") for skill in result.run_log.skills_loaded],
                 "rejected_skills": result.run_log.rejected_skills,
@@ -84,6 +90,10 @@ def emit_candidates_json(ledger: SkillCandidateLedger, ledger_path: str) -> None
                     {
                         **entry.model_dump(mode="json"),
                         "review_queues": candidate_review_queue_names(entry),
+                        "input_requests": [
+                            request.model_dump(mode="json")
+                            for request in candidate_input_requests(entry)
+                        ],
                     }
                     for entry in entries
                 ],
@@ -131,6 +141,7 @@ def emit_candidates_output(ledger: SkillCandidateLedger, ledger_path: str) -> No
         typer.echo(f"Promotion approved at: {entry.promotion_approved_at.isoformat() if entry.promotion_approved_at else '-'}")
         typer.echo(f"Promotion approval notes: {entry.promotion_approval_notes or '-'}")
         typer.echo(f"Evidence runs: {_format_list(entry.evidence_run_ids)}")
+        _emit_candidate_next_action(entry)
 
 
 def emit_admission_plan_json(report: AdmissionPlanReport) -> None:
@@ -204,6 +215,10 @@ def emit_admission_plan_output(report: AdmissionPlanReport) -> None:
     typer.echo("")
     typer.echo("NEXT_STEPS")
     _emit_string_items(report.next_steps)
+    if report.input_request is not None:
+        typer.echo("")
+        typer.echo("INPUT_NEEDED")
+        _emit_input_request(report.input_request)
 
 
 def emit_run_output(result: AgentRunResult) -> None:
@@ -221,6 +236,7 @@ def emit_run_output(result: AgentRunResult) -> None:
     _emit_skill_requests(result.run_log.skill_requests)
     _emit_skill_repair_requests(result.run_log.skill_repair_requests)
     _emit_script_executions(result.run_log.script_executions)
+    _emit_input_requests(result.run_log.input_requests)
     _emit_result(result)
 
 
@@ -280,6 +296,46 @@ def _emit_script_executions(script_executions: Iterable[ScriptExecutionLog]) -> 
             typer.echo(f"Stdout: {execution.stdout}")
         if execution.stderr:
             typer.echo(f"Stderr: {execution.stderr}")
+
+
+def _emit_input_requests(input_requests: Iterable[InputRequest]) -> None:
+    requests = list(input_requests)
+    if not requests:
+        return
+    typer.echo("")
+    typer.echo("INPUT_NEEDED")
+    for request in requests:
+        _emit_input_request(request)
+
+
+def _emit_input_request(request: InputRequest) -> None:
+    typer.echo(f"Input: {request.id}")
+    typer.echo(f"Kind: {request.kind}")
+    typer.echo(f"Status: {request.status}")
+    typer.echo(f"Title: {request.title}")
+    typer.echo(f"Blocked scope: {request.blocked_scope}")
+    typer.echo(f"Requested decision: {request.requested_decision}")
+    if request.recommended_option:
+        typer.echo(f"Recommended option: {request.recommended_option}")
+    if request.evidence_refs:
+        typer.echo(f"Evidence: {_format_list(request.evidence_refs)}")
+    if request.next_commands:
+        typer.echo("Suggested command:")
+        for command in request.next_commands:
+            typer.echo(f"  {command}")
+
+
+def _emit_candidate_next_action(entry: SkillCandidateLedgerEntry) -> None:
+    requests = candidate_input_requests(entry)
+    if not requests:
+        typer.echo("Recommended next action: -")
+        typer.echo("Suggested command: -")
+        typer.echo("Blocked scope: -")
+        return
+    request = requests[0]
+    typer.echo(f"Recommended next action: {request.title}")
+    typer.echo(f"Suggested command: {_format_list(request.next_commands)}")
+    typer.echo(f"Blocked scope: {request.blocked_scope}")
 
 
 def _emit_result(result: AgentRunResult) -> None:

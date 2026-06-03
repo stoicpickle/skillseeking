@@ -7,6 +7,7 @@ from typing import Any
 
 from pydantic import ValidationError
 
+from app.input_focus import admission_input_request
 from app.models import (
     AdmissionDurableRegistrySummary,
     AdmissionCheckResult,
@@ -76,6 +77,16 @@ def build_admission_plan(
     blockers = [check.code for check in checks if check.result == "blocker"]
     warnings = [check.code for check in checks if check.result == "warning"]
     outcome = _outcome(entry, blockers)
+    input_request = admission_input_request(
+        candidate_id=entry.candidate_id,
+        skill_name=entry.skill_name,
+        outcome=outcome,
+        blockers=blockers,
+        evidence_refs=_unique(
+            [run.run_id for run in evidence_runs]
+            + [artifact.skill_path for artifact in source_artifacts]
+        ),
+    )
 
     return AdmissionPlanReport(
         candidate_id=entry.candidate_id,
@@ -96,6 +107,7 @@ def build_admission_plan(
         blockers=blockers,
         warnings=warnings,
         next_steps=_next_steps(outcome),
+        input_request=input_request,
     )
 
 

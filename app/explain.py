@@ -4,6 +4,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+from app.input_focus import input_requests_from_run_log
 from app.skill_candidate_ledger import (
     SkillCandidateLedgerError,
     candidate_id_for,
@@ -62,6 +63,20 @@ def explain_run_log(path: Path, include_candidates: bool = False) -> str:
         if request.get("success_criteria"):
             lines.append(f"  Success: {request['success_criteria'][0]}")
     if not requests:
+        lines.append("- none")
+
+    lines.extend(["", "INPUT NEEDED"])
+    input_requests = input_requests_from_run_log(data)
+    for request in input_requests:
+        lines.append(f"- {request.kind}: {request.title}")
+        lines.append(f"  Status: {request.status}")
+        lines.append(f"  Blocked scope: {request.blocked_scope}")
+        lines.append(f"  Requested decision: {request.requested_decision}")
+        if request.recommended_option:
+            lines.append(f"  Recommended option: {request.recommended_option}")
+        if request.next_commands:
+            lines.append(f"  Suggested command: {request.next_commands[0]}")
+    if not input_requests:
         lines.append("- none")
 
     if include_candidates:

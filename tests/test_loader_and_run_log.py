@@ -51,6 +51,7 @@ def test_run_log_writes_json_without_markdown_body(tmp_path):
     assert run_log.run_id in path.name
     assert data["task_id"] == "task_test"
     assert data["skill_repair_requests"] == []
+    assert data["input_requests"] == []
     assert data["governor_decisions"] == []
     assert data["trace_events"] == []
     assert data["execution_summary"]["result_category"] == "success"

@@ -6,6 +6,7 @@ from typing import Any
 
 from app.capability_checker import check_capabilities, check_task_safety
 from app.governor import evaluate_governor
+from app.input_focus import repair_input_request, safety_input_request
 from app.loader import SkillLoadError, load_skill
 from app.models import (
     AgentRunResult,
@@ -358,6 +359,11 @@ def run_task(
         decisions=[decision.model_dump(mode="json") for decision in decisions],
         result_category=result_category,
     )
+    input_requests = _build_input_requests(
+        decisions=[decision.model_dump(mode="json") for decision in decisions],
+        skill_repair_requests=skill_repair_requests,
+        run_id=run_id,
+    )
 
     _record_trace(trace, trace_events, "RUN_LOG_WRITTEN", run_id=run_id)
     run_log = RunLog(
@@ -375,6 +381,7 @@ def run_task(
         script_executions=script_execution_logs,
         skill_requests=skill_requests,
         skill_repair_requests=skill_repair_requests,
+        input_requests=input_requests,
         rejected_skills=rejected_skills,
         trace=trace,
         trace_events=trace_events,
@@ -520,6 +527,23 @@ def _build_execution_summary(
         safety_decision_count=len(safety_decisions),
         result_category=result_category,
     )
+
+
+def _build_input_requests(
+    decisions: list[dict],
+    skill_repair_requests: list[dict],
+    run_id: str,
+) -> list[Any]:
+    requests = [
+        safety_input_request(decision, run_id)
+        for decision in decisions
+        if decision.get("decision") == "ASK_HUMAN"
+    ]
+    requests.extend(
+        repair_input_request(repair_request, run_id)
+        for repair_request in skill_repair_requests
+    )
+    return requests
 
 
 def _script_failed(execution: ScriptExecutionLog) -> bool:

@@ -19,6 +19,11 @@ from app.cli_output import (
 )
 from app.eval_runner import EvalSuiteError, run_eval_suite, write_eval_reports
 from app.explain import ExplainError, explain_run_log
+from app.input_focus import (
+    collect_input_requests,
+    input_request_kind_counts,
+    input_request_source_warnings,
+)
 from app.librarian import analyze_library
 from app.skill_candidate_ledger import (
     SkillCandidateLedgerError,
@@ -122,6 +127,10 @@ def health(
     typer.echo(f"Route/load failures: {report.route_load_failures}")
     typer.echo(f"Script failure categories: {report.script_failure_categories or '-'}")
     typer.echo("")
+    typer.echo("INPUT_FOCUS")
+    typer.echo(f"Open input requests: {report.input_request_count}")
+    typer.echo(f"Kinds: {report.input_request_kind_counts or '-'}")
+    typer.echo("")
     typer.echo("CANDIDATE_LEDGER")
     typer.echo(f"Candidates: {report.candidate_count}")
     typer.echo(f"Candidate status counts: {report.candidate_status_counts or '-'}")
@@ -143,6 +152,64 @@ def health(
     for issue in report.issues:
         skill = issue.skill_name or "-"
         typer.echo(f"{issue.severity} {issue.code} {skill}: {issue.message}")
+
+
+@app.command("input-requests")
+def input_requests(
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory to scan for input requests.")] = Path("runs"),
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print input requests as JSON."),
+    ] = False,
+) -> None:
+    requests = collect_input_requests(runs_dir)
+    active = [request for request in requests if request.status != "resolved"]
+    warnings = input_request_source_warnings(runs_dir)
+    if json_output:
+        typer.echo(
+            json.dumps(
+                {
+                    "runs_dir": str(runs_dir),
+                    "input_request_count": len(active),
+                    "input_request_kind_counts": input_request_kind_counts(active),
+                    "warnings": warnings,
+                    "input_requests": [
+                        request.model_dump(mode="json") for request in active
+                    ],
+                },
+                indent=2,
+                sort_keys=True,
+            )
+        )
+        return
+
+    open_count = sum(1 for request in active if request.status == "open")
+    blocked_count = sum(1 for request in active if request.status == "blocked")
+    typer.echo("INPUT_REQUESTS")
+    typer.echo(f"Open: {open_count}")
+    typer.echo(f"Blocked: {blocked_count}")
+    typer.echo(f"Kinds: {input_request_kind_counts(active) or '-'}")
+    for warning in warnings:
+        typer.echo(f"Warning: {warning}")
+    if not active:
+        typer.echo("none")
+        return
+    for request in active:
+        typer.echo("")
+        typer.echo(f"Input: {request.id}")
+        typer.echo(f"Kind: {request.kind}")
+        typer.echo(f"Status: {request.status}")
+        typer.echo(f"Title: {request.title}")
+        typer.echo(f"Blocked scope: {request.blocked_scope}")
+        typer.echo(f"Requested decision: {request.requested_decision}")
+        if request.recommended_option:
+            typer.echo(f"Recommended option: {request.recommended_option}")
+        if request.evidence_refs:
+            typer.echo(f"Evidence: {', '.join(request.evidence_refs)}")
+        if request.next_commands:
+            typer.echo("Recommended command:")
+            for command in request.next_commands:
+                typer.echo(f"  {command}")
 
 
 @app.command()
@@ -292,6 +359,9 @@ def eval_command(
             f"Trace completeness: {aggregate['trace_complete_count']} / {aggregate['total']}"
         )
         typer.echo(f"Failure categories: {aggregate['failure_categories'] or '-'}")
+        weakest = aggregate.get("weakest_diagnostic_dimensions") or []
+        weakest_names = ", ".join(item["dimension"] for item in weakest) if weakest else "-"
+        typer.echo(f"Weakest diagnostic dimensions: {weakest_names}")
         typer.echo(f"JSON report: {json_path}")
         typer.echo(f"Markdown summary: {md_path}")
     if not report["passed"]:

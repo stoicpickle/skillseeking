@@ -108,6 +108,34 @@ Candidate review queues are derived read-time summaries, not persisted lifecycle
 
 Candidate output and health output may include queue counts and per-entry queue names. Queues are advisory only; they do not promote, copy, install, route, score, or admit skills.
 
+## Input Request
+
+Input requests normalize human-decision boundaries across run logs, safety decisions, repair requests, candidate review queues, and admission dry runs. They are evidence and queue records only; they do not approve, promote, install, copy, route, or mutate durable skills.
+
+```json
+{
+  "id": "inputreq_abc123def456",
+  "kind": "promotion_approval",
+  "status": "open",
+  "title": "Review argument-clustering for candidate promotion",
+  "reason": "Temporary evidence is ready for human promotion review.",
+  "blocked_scope": "durable promotion only",
+  "requested_decision": "Approve, repair, reject, or defer candidate promotion.",
+  "options": ["approve_promotion", "repair_candidate", "reject_candidate", "defer"],
+  "recommended_option": "approve_promotion",
+  "evidence_refs": ["run_abc123"],
+  "next_commands": [
+    "skill-agent promote-candidate candidate_abc123 --reviewer <name> --notes <notes>"
+  ],
+  "related_run_id": null,
+  "related_candidate_id": "candidate_abc123",
+  "related_skill_request_id": null,
+  "created_at": "2026-06-03T12:00:00"
+}
+```
+
+Allowed kinds are `safety_approval`, `promotion_approval`, `durable_admission_review`, `repair_review`, `ambiguity_resolution`, and `missing_evidence`. Allowed statuses are `open`, `resolved`, and `blocked`. Requests synthesized from older run logs or candidate ledger entries use stable IDs and source evidence timestamps when available.
+
 ## Admission Plan
 
 Admission plans are output-only dry-run reports. They inspect candidate ledger evidence, run logs, run-scoped temporary skill artifacts, and the durable registry, but they do not write the ledger, copy files, install skills, admit registry records, steer the governor, or promote anything to stable.
@@ -126,7 +154,24 @@ Admission plans are output-only dry-run reports. They inspect candidate ledger e
   "selected_source_artifact": "runs/artifacts/run_id/skills/argument-clustering/SKILL.md",
   "blockers": [],
   "warnings": [],
-  "next_steps": ["Prepare human durable admission review."]
+  "next_steps": ["Prepare human durable admission review."],
+  "input_request": {
+    "id": "inputreq_abc123def456",
+    "kind": "durable_admission_review",
+    "status": "open",
+    "title": "Review durable admission for argument-clustering",
+    "reason": "Candidate evidence is ready for human durable admission review.",
+    "blocked_scope": "durable skill install/copy",
+    "requested_decision": "Approve durable admission review, request repair, block, or defer.",
+    "options": ["approve_review", "repair_candidate", "block", "defer"],
+    "recommended_option": "approve_review",
+    "evidence_refs": ["run_abc123"],
+    "next_commands": ["Prepare human durable admission review."],
+    "related_run_id": null,
+    "related_candidate_id": "candidate_abc123",
+    "related_skill_request_id": null,
+    "created_at": "2026-06-03T12:00:00"
+  }
 }
 ```
 
@@ -245,10 +290,11 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 
 ## JSON CLI Surfaces
 
-- `skill-agent run --json` emits run result data: IDs, exit code, result category, run-log path, execution summary, decisions, requests, repairs, loaded skills, rejected skills, trace events, and script executions.
+- `skill-agent run --json` emits run result data: IDs, exit code, result category, run-log path, execution summary, decisions, requests, repairs, input requests, loaded skills, rejected skills, trace events, and script executions.
 - `skill-agent registry --json` emits `{ "accepted": [...], "rejected": [...] }`.
-- `skill-agent health --json` is additive and includes v2 metrics such as result categories, temporary outcomes, repair counts, safety stops, human approval waits, route/load failures, and script failure categories.
-- `skill-agent eval --json` emits the eval suite path, timestamp, per-task run-log paths, task pass/fail status, routing decisions, skill requests, request-quality scores, and aggregate counts.
+- `skill-agent health --json` is additive and includes v2 metrics such as result categories, temporary outcomes, repair counts, safety stops, human approval waits, route/load failures, script failure categories, and input request counts.
+- `skill-agent input-requests --json` emits `{ "runs_dir": "...", "input_request_count": 0, "input_request_kind_counts": {}, "warnings": [], "input_requests": [] }`.
+- `skill-agent eval --json` emits the eval suite path, timestamp, per-task run-log paths, task pass/fail status, routing decisions, skill requests, input requests, request-quality scores, diagnostic dimensions, and aggregate counts.
 - `skill-agent explain <run-log.json>` reads an existing run log and prints a human-readable trace summary. It does not mutate the run log.
 
 ## Eval Task
@@ -281,7 +327,8 @@ Supported v0 expectations include:
 - Core outcome/routing: `outcome`, `capability`, `must_request_skill`, `must_load_skill`, `must_not_load_skill`, `must_not_request_skill`, `min_request_quality`, `must_have_routing_decision`, `must_block_adversarial`, and `trace_complete`.
 - Skill request control summaries: `must_have_request_control_summary`.
 - Governor assertions: `governor_decision`, `governor_risk_level`, `governor_approval_required`, and `governor_dominant_signal`.
-- Skill Candidate Ledger assertions: `candidate_id`, `candidate_skill_name`, `candidate_capability`, `must_have_candidate_entry`, `candidate_status`, `min_candidate_request_count`, `candidate_human_approval_required`, `must_have_candidate_evidence`, `must_not_auto_promote`, `candidate_validation_pass_count_min`, `candidate_validation_failure_count_min`, `candidate_duplicate_of_present`, `candidate_block_reason_contains`, `candidate_quarantine_reason_contains`, `candidate_repair_requirement_contains`, and `candidate_promotion_requirement_contains`.
+- Skill Candidate Ledger assertions: `candidate_id`, `candidate_skill_name`, `candidate_capability`, `must_have_candidate_entry`, `candidate_status`, `min_candidate_request_count`, `candidate_human_approval_required`, `must_have_candidate_evidence`, `must_not_auto_promote`, `candidate_validation_pass_count_min`, `candidate_validation_failure_count_min`, `candidate_duplicate_of_present`, `candidate_block_reason_contains`, `candidate_quarantine_reason_contains`, `candidate_repair_requirement_contains`, `candidate_promotion_requirement_contains`, and `candidate_review_queue`.
+- Input-focus assertions: `must_have_input_request`, `input_request_kind`, and `input_request_status`.
 
 ## Eval Report
 
@@ -308,17 +355,34 @@ Supported v0 expectations include:
     "trace_complete_count": 4,
     "trace_incomplete_count": 0,
     "trace_completeness": 1.0,
-    "failure_categories": {}
+    "failure_categories": {},
+    "diagnostic_dimensions": {
+      "missing_skill": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "pass_rate": 1.0,
+        "trace_completeness": 1.0,
+        "average_request_quality": 4.6,
+        "governor_decision_accuracy": 1.0,
+        "lifecycle_evidence_accuracy": null,
+        "failure_categories": {},
+        "suggested_next_action": ""
+      }
+    },
+    "weakest_diagnostic_dimensions": []
   },
   "tasks": []
 }
 ```
 
-Per-task records include `run_id`, `run_log_path`, `explain_command`, `result_category`, `loaded_skills`, `requested_skills`, `rejected_skills`, `skill_requests`, `request_quality`, `routing_decisions`, `trace`, `trace_complete`, `failure_categories`, `suggested_next_action`, and any assertion issues.
+Per-task records include `run_id`, `run_log_path`, `explain_command`, `result_category`, `loaded_skills`, `requested_skills`, `rejected_skills`, `skill_requests`, `input_requests`, `request_quality`, `routing_decisions`, `trace`, `trace_complete`, `failure_categories`, `suggested_next_action`, and any assertion issues.
 
 Per-task records also include `governor_decisions` and `governor_expectation_passed` when governor assertions are evaluated.
 
-Failure categories are one or more of `wrong_route`, `missing_skill_not_detected`, `unnecessary_skill_request`, `unsafe_not_blocked`, `safe_task_overblocked`, `approval_not_requested`, `bad_skill_request_contract`, `trace_incomplete`, `report_incomplete`, `planner_misclassified_task`, `governor_decision_mismatch`, `governor_signal_mismatch`, and `request_control_summary_missing`.
+`diagnostic_dimensions` groups task results by non-generic tags, excluding bookkeeping tags such as `diagnostic`, `smoke`, `v0`, and `calibration`. `weakest_diagnostic_dimensions` lists up to three failing dimensions sorted by failed count, then pass rate, so local iteration can start with the largest visible failure bucket.
+
+Failure categories are one or more of `wrong_route`, `missing_skill_not_detected`, `unnecessary_skill_request`, `unsafe_not_blocked`, `safe_task_overblocked`, `approval_not_requested`, `bad_skill_request_contract`, `trace_incomplete`, `report_incomplete`, `planner_misclassified_task`, `governor_decision_mismatch`, `governor_signal_mismatch`, `request_control_summary_missing`, `lifecycle_evidence_mismatch`, `input_request_missing`, `input_request_kind_mismatch`, and `input_request_status_mismatch`.
 
 ## Request Quality
 

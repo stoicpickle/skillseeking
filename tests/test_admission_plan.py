@@ -45,6 +45,9 @@ def test_promoted_candidate_with_valid_source_is_ready_for_durable_review(
 
     assert report.outcome == "ready_for_durable_review"
     assert report.ready_for_durable_review is True
+    assert report.input_request is not None
+    assert report.input_request.kind == "durable_admission_review"
+    assert report.input_request.related_candidate_id == candidate_id
     assert report.dry_run is True
     assert report.durable_skill_installed is False
     assert report.ledger_mutated is False
@@ -70,6 +73,9 @@ def test_temporary_candidate_preview_needs_promotion_approval(copied_seed_skills
     assert report.outcome == "needs_promotion_approval"
     assert report.ready_for_durable_review is False
     assert report.blockers == ["promotion_approval_missing"]
+    assert report.input_request is not None
+    assert report.input_request.kind == "promotion_approval"
+    assert report.input_request.blocked_scope == "durable admission review"
 
 
 def test_runs_dir_relative_source_skill_path_is_resolved(copied_seed_skills, tmp_path):
@@ -280,6 +286,8 @@ def test_admission_plan_command_outputs_human_and_json(copied_seed_skills, tmp_p
     assert "BLOCKERS" in text_result.stdout
     assert "WARNINGS" in text_result.stdout
     assert "NEXT_STEPS" in text_result.stdout
+    assert "INPUT_NEEDED" in text_result.stdout
+    assert "Kind: durable_admission_review" in text_result.stdout
     assert "Dry run: true" in text_result.stdout
     assert "Durable skill installed: false" in text_result.stdout
     assert "Ledger mutated: false" in text_result.stdout
@@ -293,6 +301,7 @@ def test_admission_plan_command_outputs_human_and_json(copied_seed_skills, tmp_p
     assert data["ledger_mutated"] is False
     assert data["registry_mutated"] is False
     assert data["governor_steering_enabled"] is False
+    assert data["input_request"]["kind"] == "durable_admission_review"
 
 
 def test_admission_plan_human_output_warns_when_selected_source_is_stale(

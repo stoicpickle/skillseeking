@@ -8,6 +8,7 @@ from typing import Any
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
 from app.agent_loop import run_task
+from app.input_focus import collect_input_requests
 from app.request_quality import score_skill_request
 from app.skill_candidate_ledger import (
     SkillCandidateLedgerError,
@@ -17,6 +18,7 @@ from app.skill_candidate_ledger import (
 )
 
 MISSING_SKILL_RESULTS = {"blocked_missing_skill", "repair_requested", "success"}
+NON_DIAGNOSTIC_TAGS = {"calibration", "diagnostic", "smoke", "v0"}
 
 SUGGESTED_ACTIONS = {
     "wrong_route": "Improve route scoring or capability-to-skill matching for this task shape.",
@@ -33,6 +35,9 @@ SUGGESTED_ACTIONS = {
     "governor_signal_mismatch": "Align the governor's dominant control signal or risk fields.",
     "request_control_summary_missing": "Attach governor control context to missing-skill request artifacts.",
     "lifecycle_evidence_mismatch": "Inspect the Skill Candidate Ledger evidence and lifecycle state for this task.",
+    "input_request_missing": "Emit an input request for this blocked or approval-sensitive path.",
+    "input_request_kind_mismatch": "Align the input request kind with the expected human decision boundary.",
+    "input_request_status_mismatch": "Align the input request status with the expected queue state.",
 }
 
 
@@ -138,9 +143,40 @@ def render_markdown_summary(report: dict[str, Any]) -> str:
         f"- Lifecycle evidence accuracy: {aggregate['lifecycle_evidence_accuracy']} ({aggregate['lifecycle_evidence_correct']} / {aggregate['lifecycle_evidence_expected']})",
         f"- Trace completeness: {aggregate['trace_complete_count']} / {aggregate['total']}",
         "",
-        "## Failure Categories",
+        "## Diagnostic Dimensions",
         "",
     ]
+    dimensions = aggregate.get("diagnostic_dimensions") or {}
+    if dimensions:
+        for name, metrics in dimensions.items():
+            lines.append(
+                f"- {name}: pass_rate={metrics['pass_rate']} "
+                f"failed={metrics['failed']} trace={metrics['trace_completeness']} "
+                f"avg_request_quality={metrics['average_request_quality']}"
+            )
+    else:
+        lines.append("- none")
+
+    lines.extend([
+        "",
+        "## Weakest Diagnostic Dimensions",
+        "",
+    ])
+    weakest = aggregate.get("weakest_diagnostic_dimensions") or []
+    if weakest:
+        for item in weakest:
+            lines.append(
+                f"- {item['dimension']}: pass_rate={item['pass_rate']} "
+                f"failed={item['failed']} suggested_next_action={item['suggested_next_action']}"
+            )
+    else:
+        lines.append("- none")
+
+    lines.extend([
+        "",
+        "## Failure Categories",
+        "",
+    ])
     if failure_categories:
         for category, count in failure_categories.items():
             lines.append(f"- {category}: {count}")
@@ -202,6 +238,14 @@ def _run_eval_task(
         skill_requests=run_log.skill_requests,
         runs_dir=runs_dir,
     )
+    input_requests = _input_requests_for_task(
+        runs_dir=runs_dir,
+        run_id=run_log.run_id,
+        run_log_input_requests=[
+            request.model_dump(mode="json") for request in run_log.input_requests
+        ],
+        candidate_ledger_entries=candidate_ledger_entries,
+    )
     issues = _evaluate_expectations(
         expected,
         result_category=run_log.result_category,
@@ -215,6 +259,7 @@ def _run_eval_task(
         trace=run_log.trace,
         trace_complete=trace_complete,
         candidate_ledger_entries=candidate_ledger_entries,
+        input_requests=input_requests,
         run_id=run_log.run_id,
     )
     failure_categories = _failure_categories(
@@ -229,6 +274,7 @@ def _run_eval_task(
         request_quality=request_quality,
         trace_complete=trace_complete,
         candidate_ledger_entries=candidate_ledger_entries,
+        input_requests=input_requests,
         issues=issues,
     )
     run_log_path = str(result.run_log_path)
@@ -250,6 +296,7 @@ def _run_eval_task(
         "requested_skills": run_log.execution_summary.requested_skills,
         "rejected_skills": run_log.execution_summary.rejected_skills,
         "skill_requests": run_log.skill_requests,
+        "input_requests": input_requests,
         "candidate_ledger_entries": candidate_ledger_entries,
         "lifecycle_expectation_passed": not _candidate_ledger_expectation_issues(
             expected,
@@ -281,6 +328,7 @@ def _evaluate_expectations(
     trace: list[str],
     trace_complete: bool,
     candidate_ledger_entries: list[dict[str, Any]],
+    input_requests: list[dict[str, Any]],
     run_id: str,
 ) -> list[str]:
     issues: list[str] = []
@@ -326,6 +374,7 @@ def _evaluate_expectations(
         issues.append(f"trace is incomplete for result {result_category}: {', '.join(trace)}")
     issues.extend(_governor_expectation_issues(expected, governor_decisions))
     issues.extend(_candidate_ledger_expectation_issues(expected, candidate_ledger_entries, run_id))
+    issues.extend(_input_request_expectation_issues(expected, input_requests))
     return issues
 
 
@@ -351,6 +400,7 @@ def _aggregate(task_results: list[dict[str, Any]]) -> dict[str, Any]:
         for task in task_results
         if _has_governor_expectation(task["expected"]) and task["governor_expectation_passed"]
     )
+    diagnostic_dimensions = _diagnostic_dimensions(task_results)
     return {
         "total": total,
         "passed": passed,
@@ -410,6 +460,10 @@ def _aggregate(task_results: list[dict[str, Any]]) -> dict[str, Any]:
         "trace_incomplete_count": total - trace_complete_count,
         "trace_completeness": round(trace_complete_count / total, 3) if total else 0,
         "failure_categories": _category_counts(task_results),
+        "diagnostic_dimensions": diagnostic_dimensions,
+        "weakest_diagnostic_dimensions": _weakest_diagnostic_dimensions(
+            diagnostic_dimensions
+        ),
     }
 
 
@@ -423,6 +477,7 @@ def _failure_categories(
     request_quality: list[dict[str, Any]],
     trace_complete: bool,
     candidate_ledger_entries: list[dict[str, Any]],
+    input_requests: list[dict[str, Any]],
     issues: list[str],
 ) -> list[str]:
     if not issues:
@@ -479,6 +534,13 @@ def _failure_categories(
         "",
     ):
         add("lifecycle_evidence_mismatch")
+    input_request_issues = _input_request_expectation_issues(expected, input_requests)
+    if any(issue == "expected input request" for issue in input_request_issues):
+        add("input_request_missing")
+    if any("expected input request kind" in issue for issue in input_request_issues):
+        add("input_request_kind_mismatch")
+    if any("expected input request status" in issue for issue in input_request_issues):
+        add("input_request_status_mismatch")
 
     return categories or ["planner_misclassified_task"]
 
@@ -494,6 +556,7 @@ def _failure_markdown(task: dict[str, Any]) -> list[str]:
         f"- Requested skills: {_markdown_list(task['requested_skills'])}",
         f"- Governor decisions: {_markdown_list([decision.get('decision', '-') for decision in task['governor_decisions']])}",
         f"- Candidate ledger entries: {_markdown_list([entry.get('candidate_id', '-') for entry in task['candidate_ledger_entries']])}",
+        f"- Input requests: {_markdown_list([request.get('kind', '-') for request in task['input_requests']])}",
         f"- Failure categories: {_markdown_list(task['failure_categories'])}",
     ]
     for issue in task["issues"]:
@@ -565,6 +628,84 @@ def _category_counts(task_results: list[dict[str, Any]]) -> dict[str, int]:
         for category in task["failure_categories"]:
             counts[category] = counts.get(category, 0) + 1
     return dict(sorted(counts.items()))
+
+
+def _diagnostic_dimensions(task_results: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    dimensions: dict[str, list[dict[str, Any]]] = {}
+    for task in task_results:
+        for tag in task["tags"]:
+            if tag in NON_DIAGNOSTIC_TAGS:
+                continue
+            dimensions.setdefault(tag, []).append(task)
+
+    return {
+        tag: _diagnostic_dimension_metrics(tasks)
+        for tag, tasks in sorted(dimensions.items())
+    }
+
+
+def _diagnostic_dimension_metrics(tasks: list[dict[str, Any]]) -> dict[str, Any]:
+    total = len(tasks)
+    passed = sum(1 for task in tasks if task["passed"])
+    request_scores = [
+        quality["score"]
+        for task in tasks
+        for quality in task["request_quality"]
+    ]
+    governor_expected = sum(
+        1 for task in tasks if _has_governor_expectation(task["expected"])
+    )
+    governor_correct = sum(
+        1
+        for task in tasks
+        if _has_governor_expectation(task["expected"])
+        and task["governor_expectation_passed"]
+    )
+    lifecycle_expected = sum(
+        1 for task in tasks if _has_candidate_ledger_expectation(task["expected"])
+    )
+    lifecycle_correct = sum(
+        1
+        for task in tasks
+        if _has_candidate_ledger_expectation(task["expected"])
+        and task["lifecycle_expectation_passed"]
+    )
+    failure_categories = _category_counts(tasks)
+
+    return {
+        "total": total,
+        "passed": passed,
+        "failed": total - passed,
+        "pass_rate": round(passed / total, 3) if total else 0,
+        "trace_completeness": round(
+            sum(1 for task in tasks if task["trace_complete"]) / total, 3
+        )
+        if total
+        else 0,
+        "average_request_quality": round(sum(request_scores) / len(request_scores), 1)
+        if request_scores
+        else None,
+        "governor_decision_accuracy": round(governor_correct / governor_expected, 3)
+        if governor_expected
+        else None,
+        "lifecycle_evidence_accuracy": round(lifecycle_correct / lifecycle_expected, 3)
+        if lifecycle_expected
+        else None,
+        "failure_categories": failure_categories,
+        "suggested_next_action": _suggested_next_action(list(failure_categories)),
+    }
+
+
+def _weakest_diagnostic_dimensions(
+    dimensions: dict[str, dict[str, Any]]
+) -> list[dict[str, Any]]:
+    failing = [
+        {"dimension": name, **metrics}
+        for name, metrics in dimensions.items()
+        if metrics["failed"]
+    ]
+    failing.sort(key=lambda item: (-int(item["failed"]), float(item["pass_rate"]), item["dimension"]))
+    return failing[:3]
 
 
 def _is_missing_skill_true_positive(task: dict[str, Any]) -> bool:
@@ -742,6 +883,46 @@ def _has_candidate_ledger_expectation(expected: dict[str, Any]) -> bool:
     )
 
 
+def _has_input_request_expectation(expected: dict[str, Any]) -> bool:
+    return any(
+        key in expected
+        for key in {
+            "must_have_input_request",
+            "input_request_kind",
+            "input_request_status",
+        }
+    )
+
+
+def _input_request_expectation_issues(
+    expected: dict[str, Any],
+    input_requests: list[dict[str, Any]],
+) -> list[str]:
+    if not _has_input_request_expectation(expected):
+        return []
+    issues: list[str] = []
+    if expected.get("must_have_input_request") and not input_requests:
+        issues.append("expected input request")
+        return issues
+
+    expected_kind = expected.get("input_request_kind")
+    if expected_kind and not any(
+        request.get("kind") == expected_kind for request in input_requests
+    ):
+        kinds = sorted({str(request.get("kind")) for request in input_requests})
+        issues.append(f"expected input request kind {expected_kind}, got {kinds or '-'}")
+
+    expected_status = expected.get("input_request_status")
+    if expected_status and not any(
+        request.get("status") == expected_status for request in input_requests
+    ):
+        statuses = sorted({str(request.get("status")) for request in input_requests})
+        issues.append(
+            f"expected input request status {expected_status}, got {statuses or '-'}"
+        )
+    return issues
+
+
 def _candidate_ledger_expectation_issues(
     expected: dict[str, Any],
     entries: list[dict[str, Any]],
@@ -849,6 +1030,39 @@ def _entry_with_review_queues(entry: Any) -> dict[str, Any]:
     return data
 
 
+def _input_requests_for_task(
+    *,
+    runs_dir: Path,
+    run_id: str,
+    run_log_input_requests: list[dict[str, Any]],
+    candidate_ledger_entries: list[dict[str, Any]],
+) -> list[dict[str, Any]]:
+    candidate_ids = {
+        str(entry.get("candidate_id"))
+        for entry in candidate_ledger_entries
+        if entry.get("candidate_id")
+    }
+    requests_by_id: dict[str, dict[str, Any]] = {}
+
+    def add(request: dict[str, Any]) -> None:
+        request_id = str(request.get("id") or "")
+        if request_id:
+            requests_by_id.setdefault(request_id, request)
+
+    for request in run_log_input_requests:
+        add(request)
+
+    for request in collect_input_requests(runs_dir):
+        data = request.model_dump(mode="json")
+        if (
+            data.get("related_run_id") == run_id
+            or data.get("related_candidate_id") in candidate_ids
+            or run_id in (data.get("evidence_refs") or [])
+        ):
+            add(data)
+    return sorted(requests_by_id.values(), key=lambda item: (item.get("kind", ""), item.get("id", "")))
+
+
 def _contains_issue(
     issues: list[str],
     entries: list[dict[str, Any]],
@@ -880,4 +1094,4 @@ def _list_contains_issue(
 
 
 def _timestamp_slug() -> str:
-    return datetime.now().strftime("%Y%m%d_%H%M%S")
+    return datetime.now().strftime("%Y%m%d_%H%M%S_%f")
