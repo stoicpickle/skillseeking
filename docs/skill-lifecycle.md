@@ -79,6 +79,7 @@ Candidate to stable:
 - Tests or validation examples cover common edge cases.
 - No duplicate stable skill exists.
 - Owner or maintainer approval is recorded.
+- `skill-agent stable-readiness` is advisory evidence for human stable review; it does not mark a candidate stable, authorize stable promotion, enable stable routing, copy or install durable skills, mutate ledgers, mutate the registry, widen permissions, or steer the governor.
 
 Durable admission planning:
 

@@ -21,6 +21,7 @@ from app.models import (
     ShadowActivationPlanReport,
     ShadowManagedWriteReport,
     ShadowRollbackPlanReport,
+    StableReadinessReport,
     ShadowWriteGateReport,
     SkillCandidateLedger,
     SkillCandidateLedgerEntry,
@@ -284,6 +285,76 @@ def emit_skill_receipt_output(report: SkillReceiptReport) -> None:
         "Plan approval verified: "
         f"{str(preview.write_plan.plan_approval_verified).lower()}"
     )
+
+    typer.echo("")
+    typer.echo("MUTATION_BOUNDARY")
+    typer.echo(f"Run logs mutated: {str(report.run_logs_mutated).lower()}")
+    typer.echo(
+        f"Candidate ledger mutated: {str(report.candidate_ledger_mutated).lower()}"
+    )
+    typer.echo(
+        f"Resolution ledger mutated: {str(report.resolution_ledger_mutated).lower()}"
+    )
+    typer.echo(f"Durable skills mutated: {str(report.durable_skills_mutated).lower()}")
+    typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
+    typer.echo(
+        f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}"
+    )
+
+    typer.echo("")
+    typer.echo("NEXT_STEPS")
+    _emit_string_items(report.next_steps)
+
+
+def emit_stable_readiness_json(report: StableReadinessReport) -> None:
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_stable_readiness_output(report: StableReadinessReport) -> None:
+    typer.echo("STABLE_READINESS")
+    typer.echo(f"Candidate: {report.candidate_id}")
+    typer.echo(f"Skill: {report.skill_name}")
+    typer.echo(f"Capability: {report.capability}")
+    typer.echo(f"Candidate status: {report.candidate_status}")
+    typer.echo(f"Outcome: {report.outcome}")
+    typer.echo(
+        "Ready for stable review: "
+        f"{str(report.ready_for_stable_review).lower()}"
+    )
+    typer.echo(
+        "Successful temporary uses: "
+        f"{report.successful_temporary_uses}/{report.required_successful_temporary_uses}"
+    )
+    typer.echo(
+        "Stable review approval required: "
+        f"{str(report.stable_review_approval_required).lower()}"
+    )
+    typer.echo(f"Advisory only: {str(report.advisory_only).lower()}")
+    typer.echo(
+        "Stable promotion authorized: "
+        f"{str(report.stable_promotion_authorized).lower()}"
+    )
+    typer.echo(f"Stable routing enabled: {str(report.stable_routing_enabled).lower()}")
+
+    typer.echo("")
+    typer.echo("CHECKS")
+    for check in report.checks:
+        typer.echo(f"- {check.category}: {check.status}")
+        typer.echo(f"  summary: {check.summary}")
+        if check.evidence_refs:
+            typer.echo(f"  evidence: {_format_list(check.evidence_refs)}")
+        if check.blockers:
+            typer.echo(f"  blockers: {_format_list(check.blockers)}")
+        if check.warnings:
+            typer.echo(f"  warnings: {_format_list(check.warnings)}")
+
+    typer.echo("")
+    typer.echo("BLOCKERS")
+    _emit_string_items(report.blockers)
+
+    typer.echo("")
+    typer.echo("WARNINGS")
+    _emit_string_items(report.warnings)
 
     typer.echo("")
     typer.echo("MUTATION_BOUNDARY")

@@ -93,6 +93,12 @@ SkillRepairRequestStatus = Literal["requested"]
 HealthSeverity = Literal["info", "warning", "critical"]
 SkillLifecycleStage = Literal["durable", "temporary", "generated", "requested"]
 EvidenceGovernorRecommendation = Literal["ask", "test_more", "deny", "defer"]
+StableReadinessOutcome = Literal[
+    "ready_for_stable_review",
+    "needs_more_evidence",
+    "blocked",
+    "already_stable",
+]
 RunResultCategory = Literal[
     "success",
     "blocked_missing_skill",
@@ -883,6 +889,49 @@ class SkillReceiptReport(BaseModel):
     registry_mutated: bool = False
     governor_steering_enabled: bool = False
     next_steps: list[str] = Field(default_factory=list)
+
+
+class StableReadinessCheck(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    category: str
+    status: str
+    summary: str
+    evidence_refs: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class StableReadinessReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_id: str
+    skill_name: str
+    capability: str
+    candidate_status: SkillCandidateStatus
+    outcome: StableReadinessOutcome
+    ready_for_stable_review: bool = False
+    required_successful_temporary_uses: int = 10
+    successful_temporary_uses: int = 0
+    validation_pass_count: int = 0
+    validation_failure_count: int = 0
+    stable_review_approval_required: bool = True
+    dry_run: bool = True
+    advisory_only: bool = True
+    stable_promotion_authorized: bool = False
+    stable_routing_enabled: bool = False
+    checks: list[StableReadinessCheck] = Field(default_factory=list)
+    skill_receipt: SkillReceiptReport | None = None
+    negative_evidence: "NegativeEvidenceReport | None" = None
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+    run_logs_mutated: bool = False
+    candidate_ledger_mutated: bool = False
+    resolution_ledger_mutated: bool = False
+    durable_skills_mutated: bool = False
+    registry_mutated: bool = False
+    governor_steering_enabled: bool = False
 
 
 class NegativeEvidenceItem(BaseModel):

@@ -38,6 +38,8 @@ from app.cli_output import (
     emit_shadow_write_gate_output,
     emit_skill_receipt_json,
     emit_skill_receipt_output,
+    emit_stable_readiness_json,
+    emit_stable_readiness_output,
 )
 from app.candidate_usefulness import (
     CandidateUsefulnessError,
@@ -74,6 +76,7 @@ from app.skill_candidate_ledger import (
     load_candidate_ledger,
 )
 from app.skill_receipt import SkillReceiptError, build_skill_receipt_report
+from app.stable_readiness import StableReadinessError, build_stable_readiness_report
 from app.registry import SkillRegistry
 
 
@@ -434,6 +437,47 @@ def skill_receipt(
         emit_skill_receipt_json(report)
     else:
         emit_skill_receipt_output(report)
+
+
+@app.command("stable-readiness")
+def stable_readiness(
+    candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to inspect for candidate-to-stable readiness evidence.")],
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate and resolution ledgers.")] = Path("runs"),
+    skills_dir: Annotated[Path, typer.Option(help="Durable local skills directory for read-only registry conflict checks.")] = Path("skills"),
+    baseline_run_id: Annotated[
+        str | None,
+        typer.Option("--baseline-run-id", help="Optional pinned baseline run ID for nested usefulness comparison."),
+    ] = None,
+    treatment_run_id: Annotated[
+        str | None,
+        typer.Option("--treatment-run-id", help="Optional pinned treatment run ID for nested usefulness comparison."),
+    ] = None,
+    required_successful_temporary_uses: Annotated[
+        int,
+        typer.Option("--required-successful-temporary-uses", help="Stable-review success threshold; defaults to lifecycle rule of 10."),
+    ] = 10,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the stable-readiness report as JSON."),
+    ] = False,
+) -> None:
+    try:
+        report = build_stable_readiness_report(
+            candidate_id,
+            runs_dir=runs_dir,
+            skills_dir=skills_dir,
+            baseline_run_id=baseline_run_id,
+            treatment_run_id=treatment_run_id,
+            required_successful_temporary_uses=required_successful_temporary_uses,
+        )
+    except StableReadinessError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        emit_stable_readiness_json(report)
+    else:
+        emit_stable_readiness_output(report)
 
 
 @app.command("negative-evidence")

@@ -90,6 +90,43 @@ def test_shadow_managed_write_docs_preserve_boundaries(repo_root: Path):
     ]
 
 
+def test_stable_readiness_docs_preserve_advisory_boundary(repo_root: Path):
+    docs = {
+        "contracts": (repo_root / "docs" / "contracts" / "data-contracts.md").read_text(
+            encoding="utf-8"
+        ),
+        "operating_roadmap": (repo_root / "docs" / "operating-roadmap.md").read_text(
+            encoding="utf-8"
+        ),
+        "skill_lifecycle": (repo_root / "docs" / "skill-lifecycle.md").read_text(
+            encoding="utf-8"
+        ),
+        "build_map": (repo_root / "docs" / "build-map.md").read_text(encoding="utf-8"),
+    }
+
+    for text in docs.values():
+        assert "stable-readiness" in text
+
+    required_contract_phrases = [
+        "StableReadinessReport",
+        "ready_for_stable_review",
+        "needs_more_evidence",
+        "already_stable",
+        '"stable_promotion_authorized": false',
+        '"stable_routing_enabled": false',
+        "does not mark the candidate stable",
+        "enable stable routing",
+        "mutate ledgers",
+        "steer the governor",
+    ]
+    for phrase in required_contract_phrases:
+        assert phrase in docs["contracts"]
+
+    assert "advisory candidate-to-stable evidence report" in docs["operating_roadmap"]
+    assert "does not mark a candidate stable" in docs["skill_lifecycle"]
+    assert "without stable promotion or routing authority" in docs["build_map"]
+
+
 def test_no_write_dependency_contract_docs_preserve_boundaries(repo_root: Path):
     docs = {
         "contracts": (repo_root / "docs" / "contracts" / "data-contracts.md").read_text(

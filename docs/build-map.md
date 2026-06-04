@@ -478,6 +478,7 @@ Slices:
 | Managed-prefix activation acceptance harness | complete | `skill-agent shadow-activation-acceptance --prepare-acceptance-evidence` exercises store/generation copy, pointer switch, rollback, interrupted-pointer recovery, and conflict blocking only inside a run-scoped acceptance prefix |
 | Human write-gate verifier | complete | `skill-agent shadow-write-gate` verifies unchanged source hash, prepared acceptance store/generation copies, restored rollback pointer, rollback marker, and exact acceptance digest without writing |
 | Human-approved managed-prefix write mode | complete | `skill-agent shadow-managed-write` materializes only the proven shadow managed-prefix store/generation/pointer/receipt write after exact digest/hash/checkpoint matches and a separate `managed_write_plan_digest` approval |
+| Stable readiness report | complete | `skill-agent stable-readiness` composes candidate ledger, skill receipt, negative evidence, and durable registry evidence to advise candidate-to-stable review without stable promotion or routing authority |
 | Roadmap checkpoint docs | complete | README and operating roadmap distinguish local testing readiness from production readiness |
 
 Boundaries:

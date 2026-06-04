@@ -983,3 +983,20 @@ Boundaries:
 
 - The command is advisory only. It does not grant approval, authorize install/copy, promote candidates, widen permissions, route work, or steer execution.
 - No run logs, candidate ledgers, resolution ledgers, checkpoint ledgers, durable skills, registry records, permissions, managed prefixes, or active governor behavior were mutated.
+
+## 2026-06-04 Stable Readiness Report
+
+Added an advisory candidate-to-stable readiness surface.
+
+Added:
+
+- `skill-agent stable-readiness <candidate-id>` with human and `--json` output.
+- `StableReadinessReport` and `StableReadinessCheck` contracts.
+- Read-only composition over the Skill Candidate Ledger, skill receipt, negative evidence, and durable registry conflict evidence.
+- Stable-review checks for candidate lifecycle status, 10-use threshold, validation/repair blockers, duplicate evidence, negative evidence, same-name durable registry conflicts, and blocked receipt proof.
+- Tests proving ready-for-stable-review evidence does not authorize stable promotion or stable routing, and duplicate/negative evidence blocks review.
+
+Boundaries:
+
+- The report is advisory only.
+- It does not mark candidates stable, authorize stable promotion, enable stable routing, copy or install durable skills, mutate ledgers, mutate registry state, widen permissions, or steer the governor.
