@@ -157,8 +157,8 @@ The suite is JSONL. Each line describes one task, its expected outcome, and any 
     "outcome": "missing_skill_request",
     "capability": "detect contradictions",
     "governor_decision": "REQUEST_SKILL",
-    "approval_required": false,
-    "risk_level": "low",
+    "governor_approval_required": false,
+    "governor_risk_level": "low",
     "must_request_skill": true,
     "must_have_request_control_summary": true,
     "must_not_load_skill": "compare-claims",
@@ -192,6 +192,11 @@ Failure categories are intentionally boring and machine-readable:
 - `governor_decision_mismatch`
 - `governor_signal_mismatch`
 - `request_control_summary_missing`
+- `lifecycle_evidence_mismatch`
+- `input_request_missing`
+- `input_request_kind_mismatch`
+- `input_request_status_mismatch`
+- `input_request_resolution_mismatch`
 
 No new agent feature should be added before the 20-task calibration suite exists, runs, and identifies the biggest failure bucket. After that, improve only the biggest bucket and rerun the suite.
 

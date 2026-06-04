@@ -271,6 +271,13 @@ class RouteDecision(BaseModel):
 
 
 class GovernorDecision(BaseModel):
+    """Trace-only governor control summary.
+
+    For USE_SKILL and REQUEST_SKILL, confidence is the route or capability-match
+    score. For ASK_HUMAN and blocked safety cases, confidence is certainty that
+    the control action is required.
+    """
+
     model_config = ConfigDict(extra="forbid")
 
     capability: str
@@ -1140,6 +1147,98 @@ class ShadowWriteGateReport(BaseModel):
     run_logs_mutated: bool = False
     candidate_ledger_mutated: bool = False
     resolution_ledger_mutated: bool = False
+    durable_skills_mutated: bool = False
+    registry_mutated: bool = False
+    governor_steering_enabled: bool = False
+
+
+ShadowManagedWriteOutcome = Literal[
+    "approval_required",
+    "blocked",
+    "ready_for_managed_prefix_write",
+    "managed_prefix_write_applied",
+    "already_applied",
+]
+
+
+class ShadowManagedWriteReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_id: str
+    skill_name: str | None = None
+    outcome: ShadowManagedWriteOutcome
+    ready_for_managed_prefix_write: bool = False
+    dry_run: bool = True
+    mutation_supported: bool = False
+    managed_prefix: str
+    acceptance_prefix: str
+    profile_name: str = "default"
+    source_skill_path: str | None = None
+    source_sha256: str | None = None
+    source_hash_verified: bool = False
+    store_skill_path: str | None = None
+    generation_skill_path: str | None = None
+    activation_pointer: str | None = None
+    rollback_target: str | None = None
+    durable_plan_digest: str | None = None
+    shadow_plan_digest: str | None = None
+    rollback_plan_digest: str | None = None
+    acceptance_plan_digest: str | None = None
+    managed_write_plan_digest_algorithm: str = "sha256"
+    managed_write_plan_digest: str | None = None
+    expected_source_sha256: str | None = None
+    expected_durable_plan_digest: str | None = None
+    expected_shadow_plan_digest: str | None = None
+    expected_rollback_plan_digest: str | None = None
+    expected_acceptance_plan_digest: str | None = None
+    expected_managed_write_plan_digest: str | None = None
+    expected_checkpoint_hash: str | None = None
+    expected_source_sha256_verified: bool = False
+    durable_plan_digest_verified: bool = False
+    shadow_plan_digest_verified: bool = False
+    rollback_plan_digest_verified: bool = False
+    acceptance_plan_digest_verified: bool = False
+    managed_write_plan_digest_verified: bool = False
+    checkpoint_verified: bool = False
+    checkpoint_hash_verified: bool = False
+    latest_checkpoint_hash: str | None = None
+    write_approval_id: str | None = None
+    write_approval_digest: str | None = None
+    write_approval_expires_at: str | None = None
+    write_approval_present: bool = False
+    write_approval_verified: bool = False
+    exact_expected_values_verified: bool = False
+    receipt_acceptable: bool = False
+    receipt_reversibility_accepted: bool = False
+    shadow_write_gate_ready: bool = False
+    rollback_ready: bool = False
+    write_receipt_path: str | None = None
+    store_verified: bool = False
+    generation_verified: bool = False
+    activation_pointer_target: str | None = None
+    activation_pointer_updated: bool = False
+    activation_pointer_verified: bool = False
+    rollback_target_verified: bool = False
+    already_applied: bool = False
+    interrupted_activation_recovered: bool = False
+    managed_prefix_write_policy: str = "managed_prefix_only_write"
+    profile_activation_policy: str = "profile_pointer_switch"
+    rollback_policy: str = "profile_pointer_rollback"
+    stable_routing_policy: str = "stable_routing_unchanged"
+    governor_policy: str = "governor_advisory_only"
+    skill_receipt: SkillReceiptReport
+    evidence_checkpoint: EvidenceCheckpointReport
+    shadow_write_gate: ShadowWriteGateReport
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+    acceptance_prefix_mutated: bool = False
+    managed_prefix_mutated: bool = False
+    profile_mutated: bool = False
+    run_logs_mutated: bool = False
+    candidate_ledger_mutated: bool = False
+    resolution_ledger_mutated: bool = False
+    checkpoint_ledger_mutated: bool = False
     durable_skills_mutated: bool = False
     registry_mutated: bool = False
     governor_steering_enabled: bool = False

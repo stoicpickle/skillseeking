@@ -8,7 +8,13 @@ import pytest
 from typer.testing import CliRunner
 
 from app.cli import app
-from app.eval_runner import EvalSuiteError, load_eval_suite, run_eval_suite, write_eval_reports
+from app.eval_runner import (
+    EvalSuiteError,
+    _input_request_expectation_issues,
+    load_eval_suite,
+    run_eval_suite,
+    write_eval_reports,
+)
 from app.input_resolution_ledger import load_input_request_resolution_ledger
 
 
@@ -331,6 +337,24 @@ def test_eval_report_distinguishes_input_request_kind_mismatch(copied_seed_skill
     assert [request["kind"] for request in task["input_requests"]] == ["safety_approval"]
     assert task["failure_categories"] == ["input_request_kind_mismatch"]
     assert "input_request_missing" not in task["failure_categories"]
+
+
+def test_input_request_status_matches_expected_kind():
+    issues = _input_request_expectation_issues(
+        {
+            "input_request_kind": "safety_approval",
+            "input_request_status": "resolved",
+        },
+        [
+            {"kind": "safety_approval", "status": "open"},
+            {"kind": "repair_review", "status": "resolved"},
+        ],
+        [],
+    )
+
+    assert issues == [
+        "expected input request status resolved, got ['open', 'resolved']"
+    ]
 
 
 def test_eval_report_proves_resolution_ledger_queue_states(copied_seed_skills, tmp_path):

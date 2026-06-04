@@ -6,9 +6,11 @@ from pathlib import Path
 from typer.testing import CliRunner
 
 from app.cli import app
+from app.input_resolution_ledger import load_input_request_resolution_ledger
 from app.shadow_activation import (
     build_shadow_activation_acceptance_report,
     build_shadow_activation_plan,
+    build_shadow_managed_write_report,
     build_shadow_rollback_plan,
     build_shadow_write_gate_report,
 )
@@ -904,6 +906,945 @@ def test_shadow_write_gate_blocks_acceptance_digest_mismatch_without_writes(
     assert _snapshot_tree(managed_prefix) == managed_before
 
 
+def test_shadow_managed_write_dry_run_reports_digest_and_never_writes(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    managed_prefix = tmp_path / "shadow-prefix"
+    acceptance_prefix = runs_dir / "shadow_activation_acceptance" / "managed-write"
+    candidate_id = _prepare_reviewed_candidate(runner, copied_seed_skills, runs_dir)
+    existing_generation = managed_prefix / "profiles" / "default" / "generations" / "3"
+    existing_generation.mkdir(parents=True)
+    (existing_generation / ".marker").write_text("real prefix stays untouched\n", encoding="utf-8")
+    current_pointer = managed_prefix / "profiles" / "default" / "current"
+    current_pointer.write_text(str(existing_generation), encoding="utf-8")
+    acceptance = build_shadow_activation_acceptance_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        prepare_acceptance_evidence=True,
+    )
+    assert acceptance.outcome == "accepted"
+    checkpoint_result = runner.invoke(
+        app,
+        [
+            "evidence-checkpoint",
+            "--runs-dir",
+            str(runs_dir),
+            "--no-dry-run",
+            "--json",
+        ],
+    )
+    assert checkpoint_result.exit_code == 0
+    latest_checkpoint_hash = json.loads(checkpoint_result.stdout)["latest_checkpoint_hash"]
+    gate = build_shadow_write_gate_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        acceptance_plan_digest=acceptance.acceptance_plan_digest,
+    )
+    assert gate.ready_for_human_managed_prefix_write is True
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+    managed_before = _snapshot_tree(managed_prefix)
+
+    report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_source_sha256=gate.source_sha256,
+        expected_durable_plan_digest=gate.durable_plan_digest,
+        expected_shadow_plan_digest=gate.shadow_plan_digest,
+        expected_rollback_plan_digest=gate.rollback_plan_digest,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+        expected_checkpoint_hash=latest_checkpoint_hash,
+    )
+    json_result = runner.invoke(
+        app,
+        [
+            "shadow-managed-write",
+            candidate_id,
+            "--runs-dir",
+            str(runs_dir),
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--managed-prefix",
+            str(managed_prefix),
+            "--acceptance-prefix",
+            str(acceptance_prefix),
+            "--expected-source-sha256",
+            str(gate.source_sha256),
+            "--expected-durable-plan-digest",
+            str(gate.durable_plan_digest),
+            "--expected-shadow-plan-digest",
+            str(gate.shadow_plan_digest),
+            "--expected-rollback-plan-digest",
+            str(gate.rollback_plan_digest),
+            "--expected-acceptance-plan-digest",
+            str(acceptance.acceptance_plan_digest),
+            "--expected-checkpoint-hash",
+            str(latest_checkpoint_hash),
+            "--json",
+        ],
+    )
+    text_result = runner.invoke(
+        app,
+        [
+            "shadow-managed-write",
+            candidate_id,
+            "--runs-dir",
+            str(runs_dir),
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--managed-prefix",
+            str(managed_prefix),
+            "--acceptance-prefix",
+            str(acceptance_prefix),
+            "--expected-acceptance-plan-digest",
+            str(acceptance.acceptance_plan_digest),
+        ],
+    )
+
+    assert report.outcome == "approval_required"
+    assert report.managed_write_plan_digest
+    assert report.receipt_acceptable is True
+    assert report.receipt_reversibility_accepted is True
+    assert report.checkpoint_verified is True
+    assert report.checkpoint_hash_verified is True
+    assert report.shadow_write_gate_ready is True
+    assert report.rollback_ready is True
+    assert report.source_hash_verified is True
+    assert report.expected_source_sha256_verified is True
+    assert report.durable_plan_digest_verified is True
+    assert report.shadow_plan_digest_verified is True
+    assert report.rollback_plan_digest_verified is True
+    assert report.acceptance_plan_digest_verified is True
+    assert report.write_approval_present is False
+    assert report.write_approval_verified is False
+    assert report.blockers == []
+    unverified_approval_report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+        write_approval_id="future-write-approval",
+    )
+    assert unverified_approval_report.outcome == "blocked"
+    assert unverified_approval_report.ready_for_managed_prefix_write is False
+    assert unverified_approval_report.write_approval_present is True
+    assert unverified_approval_report.write_approval_verified is False
+    assert "write_approval_invalid" in unverified_approval_report.blockers
+    _assert_no_mutation_flags(report.model_dump(mode="json"))
+    assert report.model_dump(mode="json")["checkpoint_ledger_mutated"] is False
+
+    assert json_result.exit_code == 0
+    data = json.loads(json_result.stdout)
+    assert data["outcome"] == "approval_required"
+    assert data["managed_write_plan_digest"] == report.managed_write_plan_digest
+    assert data["latest_checkpoint_hash"] == latest_checkpoint_hash
+    assert data["receipt_acceptable"] is True
+    assert data["expected_source_sha256_verified"] is True
+    assert data["checkpoint_verified"] is True
+    assert data["shadow_write_gate_ready"] is True
+    assert data["rollback_ready"] is True
+    assert data["durable_skills_mutated"] is False
+    assert data["registry_mutated"] is False
+    assert data["candidate_ledger_mutated"] is False
+    assert data["resolution_ledger_mutated"] is False
+    assert data["run_logs_mutated"] is False
+    assert data["governor_steering_enabled"] is False
+    _assert_no_mutation_flags(data)
+
+    assert text_result.exit_code == 0
+    assert "SHADOW_MANAGED_WRITE" in text_result.stdout
+    assert "Outcome: approval_required" in text_result.stdout
+    assert "Managed write plan digest:" in text_result.stdout
+    assert "Checkpoint verified: true" in text_result.stdout
+    assert "Write approval present: false" in text_result.stdout
+    assert "Managed prefix mutated: false" in text_result.stdout
+    assert "Durable skills mutated: false" in text_result.stdout
+
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+    assert _snapshot_tree(managed_prefix) == managed_before
+
+
+def test_shadow_managed_write_reports_expected_mismatch_and_rejects_no_dry_run(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    managed_prefix = tmp_path / "shadow-prefix"
+    acceptance_prefix = runs_dir / "shadow_activation_acceptance" / "managed-write-mismatch"
+    candidate_id = _prepare_reviewed_candidate(runner, copied_seed_skills, runs_dir)
+    existing_generation = managed_prefix / "profiles" / "default" / "generations" / "1"
+    existing_generation.mkdir(parents=True)
+    current_pointer = managed_prefix / "profiles" / "default" / "current"
+    current_pointer.write_text(str(existing_generation), encoding="utf-8")
+    acceptance = build_shadow_activation_acceptance_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        prepare_acceptance_evidence=True,
+    )
+    checkpoint_result = runner.invoke(
+        app,
+        [
+            "evidence-checkpoint",
+            "--runs-dir",
+            str(runs_dir),
+            "--no-dry-run",
+            "--json",
+        ],
+    )
+    assert checkpoint_result.exit_code == 0
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+    managed_before = _snapshot_tree(managed_prefix)
+
+    mismatch_result = runner.invoke(
+        app,
+        [
+            "shadow-managed-write",
+            candidate_id,
+            "--runs-dir",
+            str(runs_dir),
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--managed-prefix",
+            str(managed_prefix),
+            "--acceptance-prefix",
+            str(acceptance_prefix),
+            "--expected-acceptance-plan-digest",
+            str(acceptance.acceptance_plan_digest),
+            "--expected-managed-write-plan-digest",
+            "0" * 64,
+            "--json",
+        ],
+    )
+    no_dry_run_result = runner.invoke(
+        app,
+        [
+            "shadow-managed-write",
+            candidate_id,
+            "--runs-dir",
+            str(runs_dir),
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--managed-prefix",
+            str(managed_prefix),
+            "--acceptance-prefix",
+            str(acceptance_prefix),
+            "--expected-acceptance-plan-digest",
+            str(acceptance.acceptance_plan_digest),
+            "--no-dry-run",
+            "--json",
+        ],
+    )
+
+    assert mismatch_result.exit_code == 0
+    data = json.loads(mismatch_result.stdout)
+    assert data["outcome"] == "blocked"
+    assert data["expected_managed_write_plan_digest"] == "0" * 64
+    assert data["managed_write_plan_digest"] != "0" * 64
+    assert data["managed_write_plan_digest_verified"] is False
+    assert "expected_managed_write_plan_digest_mismatch" in data["blockers"]
+    _assert_no_mutation_flags(data)
+
+    assert no_dry_run_result.exit_code == 0
+    no_dry_run_data = json.loads(no_dry_run_result.stdout)
+    assert no_dry_run_data["outcome"] == "blocked"
+    assert "expected_source_sha256_missing" in no_dry_run_data["blockers"]
+    assert "expected_durable_plan_digest_missing" in no_dry_run_data["blockers"]
+    assert "expected_shadow_plan_digest_missing" in no_dry_run_data["blockers"]
+    assert "expected_rollback_plan_digest_missing" in no_dry_run_data["blockers"]
+    assert "expected_managed_write_plan_digest_missing" in no_dry_run_data["blockers"]
+    assert "expected_checkpoint_hash_missing" in no_dry_run_data["blockers"]
+    assert "write_approval_id_missing" in no_dry_run_data["blockers"]
+    assert no_dry_run_data["exact_expected_values_verified"] is False
+    assert no_dry_run_data["write_approval_verified"] is False
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+    assert _snapshot_tree(managed_prefix) == managed_before
+
+
+def test_shadow_managed_write_verifies_write_approval_and_exact_gates(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    managed_prefix = tmp_path / "shadow-prefix"
+    acceptance_prefix = runs_dir / "shadow_activation_acceptance" / "managed-write-approved"
+    candidate_id, acceptance, gate = _prepare_shadow_managed_write_ready_state(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+        managed_prefix,
+        acceptance_prefix,
+    )
+    digest_report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+    )
+    assert digest_report.managed_write_plan_digest
+    write_approval_id = _record_write_approval(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        managed_write_plan_digest=str(digest_report.managed_write_plan_digest),
+        expires_at="2099-01-01T00:00:00Z",
+    )
+    checkpoint_hash = _append_evidence_checkpoint(runner, runs_dir)
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+    managed_before = _snapshot_tree(managed_prefix)
+
+    report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_source_sha256=gate.source_sha256,
+        expected_durable_plan_digest=gate.durable_plan_digest,
+        expected_shadow_plan_digest=gate.shadow_plan_digest,
+        expected_rollback_plan_digest=gate.rollback_plan_digest,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+        expected_managed_write_plan_digest=digest_report.managed_write_plan_digest,
+        expected_checkpoint_hash=checkpoint_hash,
+        write_approval_id=write_approval_id,
+    )
+    cli_result = runner.invoke(
+        app,
+        [
+            "shadow-managed-write",
+            candidate_id,
+            "--runs-dir",
+            str(runs_dir),
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--managed-prefix",
+            str(managed_prefix),
+            "--acceptance-prefix",
+            str(acceptance_prefix),
+            "--expected-source-sha256",
+            str(gate.source_sha256),
+            "--expected-durable-plan-digest",
+            str(gate.durable_plan_digest),
+            "--expected-shadow-plan-digest",
+            str(gate.shadow_plan_digest),
+            "--expected-rollback-plan-digest",
+            str(gate.rollback_plan_digest),
+            "--expected-acceptance-plan-digest",
+            str(acceptance.acceptance_plan_digest),
+            "--expected-managed-write-plan-digest",
+            str(digest_report.managed_write_plan_digest),
+            "--expected-checkpoint-hash",
+            str(checkpoint_hash),
+            "--write-approval-id",
+            write_approval_id,
+            "--json",
+        ],
+    )
+    no_dry_run_result = runner.invoke(
+        app,
+        [
+            "shadow-managed-write",
+            candidate_id,
+            "--runs-dir",
+            str(runs_dir),
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--managed-prefix",
+            str(managed_prefix),
+            "--acceptance-prefix",
+            str(acceptance_prefix),
+            "--expected-source-sha256",
+            str(gate.source_sha256),
+            "--expected-durable-plan-digest",
+            str(gate.durable_plan_digest),
+            "--expected-shadow-plan-digest",
+            str(gate.shadow_plan_digest),
+            "--expected-rollback-plan-digest",
+            str(gate.rollback_plan_digest),
+            "--expected-acceptance-plan-digest",
+            str(acceptance.acceptance_plan_digest),
+            "--expected-managed-write-plan-digest",
+            str(digest_report.managed_write_plan_digest),
+            "--expected-checkpoint-hash",
+            str(checkpoint_hash),
+            "--write-approval-id",
+            write_approval_id,
+            "--no-dry-run",
+            "--json",
+        ],
+    )
+
+    assert report.outcome == "ready_for_managed_prefix_write"
+    assert report.ready_for_managed_prefix_write is True
+    assert report.write_approval_verified is True
+    assert report.write_approval_digest == digest_report.managed_write_plan_digest
+    assert report.write_approval_expires_at == "2099-01-01T00:00:00Z"
+    assert report.exact_expected_values_verified is True
+    assert report.checkpoint_verified is True
+    assert report.checkpoint_hash_verified is True
+    assert report.shadow_write_gate_ready is True
+    assert report.receipt_acceptable is True
+    assert report.blockers == []
+    _assert_no_mutation_flags(report.model_dump(mode="json"))
+
+    assert cli_result.exit_code == 0
+    data = json.loads(cli_result.stdout)
+    assert data["outcome"] == "ready_for_managed_prefix_write"
+    assert data["ready_for_managed_prefix_write"] is True
+    assert data["write_approval_verified"] is True
+    assert data["exact_expected_values_verified"] is True
+    assert data["write_approval_digest"] == digest_report.managed_write_plan_digest
+
+    assert no_dry_run_result.exit_code == 0
+    no_dry_run_data = json.loads(no_dry_run_result.stdout)
+    assert no_dry_run_data["outcome"] == "managed_prefix_write_applied"
+    assert no_dry_run_data["dry_run"] is False
+    assert no_dry_run_data["mutation_supported"] is True
+    assert no_dry_run_data["ready_for_managed_prefix_write"] is True
+    assert no_dry_run_data["write_approval_verified"] is True
+    assert no_dry_run_data["exact_expected_values_verified"] is True
+    assert no_dry_run_data["store_verified"] is True
+    assert no_dry_run_data["generation_verified"] is True
+    assert no_dry_run_data["activation_pointer_updated"] is True
+    assert no_dry_run_data["activation_pointer_verified"] is True
+    assert no_dry_run_data["rollback_target_verified"] is True
+    assert no_dry_run_data["managed_prefix_mutated"] is True
+    assert no_dry_run_data["profile_mutated"] is True
+    assert no_dry_run_data["durable_skills_mutated"] is False
+    assert no_dry_run_data["registry_mutated"] is False
+    assert no_dry_run_data["candidate_ledger_mutated"] is False
+    assert no_dry_run_data["resolution_ledger_mutated"] is False
+    assert no_dry_run_data["run_logs_mutated"] is False
+    assert no_dry_run_data["governor_steering_enabled"] is False
+    assert no_dry_run_data["blockers"] == []
+    assert Path(no_dry_run_data["store_skill_path"]).read_bytes() == Path(no_dry_run_data["source_skill_path"]).read_bytes()
+    assert Path(no_dry_run_data["generation_skill_path"]).read_bytes() == Path(no_dry_run_data["source_skill_path"]).read_bytes()
+    assert Path(no_dry_run_data["activation_pointer"]).read_text(encoding="utf-8").strip() == str(
+        Path(no_dry_run_data["generation_skill_path"]).parent.parent.parent
+    )
+    assert Path(no_dry_run_data["write_receipt_path"]).exists()
+
+    rerun_result = runner.invoke(
+        app,
+        [
+            "shadow-managed-write",
+            candidate_id,
+            "--runs-dir",
+            str(runs_dir),
+            "--skills-dir",
+            str(copied_seed_skills),
+            "--managed-prefix",
+            str(managed_prefix),
+            "--acceptance-prefix",
+            str(acceptance_prefix),
+            "--expected-source-sha256",
+            str(gate.source_sha256),
+            "--expected-durable-plan-digest",
+            str(gate.durable_plan_digest),
+            "--expected-shadow-plan-digest",
+            str(gate.shadow_plan_digest),
+            "--expected-rollback-plan-digest",
+            str(gate.rollback_plan_digest),
+            "--expected-acceptance-plan-digest",
+            str(acceptance.acceptance_plan_digest),
+            "--expected-managed-write-plan-digest",
+            str(digest_report.managed_write_plan_digest),
+            "--expected-checkpoint-hash",
+            str(checkpoint_hash),
+            "--write-approval-id",
+            write_approval_id,
+            "--no-dry-run",
+            "--json",
+        ],
+    )
+    assert rerun_result.exit_code == 0
+    rerun_data = json.loads(rerun_result.stdout)
+    assert rerun_data["outcome"] == "already_applied"
+    assert rerun_data["dry_run"] is False
+    assert rerun_data["mutation_supported"] is True
+    assert rerun_data["already_applied"] is True
+    assert rerun_data["managed_prefix_mutated"] is False
+    assert rerun_data["profile_mutated"] is False
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+    assert _snapshot_tree(managed_prefix) != managed_before
+
+
+def test_shadow_managed_write_recovers_interrupted_store_generation_retry(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    managed_prefix = tmp_path / "shadow-prefix"
+    acceptance_prefix = runs_dir / "shadow_activation_acceptance" / "managed-write-interrupted"
+    candidate_id, acceptance, gate = _prepare_shadow_managed_write_ready_state(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+        managed_prefix,
+        acceptance_prefix,
+    )
+    digest_report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+    )
+    assert digest_report.managed_write_plan_digest
+    source_bytes = Path(str(gate.source_skill_path)).read_bytes()
+    store_path = Path(str(digest_report.store_skill_path))
+    generation_path = Path(str(digest_report.generation_skill_path))
+    store_path.parent.mkdir(parents=True, exist_ok=True)
+    generation_path.parent.mkdir(parents=True, exist_ok=True)
+    store_path.write_bytes(source_bytes)
+    generation_path.write_bytes(source_bytes)
+    write_approval_id = _record_write_approval(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        managed_write_plan_digest=str(digest_report.managed_write_plan_digest),
+        expires_at="2099-01-01T00:00:00Z",
+    )
+    checkpoint_hash = _append_evidence_checkpoint(runner, runs_dir)
+
+    report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        dry_run=False,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_source_sha256=gate.source_sha256,
+        expected_durable_plan_digest=gate.durable_plan_digest,
+        expected_shadow_plan_digest=gate.shadow_plan_digest,
+        expected_rollback_plan_digest=gate.rollback_plan_digest,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+        expected_managed_write_plan_digest=digest_report.managed_write_plan_digest,
+        expected_checkpoint_hash=checkpoint_hash,
+        write_approval_id=write_approval_id,
+    )
+
+    assert report.outcome == "managed_prefix_write_applied"
+    assert report.interrupted_activation_recovered is True
+    assert report.store_verified is True
+    assert report.generation_verified is True
+    assert report.activation_pointer_verified is True
+    assert report.rollback_target_verified is True
+    assert Path(str(report.write_receipt_path)).exists()
+    assert report.blockers == []
+
+
+def test_shadow_managed_write_blocks_conflicting_managed_prefix_bytes_without_pointer_switch(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    managed_prefix = tmp_path / "shadow-prefix"
+    acceptance_prefix = runs_dir / "shadow_activation_acceptance" / "managed-write-conflict"
+    candidate_id, acceptance, gate = _prepare_shadow_managed_write_ready_state(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+        managed_prefix,
+        acceptance_prefix,
+    )
+    digest_report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+    )
+    assert digest_report.managed_write_plan_digest
+    store_path = Path(str(digest_report.store_skill_path))
+    store_path.parent.mkdir(parents=True, exist_ok=True)
+    store_path.write_text("conflicting bytes\n", encoding="utf-8")
+    pointer_before = Path(str(digest_report.activation_pointer)).read_text(encoding="utf-8")
+    write_approval_id = _record_write_approval(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        managed_write_plan_digest=str(digest_report.managed_write_plan_digest),
+        expires_at="2099-01-01T00:00:00Z",
+    )
+    checkpoint_hash = _append_evidence_checkpoint(runner, runs_dir)
+
+    report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        dry_run=False,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_source_sha256=gate.source_sha256,
+        expected_durable_plan_digest=gate.durable_plan_digest,
+        expected_shadow_plan_digest=gate.shadow_plan_digest,
+        expected_rollback_plan_digest=gate.rollback_plan_digest,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+        expected_managed_write_plan_digest=digest_report.managed_write_plan_digest,
+        expected_checkpoint_hash=checkpoint_hash,
+        write_approval_id=write_approval_id,
+    )
+
+    assert report.outcome == "blocked"
+    assert "managed_write_store_conflict" in report.blockers
+    assert report.managed_prefix_mutated is False
+    assert report.profile_mutated is False
+    assert Path(str(digest_report.activation_pointer)).read_text(encoding="utf-8") == pointer_before
+    assert not Path(str(report.write_receipt_path)).exists()
+
+
+def test_shadow_managed_write_restores_pointer_when_receipt_write_fails(
+    copied_seed_skills,
+    tmp_path,
+    monkeypatch,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    managed_prefix = tmp_path / "shadow-prefix"
+    acceptance_prefix = runs_dir / "shadow_activation_acceptance" / "managed-write-io-failure"
+    candidate_id, acceptance, gate, digest_report, write_approval_id, checkpoint_hash = (
+        _prepare_approved_managed_write_inputs(
+            runner,
+            copied_seed_skills,
+            runs_dir,
+            managed_prefix,
+            acceptance_prefix,
+        )
+    )
+    rollback_pointer_target = Path(str(digest_report.activation_pointer)).read_text(
+        encoding="utf-8"
+    ).strip()
+    original_atomic_write_text = __import__(
+        "app.shadow_activation",
+        fromlist=["_atomic_write_text"],
+    )._atomic_write_text
+
+    def fail_receipt_write(path: Path, text: str) -> None:
+        if path == Path(str(digest_report.write_receipt_path)):
+            raise OSError("receipt write failed")
+        original_atomic_write_text(path, text)
+
+    monkeypatch.setattr(
+        "app.shadow_activation._atomic_write_text",
+        fail_receipt_write,
+    )
+
+    report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        dry_run=False,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_source_sha256=gate.source_sha256,
+        expected_durable_plan_digest=gate.durable_plan_digest,
+        expected_shadow_plan_digest=gate.shadow_plan_digest,
+        expected_rollback_plan_digest=gate.rollback_plan_digest,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+        expected_managed_write_plan_digest=digest_report.managed_write_plan_digest,
+        expected_checkpoint_hash=checkpoint_hash,
+        write_approval_id=write_approval_id,
+    )
+
+    assert report.outcome == "blocked"
+    assert "managed_write_receipt_write_failed" in report.blockers
+    assert Path(str(digest_report.activation_pointer)).read_text(encoding="utf-8").strip() == rollback_pointer_target
+    assert not Path(str(digest_report.write_receipt_path)).exists()
+    assert report.managed_prefix_mutated is True
+    assert report.profile_mutated is True
+
+
+def test_shadow_managed_write_blocks_symlink_ancestor_escape(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    managed_prefix = tmp_path / "shadow-prefix"
+    acceptance_prefix = runs_dir / "shadow_activation_acceptance" / "managed-write-symlink"
+    candidate_id, acceptance, gate, digest_report, write_approval_id, checkpoint_hash = (
+        _prepare_approved_managed_write_inputs(
+            runner,
+            copied_seed_skills,
+            runs_dir,
+            managed_prefix,
+            acceptance_prefix,
+        )
+    )
+    store_root = managed_prefix / "store"
+    escape_root = tmp_path / "escape-store"
+    escape_root.mkdir()
+    store_root.symlink_to(escape_root, target_is_directory=True)
+
+    report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        dry_run=False,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_source_sha256=gate.source_sha256,
+        expected_durable_plan_digest=gate.durable_plan_digest,
+        expected_shadow_plan_digest=gate.shadow_plan_digest,
+        expected_rollback_plan_digest=gate.rollback_plan_digest,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+        expected_managed_write_plan_digest=digest_report.managed_write_plan_digest,
+        expected_checkpoint_hash=checkpoint_hash,
+        write_approval_id=write_approval_id,
+    )
+
+    assert report.outcome == "blocked"
+    assert any(blocker.startswith("managed_write_path_symlink:") for blocker in report.blockers)
+    assert report.managed_prefix_mutated is False
+    assert not Path(str(digest_report.write_receipt_path)).exists()
+
+
+def test_shadow_managed_write_blocks_managed_prefix_symlink_escape(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    managed_prefix = tmp_path / "shadow-prefix"
+    actual_prefix = tmp_path / "actual-shadow-prefix"
+    actual_prefix.mkdir()
+    managed_prefix.symlink_to(actual_prefix, target_is_directory=True)
+    acceptance_prefix = runs_dir / "shadow_activation_acceptance" / "managed-write-prefix-symlink"
+    candidate_id, acceptance, gate, digest_report, write_approval_id, checkpoint_hash = (
+        _prepare_approved_managed_write_inputs(
+            runner,
+            copied_seed_skills,
+            runs_dir,
+            managed_prefix,
+            acceptance_prefix,
+        )
+    )
+
+    report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        dry_run=False,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_source_sha256=gate.source_sha256,
+        expected_durable_plan_digest=gate.durable_plan_digest,
+        expected_shadow_plan_digest=gate.shadow_plan_digest,
+        expected_rollback_plan_digest=gate.rollback_plan_digest,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+        expected_managed_write_plan_digest=digest_report.managed_write_plan_digest,
+        expected_checkpoint_hash=checkpoint_hash,
+        write_approval_id=write_approval_id,
+    )
+
+    assert report.outcome == "blocked"
+    assert f"managed_write_path_symlink:{managed_prefix}" in report.blockers
+    assert report.managed_prefix_mutated is False
+    assert not Path(str(digest_report.write_receipt_path)).exists()
+
+
+def test_shadow_managed_write_blocks_pointer_switched_without_receipt_rerun(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    managed_prefix = tmp_path / "shadow-prefix"
+    acceptance_prefix = runs_dir / "shadow_activation_acceptance" / "managed-write-missing-receipt"
+    candidate_id, acceptance, gate, digest_report, write_approval_id, checkpoint_hash = (
+        _prepare_approved_managed_write_inputs(
+            runner,
+            copied_seed_skills,
+            runs_dir,
+            managed_prefix,
+            acceptance_prefix,
+        )
+    )
+    source_bytes = Path(str(gate.source_skill_path)).read_bytes()
+    store_path = Path(str(digest_report.store_skill_path))
+    generation_path = Path(str(digest_report.generation_skill_path))
+    generation_dir = generation_path.parent.parent.parent
+    store_path.parent.mkdir(parents=True, exist_ok=True)
+    generation_path.parent.mkdir(parents=True, exist_ok=True)
+    store_path.write_bytes(source_bytes)
+    generation_path.write_bytes(source_bytes)
+    Path(str(digest_report.activation_pointer)).write_text(str(generation_dir), encoding="utf-8")
+
+    report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        dry_run=False,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_source_sha256=gate.source_sha256,
+        expected_durable_plan_digest=gate.durable_plan_digest,
+        expected_shadow_plan_digest=gate.shadow_plan_digest,
+        expected_rollback_plan_digest=gate.rollback_plan_digest,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+        expected_managed_write_plan_digest=digest_report.managed_write_plan_digest,
+        expected_checkpoint_hash=checkpoint_hash,
+        write_approval_id=write_approval_id,
+    )
+
+    assert report.outcome == "blocked"
+    assert "managed_write_receipt_missing_after_pointer_switch" in report.blockers
+    assert not Path(str(digest_report.write_receipt_path)).exists()
+    assert not (managed_prefix / "profiles" / "default" / "generations" / "5").exists()
+
+
+def test_shadow_managed_write_blocks_write_approval_mismatch_expiry_and_checkpoint_mismatch(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    managed_prefix = tmp_path / "shadow-prefix"
+    acceptance_prefix = runs_dir / "shadow_activation_acceptance" / "managed-write-bad-approval"
+    candidate_id, acceptance, gate = _prepare_shadow_managed_write_ready_state(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+        managed_prefix,
+        acceptance_prefix,
+    )
+    digest_report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+    )
+    assert digest_report.managed_write_plan_digest
+
+    mismatch_approval_id = _record_write_approval(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        managed_write_plan_digest="0" * 64,
+        expires_at="2099-01-01T00:00:00Z",
+    )
+    mismatch_checkpoint_hash = _append_evidence_checkpoint(runner, runs_dir)
+    mismatch_report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_source_sha256=gate.source_sha256,
+        expected_durable_plan_digest=gate.durable_plan_digest,
+        expected_shadow_plan_digest=gate.shadow_plan_digest,
+        expected_rollback_plan_digest=gate.rollback_plan_digest,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+        expected_managed_write_plan_digest=digest_report.managed_write_plan_digest,
+        expected_checkpoint_hash=mismatch_checkpoint_hash,
+        write_approval_id=mismatch_approval_id,
+    )
+
+    expired_approval_id = _record_write_approval(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        managed_write_plan_digest=str(digest_report.managed_write_plan_digest),
+        expires_at="2000-01-01T00:00:00Z",
+    )
+    expired_checkpoint_hash = _append_evidence_checkpoint(runner, runs_dir)
+    expired_report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_source_sha256=gate.source_sha256,
+        expected_durable_plan_digest=gate.durable_plan_digest,
+        expected_shadow_plan_digest=gate.shadow_plan_digest,
+        expected_rollback_plan_digest=gate.rollback_plan_digest,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+        expected_managed_write_plan_digest=digest_report.managed_write_plan_digest,
+        expected_checkpoint_hash=expired_checkpoint_hash,
+        write_approval_id=expired_approval_id,
+    )
+
+    valid_approval_id = _record_write_approval(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        managed_write_plan_digest=str(digest_report.managed_write_plan_digest),
+        expires_at="2099-01-01T00:00:00Z",
+    )
+    _append_evidence_checkpoint(runner, runs_dir)
+    checkpoint_mismatch_report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_source_sha256=gate.source_sha256,
+        expected_durable_plan_digest=gate.durable_plan_digest,
+        expected_shadow_plan_digest=gate.shadow_plan_digest,
+        expected_rollback_plan_digest=gate.rollback_plan_digest,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+        expected_managed_write_plan_digest=digest_report.managed_write_plan_digest,
+        expected_checkpoint_hash="0" * 64,
+        write_approval_id=valid_approval_id,
+    )
+
+    assert mismatch_report.outcome == "blocked"
+    assert mismatch_report.write_approval_verified is False
+    assert mismatch_report.write_approval_digest == "0" * 64
+    assert "write_approval_digest_mismatch" in mismatch_report.blockers
+    assert mismatch_report.exact_expected_values_verified is True
+
+    assert expired_report.outcome == "blocked"
+    assert expired_report.write_approval_verified is False
+    assert expired_report.write_approval_expires_at == "2000-01-01T00:00:00Z"
+    assert "write_approval_expired" in expired_report.blockers
+    assert expired_report.exact_expected_values_verified is True
+
+    assert checkpoint_mismatch_report.outcome == "blocked"
+    assert checkpoint_mismatch_report.write_approval_verified is True
+    assert checkpoint_mismatch_report.exact_expected_values_verified is False
+    assert checkpoint_mismatch_report.checkpoint_hash_verified is False
+    assert "expected_checkpoint_hash_mismatch" in checkpoint_mismatch_report.blockers
+
+
 def _prepare_reviewed_candidate(
     runner: CliRunner,
     skills_dir: Path,
@@ -985,6 +1926,137 @@ def _prepare_reviewed_candidate(
     )
     assert resolve_result.exit_code == 0
     return candidate_id
+
+
+def _prepare_shadow_managed_write_ready_state(
+    runner: CliRunner,
+    skills_dir: Path,
+    runs_dir: Path,
+    managed_prefix: Path,
+    acceptance_prefix: Path,
+):
+    candidate_id = _prepare_reviewed_candidate(runner, skills_dir, runs_dir)
+    existing_generation = managed_prefix / "profiles" / "default" / "generations" / "3"
+    existing_generation.mkdir(parents=True)
+    (existing_generation / ".marker").write_text("real prefix stays untouched\n", encoding="utf-8")
+    current_pointer = managed_prefix / "profiles" / "default" / "current"
+    current_pointer.write_text(str(existing_generation), encoding="utf-8")
+    acceptance = build_shadow_activation_acceptance_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=skills_dir,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        prepare_acceptance_evidence=True,
+    )
+    assert acceptance.outcome == "accepted"
+    gate = build_shadow_write_gate_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=skills_dir,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        acceptance_plan_digest=acceptance.acceptance_plan_digest,
+    )
+    assert gate.ready_for_human_managed_prefix_write is True
+    return candidate_id, acceptance, gate
+
+
+def _prepare_approved_managed_write_inputs(
+    runner: CliRunner,
+    skills_dir: Path,
+    runs_dir: Path,
+    managed_prefix: Path,
+    acceptance_prefix: Path,
+):
+    candidate_id, acceptance, gate = _prepare_shadow_managed_write_ready_state(
+        runner,
+        skills_dir,
+        runs_dir,
+        managed_prefix,
+        acceptance_prefix,
+    )
+    digest_report = build_shadow_managed_write_report(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=skills_dir,
+        managed_prefix=managed_prefix,
+        acceptance_prefix=acceptance_prefix,
+        expected_acceptance_plan_digest=acceptance.acceptance_plan_digest,
+    )
+    assert digest_report.managed_write_plan_digest
+    write_approval_id = _record_write_approval(
+        runner,
+        candidate_id,
+        runs_dir,
+        skills_dir,
+        managed_write_plan_digest=str(digest_report.managed_write_plan_digest),
+        expires_at="2099-01-01T00:00:00Z",
+    )
+    checkpoint_hash = _append_evidence_checkpoint(runner, runs_dir)
+    return candidate_id, acceptance, gate, digest_report, write_approval_id, checkpoint_hash
+
+
+def _record_write_approval(
+    runner: CliRunner,
+    candidate_id: str,
+    runs_dir: Path,
+    skills_dir: Path,
+    *,
+    managed_write_plan_digest: str,
+    expires_at: str,
+) -> str:
+    admission_result = runner.invoke(
+        app,
+        [
+            "admission-plan",
+            candidate_id,
+            "--runs-dir",
+            str(runs_dir),
+            "--skills-dir",
+            str(skills_dir),
+            "--json",
+        ],
+    )
+    assert admission_result.exit_code == 0
+    input_request = json.loads(admission_result.stdout)["input_request"]
+    resolve_result = runner.invoke(
+        app,
+        [
+            "resolve-input-request",
+            input_request["id"],
+            "--runs-dir",
+            str(runs_dir),
+            "--decision",
+            "approve_review",
+            "--reviewer",
+            "Ada",
+            "--notes",
+            f"Approved managed write. managed_write_plan_digest={managed_write_plan_digest} expires_at={expires_at}",
+            "--no-dry-run",
+            "--json",
+        ],
+    )
+    assert resolve_result.exit_code == 0
+    ledger = load_input_request_resolution_ledger(runs_dir)
+    return ledger.resolutions[-1].id
+
+
+def _append_evidence_checkpoint(runner: CliRunner, runs_dir: Path) -> str:
+    checkpoint_result = runner.invoke(
+        app,
+        [
+            "evidence-checkpoint",
+            "--runs-dir",
+            str(runs_dir),
+            "--no-dry-run",
+            "--json",
+        ],
+    )
+    assert checkpoint_result.exit_code == 0
+    checkpoint_hash = json.loads(checkpoint_result.stdout)["latest_checkpoint_hash"]
+    assert checkpoint_hash
+    return checkpoint_hash
 
 
 def _assert_no_mutation_flags(data: dict) -> None:

@@ -416,7 +416,7 @@ Recommendation rules are deterministic and advisory. Reject or block evidence re
   "blockers": [],
   "warnings": [],
   "next_steps": [
-    "Use this as a dry-run activation plan only; no managed prefix writes are enabled."
+    "Use this as a dry-run activation plan only; shadow-managed-write owns managed-prefix mutation."
   ],
   "managed_prefix_mutated": false,
   "profile_mutated": false,
@@ -461,7 +461,7 @@ Allowed outcomes are `ready_for_shadow_activation_preview` and `blocked`. A plan
   "blockers": [],
   "warnings": [],
   "next_steps": [
-    "Use this as rollback proof only; profile switching remains unavailable."
+    "Use this as rollback proof only; shadow-managed-write owns profile switching."
   ],
   "managed_prefix_mutated": false,
   "profile_mutated": false,
@@ -584,7 +584,96 @@ Allowed outcomes are `planned`, `accepted`, and `blocked`. `planned` means the a
 }
 ```
 
-Allowed outcomes are `ready_for_human_managed_prefix_write` and `blocked`. `ready_for_human_managed_prefix_write` means the exact durable plan, shadow plan, rollback plan, supplied acceptance digest, and prepared acceptance evidence are all inspectable and hash-consistent, but no real write mode has been enabled. `blocked` means at least one precondition is missing or stale, such as missing acceptance files, source hash drift, an unrestored acceptance pointer, missing rollback marker, missing rollback evidence in the real managed prefix, `acceptance_plan_digest_expected_missing`, or `acceptance_plan_digest_mismatch`.
+Allowed outcomes are `ready_for_human_managed_prefix_write` and `blocked`. `ready_for_human_managed_prefix_write` means the exact durable plan, shadow plan, rollback plan, supplied acceptance digest, and prepared acceptance evidence are all inspectable and hash-consistent, but `shadow-write-gate` itself has not mutated the managed prefix. `blocked` means at least one precondition is missing or stale, such as missing acceptance files, source hash drift, an unrestored acceptance pointer, missing rollback marker, missing rollback evidence in the real managed prefix, `acceptance_plan_digest_expected_missing`, or `acceptance_plan_digest_mismatch`.
+
+## Shadow Managed Write
+
+`skill-agent shadow-managed-write <candidate-id>` emits a `ShadowManagedWriteReport`. It is the first human-approved real write surface, but it is confined to the configured shadow managed prefix. Dry-run mode composes the skill receipt, evidence checkpoint verification, and shadow write gate, then emits a `managed_write_plan_digest`. Non-dry-run mode requires exact expected source/durable/shadow/rollback/acceptance/managed-write digests, latest checkpoint hash, and a separate non-expired `approve_review` resolution whose notes include the matching `managed_write_plan_digest=<digest>`. When all gates pass, it may create or reuse only the managed store `SKILL.md`, profile generation `SKILL.md`, activation pointer, and managed-prefix-local write receipt. It does not copy or install into durable `skills/`, mutate registry or ledgers, widen permissions, enable stable routing, or steer the governor.
+
+```json
+{
+  "candidate_id": "candidate_abc123def456",
+  "skill_name": "argument-clustering",
+  "outcome": "managed_prefix_write_applied",
+  "ready_for_managed_prefix_write": true,
+  "dry_run": false,
+  "mutation_supported": true,
+  "managed_prefix": "runs/managed_shadow",
+  "acceptance_prefix": "runs/shadow_activation_acceptance/candidate_abc123_789abc",
+  "profile_name": "default",
+  "source_skill_path": "runs/artifacts/run_id/skills/argument-clustering/SKILL.md",
+  "source_sha256": "abc123...",
+  "source_hash_verified": true,
+  "store_skill_path": "runs/managed_shadow/store/sha256-abc123.../skills/argument-clustering/SKILL.md",
+  "generation_skill_path": "runs/managed_shadow/profiles/default/generations/4/skills/argument-clustering/SKILL.md",
+  "activation_pointer": "runs/managed_shadow/profiles/default/current",
+  "rollback_target": "runs/managed_shadow/profiles/default/generations/3",
+  "durable_plan_digest": "def456...",
+  "shadow_plan_digest": "789abc...",
+  "rollback_plan_digest": "012def...",
+  "acceptance_plan_digest": "fedcba...",
+  "managed_write_plan_digest_algorithm": "sha256",
+  "managed_write_plan_digest": "456abc...",
+  "expected_source_sha256": "abc123...",
+  "expected_durable_plan_digest": "def456...",
+  "expected_shadow_plan_digest": "789abc...",
+  "expected_rollback_plan_digest": "012def...",
+  "expected_acceptance_plan_digest": "fedcba...",
+  "expected_managed_write_plan_digest": "456abc...",
+  "expected_checkpoint_hash": "checkpoint123...",
+  "expected_source_sha256_verified": true,
+  "durable_plan_digest_verified": true,
+  "shadow_plan_digest_verified": true,
+  "rollback_plan_digest_verified": true,
+  "acceptance_plan_digest_verified": true,
+  "managed_write_plan_digest_verified": true,
+  "checkpoint_verified": true,
+  "checkpoint_hash_verified": true,
+  "latest_checkpoint_hash": "checkpoint123...",
+  "write_approval_id": "resolution_write_approval",
+  "write_approval_digest": "456abc...",
+  "write_approval_expires_at": "2026-06-05T00:00:00+00:00",
+  "write_approval_present": true,
+  "write_approval_verified": true,
+  "exact_expected_values_verified": true,
+  "receipt_acceptable": true,
+  "receipt_reversibility_accepted": true,
+  "shadow_write_gate_ready": true,
+  "rollback_ready": true,
+  "write_receipt_path": "runs/managed_shadow/profiles/default/write_receipts/456abc....json",
+  "store_verified": true,
+  "generation_verified": true,
+  "activation_pointer_target": "runs/managed_shadow/profiles/default/generations/4",
+  "activation_pointer_updated": true,
+  "activation_pointer_verified": true,
+  "rollback_target_verified": true,
+  "already_applied": false,
+  "interrupted_activation_recovered": false,
+  "managed_prefix_write_policy": "managed_prefix_only_write",
+  "profile_activation_policy": "profile_pointer_switch",
+  "rollback_policy": "profile_pointer_rollback",
+  "stable_routing_policy": "stable_routing_unchanged",
+  "governor_policy": "governor_advisory_only",
+  "skill_receipt": {},
+  "evidence_checkpoint": {},
+  "shadow_write_gate": {},
+  "blockers": [],
+  "warnings": [],
+  "next_steps": ["Managed-prefix write applied; durable skills and stable routing remain unchanged."],
+  "acceptance_prefix_mutated": false,
+  "managed_prefix_mutated": true,
+  "profile_mutated": true,
+  "run_logs_mutated": false,
+  "candidate_ledger_mutated": false,
+  "resolution_ledger_mutated": false,
+  "checkpoint_ledger_mutated": false,
+  "durable_skills_mutated": false,
+  "registry_mutated": false,
+  "governor_steering_enabled": false
+}
+```
+
+Allowed outcomes are `approval_required`, `blocked`, `ready_for_managed_prefix_write`, `managed_prefix_write_applied`, and `already_applied`. `approval_required` means the managed-write digest is available but the separate write approval is missing, expired, or mismatched. `ready_for_managed_prefix_write` means dry-run proof is complete and all supplied expected values match without mutation. `managed_prefix_write_applied` means the confined store/generation/pointer/receipt write succeeded. `already_applied` means a prior matching receipt, store, generation, and pointer state were verified. In every outcome, `durable_skills_mutated`, `registry_mutated`, `candidate_ledger_mutated`, `resolution_ledger_mutated`, `run_logs_mutated`, and `governor_steering_enabled` remain `false`; stable routing remains governed by `stable_routing_policy: "stable_routing_unchanged"`.
 
 ## Input Request
 

@@ -30,6 +30,8 @@ from app.cli_output import (
     emit_shadow_activation_acceptance_output,
     emit_shadow_activation_plan_json,
     emit_shadow_activation_plan_output,
+    emit_shadow_managed_write_json,
+    emit_shadow_managed_write_output,
     emit_shadow_rollback_plan_json,
     emit_shadow_rollback_plan_output,
     emit_shadow_write_gate_json,
@@ -61,6 +63,7 @@ from app.shadow_activation import (
     ShadowActivationPlanError,
     build_shadow_activation_acceptance_report,
     build_shadow_activation_plan,
+    build_shadow_managed_write_report,
     build_shadow_rollback_plan,
     build_shadow_write_gate_report,
 )
@@ -835,6 +838,125 @@ def shadow_write_gate(
         emit_shadow_write_gate_json(report)
     else:
         emit_shadow_write_gate_output(report)
+
+
+@app.command("shadow-managed-write")
+def shadow_managed_write(
+    candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to preflight for human-approved managed-prefix writing.")],
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate, resolution, checkpoint, and acceptance evidence.")] = Path("runs"),
+    skills_dir: Annotated[Path, typer.Option(help="Durable local skills directory for read-only admission context.")] = Path("skills"),
+    managed_prefix: Annotated[
+        Path | None,
+        typer.Option(
+            "--managed-prefix",
+            help="Managed shadow prefix to inspect. Defaults to <runs-dir>/managed_shadow.",
+        ),
+    ] = None,
+    acceptance_prefix: Annotated[
+        Path | None,
+        typer.Option(
+            "--acceptance-prefix",
+            help="Run-scoped acceptance prefix to verify. Must be under <runs-dir>.",
+        ),
+    ] = None,
+    profile_name: Annotated[
+        str,
+        typer.Option("--profile-name", help="Managed profile name for write planning."),
+    ] = "default",
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run/--no-dry-run",
+            help="Preflight or execute the human-approved managed-prefix write.",
+        ),
+    ] = True,
+    collision_policy: Annotated[
+        str,
+        typer.Option(
+            "--collision-policy",
+            help="Dry-run destination collision policy: block_existing or allow_replace_with_approval.",
+        ),
+    ] = "block_existing",
+    permission_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--permission-approval-id",
+            help="Optional resolved input request resolution ID authorizing permission widening in the admission preview.",
+        ),
+    ] = "",
+    plan_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--plan-approval-id",
+            help="Optional resolved approve_review resolution ID binding approval to the durable plan digest.",
+        ),
+    ] = "",
+    expected_source_sha256: Annotated[
+        str,
+        typer.Option("--expected-source-sha256", help="Optional expected candidate source SHA-256."),
+    ] = "",
+    expected_durable_plan_digest: Annotated[
+        str,
+        typer.Option("--expected-durable-plan-digest", help="Optional expected durable admission plan digest."),
+    ] = "",
+    expected_shadow_plan_digest: Annotated[
+        str,
+        typer.Option("--expected-shadow-plan-digest", help="Optional expected shadow activation plan digest."),
+    ] = "",
+    expected_rollback_plan_digest: Annotated[
+        str,
+        typer.Option("--expected-rollback-plan-digest", help="Optional expected shadow rollback plan digest."),
+    ] = "",
+    expected_acceptance_plan_digest: Annotated[
+        str,
+        typer.Option("--expected-acceptance-plan-digest", help="Optional expected shadow acceptance plan digest."),
+    ] = "",
+    expected_managed_write_plan_digest: Annotated[
+        str,
+        typer.Option("--expected-managed-write-plan-digest", help="Optional expected managed-write plan digest."),
+    ] = "",
+    expected_checkpoint_hash: Annotated[
+        str,
+        typer.Option("--expected-checkpoint-hash", help="Optional expected latest evidence checkpoint hash."),
+    ] = "",
+    write_approval_id: Annotated[
+        str,
+        typer.Option("--write-approval-id", help="Optional human write approval resolution ID for --no-dry-run."),
+    ] = "",
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the shadow managed-write report as JSON."),
+    ] = False,
+) -> None:
+    try:
+        report = build_shadow_managed_write_report(
+            candidate_id,
+            runs_dir=runs_dir,
+            skills_dir=skills_dir,
+            dry_run=dry_run,
+            managed_prefix=managed_prefix,
+            acceptance_prefix=acceptance_prefix,
+            profile_name=profile_name,
+            collision_policy=collision_policy,
+            permission_approval_id=permission_approval_id or None,
+            plan_approval_id=plan_approval_id or None,
+            expected_source_sha256=expected_source_sha256 or None,
+            expected_durable_plan_digest=expected_durable_plan_digest or None,
+            expected_shadow_plan_digest=expected_shadow_plan_digest or None,
+            expected_rollback_plan_digest=expected_rollback_plan_digest or None,
+            expected_acceptance_plan_digest=expected_acceptance_plan_digest or None,
+            expected_managed_write_plan_digest=expected_managed_write_plan_digest or None,
+            expected_checkpoint_hash=expected_checkpoint_hash or None,
+            write_approval_id=write_approval_id or None,
+        )
+    except ShadowActivationPlanError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(code=1) from exc
+
+    if json_output:
+        emit_shadow_managed_write_json(report)
+    else:
+        emit_shadow_managed_write_output(report)
 
 
 @app.command("promote-candidate")

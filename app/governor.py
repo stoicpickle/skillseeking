@@ -68,4 +68,6 @@ def _reversibility(decision: RouteDecision) -> Reversibility:
         return "reversible"
     if decision.risk_level == "medium":
         return "partially_reversible"
+    if decision.risk_level == "high":
+        return "unknown"
     return "unknown"

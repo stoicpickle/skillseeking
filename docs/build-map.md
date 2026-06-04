@@ -477,10 +477,12 @@ Slices:
 | Generation rollback harness | complete | `skill-agent shadow-rollback-plan` verifies existing profile pointer/generation rollback evidence and reports blockers without creating generations, switching profiles, or mutating ledgers |
 | Managed-prefix activation acceptance harness | complete | `skill-agent shadow-activation-acceptance --prepare-acceptance-evidence` exercises store/generation copy, pointer switch, rollback, interrupted-pointer recovery, and conflict blocking only inside a run-scoped acceptance prefix |
 | Human write-gate verifier | complete | `skill-agent shadow-write-gate` verifies unchanged source hash, prepared acceptance store/generation copies, restored rollback pointer, rollback marker, and exact acceptance digest without writing |
+| Human-approved managed-prefix write mode | complete | `skill-agent shadow-managed-write` materializes only the proven shadow managed-prefix store/generation/pointer/receipt write after exact digest/hash/checkpoint matches and a separate `managed_write_plan_digest` approval |
 | Roadmap checkpoint docs | complete | README and operating roadmap distinguish local testing readiness from production readiness |
 
 Boundaries:
 
+- Human-approved managed-prefix write mode is distinct from durable candidate copy/install into `skills/`.
 - No durable candidate copy/install workflow is introduced.
 - `ready_for_durable_review` remains review evidence, not admission to `skills/`.
-- Active governor steering, stable promotion, permission widening, and true sandboxing remain future work.
+- Stable routing, active governor steering, registry/ledger mutation, permission widening, and true sandboxing remain future work.

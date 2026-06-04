@@ -85,6 +85,12 @@ Durable admission planning:
 - It can report `ready_for_durable_review`, but this does not copy files into `skills/`, install a durable skill, or promote the ledger entry to `stable`.
 - It blocks admission review when evidence is missing, source validation fails, permissions widen, scripts appear, or a same-name durable skill already exists.
 
+Managed-prefix activation:
+
+- `skill-agent shadow-managed-write` can perform a human-approved write only inside the configured shadow managed prefix after receipt, checkpoint, shadow write-gate, exact digest/hash, and separate write-approval checks pass.
+- The write is limited to the managed store file, profile generation `SKILL.md`, profile pointer, and managed-prefix-local write receipt.
+- Managed-prefix activation is not candidate-to-stable promotion, durable `skills/` admission, registry mutation, candidate/resolution ledger mutation, permission widening, stable routing, or governor steering.
+
 Any state to blocked:
 
 - Prompt injection or malicious instructions detected.

@@ -19,6 +19,7 @@ from app.models import (
     ScriptExecutionLog,
     ShadowActivationAcceptanceReport,
     ShadowActivationPlanReport,
+    ShadowManagedWriteReport,
     ShadowRollbackPlanReport,
     ShadowWriteGateReport,
     SkillCandidateLedger,
@@ -797,6 +798,165 @@ def emit_shadow_write_gate_output(report: ShadowWriteGateReport) -> None:
     )
     typer.echo(
         f"Resolution ledger mutated: {str(report.resolution_ledger_mutated).lower()}"
+    )
+    typer.echo(f"Durable skills mutated: {str(report.durable_skills_mutated).lower()}")
+    typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
+    typer.echo(
+        f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}"
+    )
+
+    typer.echo("")
+    typer.echo("NEXT_STEPS")
+    _emit_string_items(report.next_steps)
+
+
+def emit_shadow_managed_write_json(report: ShadowManagedWriteReport) -> None:
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_shadow_managed_write_output(report: ShadowManagedWriteReport) -> None:
+    typer.echo("SHADOW_MANAGED_WRITE")
+    typer.echo(f"Candidate: {report.candidate_id}")
+    typer.echo(f"Skill: {report.skill_name or '-'}")
+    typer.echo(f"Outcome: {report.outcome}")
+    typer.echo(
+        "Ready for managed-prefix write: "
+        f"{str(report.ready_for_managed_prefix_write).lower()}"
+    )
+    typer.echo(f"Dry run: {str(report.dry_run).lower()}")
+    typer.echo(f"Mutation supported: {str(report.mutation_supported).lower()}")
+
+    typer.echo("")
+    typer.echo("PREFIXES")
+    typer.echo(f"Managed prefix: {report.managed_prefix}")
+    typer.echo(f"Acceptance prefix: {report.acceptance_prefix}")
+    typer.echo(f"Profile: {report.profile_name}")
+
+    typer.echo("")
+    typer.echo("PATHS")
+    typer.echo(f"Source SKILL.md: {report.source_skill_path or '-'}")
+    typer.echo(f"Store SKILL.md: {report.store_skill_path or '-'}")
+    typer.echo(f"Generation SKILL.md: {report.generation_skill_path or '-'}")
+    typer.echo(f"Activation pointer: {report.activation_pointer or '-'}")
+    typer.echo(f"Activation pointer target: {report.activation_pointer_target or '-'}")
+    typer.echo(f"Rollback target: {report.rollback_target or '-'}")
+    typer.echo(f"Write receipt: {report.write_receipt_path or '-'}")
+
+    typer.echo("")
+    typer.echo("DIGESTS")
+    typer.echo(f"Source sha256: {report.source_sha256 or '-'}")
+    typer.echo(f"Durable plan digest: {report.durable_plan_digest or '-'}")
+    typer.echo(f"Shadow plan digest: {report.shadow_plan_digest or '-'}")
+    typer.echo(f"Rollback plan digest: {report.rollback_plan_digest or '-'}")
+    typer.echo(f"Acceptance plan digest: {report.acceptance_plan_digest or '-'}")
+    typer.echo(
+        "Managed write plan digest: "
+        f"{report.managed_write_plan_digest or '-'}"
+    )
+    typer.echo(f"Latest checkpoint hash: {report.latest_checkpoint_hash or '-'}")
+
+    typer.echo("")
+    typer.echo("EXPECTED_MATCHES")
+    typer.echo(
+        "Expected source sha256 verified: "
+        f"{str(report.expected_source_sha256_verified).lower()}"
+    )
+    typer.echo(
+        "Durable plan digest verified: "
+        f"{str(report.durable_plan_digest_verified).lower()}"
+    )
+    typer.echo(
+        "Shadow plan digest verified: "
+        f"{str(report.shadow_plan_digest_verified).lower()}"
+    )
+    typer.echo(
+        "Rollback plan digest verified: "
+        f"{str(report.rollback_plan_digest_verified).lower()}"
+    )
+    typer.echo(
+        "Acceptance plan digest verified: "
+        f"{str(report.acceptance_plan_digest_verified).lower()}"
+    )
+    typer.echo(
+        "Managed write plan digest verified: "
+        f"{str(report.managed_write_plan_digest_verified).lower()}"
+    )
+    typer.echo(
+        f"Checkpoint hash verified: {str(report.checkpoint_hash_verified).lower()}"
+    )
+    typer.echo(
+        "Exact expected values verified: "
+        f"{str(report.exact_expected_values_verified).lower()}"
+    )
+
+    typer.echo("")
+    typer.echo("STATUS")
+    typer.echo(f"Source hash verified: {str(report.source_hash_verified).lower()}")
+    typer.echo(f"Receipt acceptable: {str(report.receipt_acceptable).lower()}")
+    typer.echo(
+        "Receipt reversibility accepted: "
+        f"{str(report.receipt_reversibility_accepted).lower()}"
+    )
+    typer.echo(f"Checkpoint verified: {str(report.checkpoint_verified).lower()}")
+    typer.echo(f"Shadow write gate ready: {str(report.shadow_write_gate_ready).lower()}")
+    typer.echo(f"Rollback ready: {str(report.rollback_ready).lower()}")
+    typer.echo(f"Store verified: {str(report.store_verified).lower()}")
+    typer.echo(f"Generation verified: {str(report.generation_verified).lower()}")
+    typer.echo(
+        "Activation pointer updated: "
+        f"{str(report.activation_pointer_updated).lower()}"
+    )
+    typer.echo(
+        "Activation pointer verified: "
+        f"{str(report.activation_pointer_verified).lower()}"
+    )
+    typer.echo(
+        "Rollback target verified: "
+        f"{str(report.rollback_target_verified).lower()}"
+    )
+    typer.echo(f"Already applied: {str(report.already_applied).lower()}")
+    typer.echo(
+        "Interrupted activation recovered: "
+        f"{str(report.interrupted_activation_recovered).lower()}"
+    )
+    typer.echo(f"Write approval id: {report.write_approval_id or '-'}")
+    typer.echo(f"Write approval digest: {report.write_approval_digest or '-'}")
+    typer.echo(f"Write approval expires at: {report.write_approval_expires_at or '-'}")
+    typer.echo(f"Write approval present: {str(report.write_approval_present).lower()}")
+    typer.echo(f"Write approval verified: {str(report.write_approval_verified).lower()}")
+
+    typer.echo("")
+    typer.echo("POLICIES")
+    typer.echo(f"Managed-prefix write policy: {report.managed_prefix_write_policy}")
+    typer.echo(f"Profile activation policy: {report.profile_activation_policy}")
+    typer.echo(f"Rollback policy: {report.rollback_policy}")
+    typer.echo(f"Stable routing policy: {report.stable_routing_policy}")
+    typer.echo(f"Governor policy: {report.governor_policy}")
+
+    typer.echo("")
+    typer.echo("BLOCKERS")
+    _emit_string_items(report.blockers)
+
+    typer.echo("")
+    typer.echo("WARNINGS")
+    _emit_string_items(report.warnings)
+
+    typer.echo("")
+    typer.echo("MUTATION_BOUNDARY")
+    typer.echo(
+        f"Acceptance prefix mutated: {str(report.acceptance_prefix_mutated).lower()}"
+    )
+    typer.echo(f"Managed prefix mutated: {str(report.managed_prefix_mutated).lower()}")
+    typer.echo(f"Profile mutated: {str(report.profile_mutated).lower()}")
+    typer.echo(f"Run logs mutated: {str(report.run_logs_mutated).lower()}")
+    typer.echo(
+        f"Candidate ledger mutated: {str(report.candidate_ledger_mutated).lower()}"
+    )
+    typer.echo(
+        f"Resolution ledger mutated: {str(report.resolution_ledger_mutated).lower()}"
+    )
+    typer.echo(
+        f"Checkpoint ledger mutated: {str(report.checkpoint_ledger_mutated).lower()}"
     )
     typer.echo(f"Durable skills mutated: {str(report.durable_skills_mutated).lower()}")
     typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")

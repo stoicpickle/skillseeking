@@ -953,16 +953,19 @@ def _input_request_expectation_issues(
         issues.append("expected input request")
         return issues
 
+    matching_requests = input_requests
     expected_kind = expected.get("input_request_kind")
-    if expected_kind and not any(
-        request.get("kind") == expected_kind for request in input_requests
-    ):
-        kinds = sorted({str(request.get("kind")) for request in input_requests})
-        issues.append(f"expected input request kind {expected_kind}, got {kinds or '-'}")
+    if expected_kind:
+        matching_requests = [
+            request for request in input_requests if request.get("kind") == expected_kind
+        ]
+        if not matching_requests:
+            kinds = sorted({str(request.get("kind")) for request in input_requests})
+            issues.append(f"expected input request kind {expected_kind}, got {kinds or '-'}")
 
     expected_status = expected.get("input_request_status")
     if expected_status and not any(
-        request.get("status") == expected_status for request in input_requests
+        request.get("status") == expected_status for request in matching_requests
     ):
         statuses = sorted({str(request.get("status")) for request in input_requests})
         issues.append(
