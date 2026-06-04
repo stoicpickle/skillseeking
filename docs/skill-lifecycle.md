@@ -67,6 +67,7 @@ Temporary to candidate:
 
 - Requires an explicit human promotion workflow; run artifacts are never scanned as durable registry entries by default.
 - The first workflow records reviewer and notes approval in the ledger only; it does not copy, install, admit, route, or score a durable skill.
+- Dependency evidence from `admit-candidate --dry-run` is no-write review evidence only; it is not durable admission, candidate-to-stable promotion, stable routing, dependency installation, registry mutation, ledger mutation, or governor steering.
 - Used successfully at least once for the initial ledger-candidate slice; later durable admission should raise this to repeated successful use.
 - Human correction rate is acceptable.
 - No unresolved safety flags, block/quarantine reasons, duplicate flags, validation failures, or repair requirements.

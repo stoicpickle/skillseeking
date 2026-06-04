@@ -20,7 +20,7 @@ from app.models import (
 )
 from app.planner import plan_task
 from app.registry import SkillRegistry
-from app.run_log import new_run_id, write_run_log
+from app.run_log import new_run_id, rewrite_run_log, write_run_log
 from app.skill_candidate_ledger import record_run_in_candidate_ledger
 from app.skill_repairer import create_skill_repair_request
 from app.script_executor import execute_scripted_skill
@@ -400,7 +400,7 @@ def run_task(
         )
         run_log.trace = trace
         run_log.trace_events = trace_events
-        path = write_run_log(run_log, runs_dir)
+        path = rewrite_run_log(path, run_log)
     return AgentRunResult(run_log=run_log, run_log_path=path, exit_code=exit_code)
 
 

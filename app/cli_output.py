@@ -1038,6 +1038,47 @@ def emit_durable_admission_preview_output(report: DurableAdmissionPreviewReport)
         "  Exact dependency realization: "
         f"{str(diff.dependency_diff.exact_realization_available).lower()}"
     )
+    contract = report.write_plan.dependency_install_contract
+    typer.echo("Dependency install contract:")
+    typer.echo(f"  Policy: {contract.policy}")
+    typer.echo(f"  Dependency plan digest: {contract.dependency_plan_digest or '-'}")
+    typer.echo(
+        "  Expected dependency plan digest: "
+        f"{contract.expected_dependency_plan_digest or '-'}"
+    )
+    typer.echo(
+        "  Dependency plan digest verified: "
+        f"{str(contract.dependency_plan_digest_verified).lower()}"
+    )
+    typer.echo(
+        "  Prepare dependency evidence: "
+        f"{str(contract.prepare_dependency_evidence).lower()}"
+    )
+    typer.echo(f"  Evidence manifest: {contract.evidence_manifest_path or '-'}")
+    typer.echo(f"  Evidence manifest sha256: {contract.evidence_manifest_sha256 or '-'}")
+    typer.echo(
+        "  Evidence manifest created: "
+        f"{str(contract.evidence_manifest_created).lower()}"
+    )
+    typer.echo(
+        "  Evidence manifest retained: "
+        f"{str(contract.evidence_manifest_retained).lower()}"
+    )
+    typer.echo(f"  Dependency approval ID: {contract.dependency_approval_id or '-'}")
+    typer.echo(f"  Dependency approval digest: {contract.dependency_approval_digest or '-'}")
+    typer.echo(
+        "  Dependency approval expires at: "
+        f"{contract.dependency_approval_expires_at or '-'}"
+    )
+    typer.echo(
+        "  Dependency approval verified: "
+        f"{str(contract.dependency_approval_verified).lower()}"
+    )
+    typer.echo(f"  Install supported: {str(contract.install_supported).lower()}")
+    typer.echo(f"  Install attempted: {str(contract.install_attempted).lower()}")
+    typer.echo(f"  Dependencies installed: {str(contract.dependencies_installed).lower()}")
+    typer.echo("  Dependency blockers:")
+    _emit_string_items(contract.blockers)
     typer.echo(f"Replacement approved: {str(report.write_plan.replacement_approved).lower()}")
     typer.echo(
         "Permission widening approved: "

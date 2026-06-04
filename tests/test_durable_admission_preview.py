@@ -309,6 +309,26 @@ def test_durable_admission_preview_blocks_dependency_declaration_without_realiza
     assert dependency_diff.realized == []
     assert dependency_diff.unresolved == ["example-package"]
     assert "dependency_realization_missing" in dependency_diff.blockers
+    contract = preview.write_plan.dependency_install_contract
+    assert contract.dependency_plan_digest
+    assert contract.install_supported is False
+    assert contract.install_attempted is False
+    assert contract.dependencies_installed is False
+    assert contract.normalized_dependencies[0].model_dump(mode="json") == {
+        "name": "example-package",
+        "declaration_keys": ["dependencies"],
+        "declaration_sources": ["dependencies"],
+        "declared_spec": "example-package==1.0.0",
+        "declared_version": "1.0.0",
+        "declared_specs": ["example-package==1.0.0"],
+        "declared_versions": ["1.0.0"],
+        "realization_version": None,
+        "realization_sha256": None,
+        "realization_candidates": [],
+        "status": "unresolved",
+        "warnings": [],
+    }
+    assert "dependency_realization_missing" in contract.blockers
     assert "dependency_realization_missing" in preview.write_plan.blockers
     assert _snapshot_tree(copied_seed_skills) == durable_before
     assert _snapshot_tree(runs_dir) == runs_before
@@ -379,9 +399,266 @@ def test_durable_admission_preview_recognizes_exact_dependency_realization_but_b
     assert dependency_diff.unresolved == []
     assert "dependency_realization_missing" not in dependency_diff.blockers
     assert "dependency_install_unsupported" in dependency_diff.blockers
+    contract = preview.write_plan.dependency_install_contract
+    assert contract.normalized_dependencies[0].status == "exact_realized"
+    assert contract.normalized_dependencies[0].realization_version == "1.0.0"
+    assert (
+        contract.normalized_dependencies[0].realization_sha256
+        == "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    )
+    assert "dependency_install_unsupported" in contract.blockers
+    assert contract.dependency_approval_verified is False
     assert "dependency_install_unsupported" in preview.write_plan.blockers
     assert _snapshot_tree(copied_seed_skills) == durable_before
     assert _snapshot_tree(runs_dir) == runs_before
+
+
+def test_dependency_plan_digest_changes_when_dependency_details_change(
+    copied_seed_skills,
+    tmp_path,
+):
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path = _promoted_candidate(copied_seed_skills, runs_dir)
+    _append_dependency_declaration(source_path)
+
+    first = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+    )
+    first_digest = first.write_plan.dependency_install_contract.dependency_plan_digest
+    text = source_path.read_text(encoding="utf-8")
+    source_path.write_text(
+        text.replace("example-package==1.0.0", "example-package==2.0.0", 1),
+        encoding="utf-8",
+    )
+    second = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+    )
+    second_digest = second.write_plan.dependency_install_contract.dependency_plan_digest
+    text = source_path.read_text(encoding="utf-8")
+    source_path.write_text(
+        text.replace(
+            "dependencies:\n  - example-package==2.0.0\n---",
+            "dependencies:\n  - example-package==2.0.0\n"
+            "dependency_realization:\n"
+            "  - name: example-package\n"
+            "    version: 2.0.0\n"
+            "    sha256: fedcba9876543210fedcba9876543210fedcba9876543210fedcba9876543210\n"
+            "---",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    third = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+    )
+
+    assert first_digest
+    assert second_digest
+    assert third.write_plan.dependency_install_contract.dependency_plan_digest
+    assert second_digest != first_digest
+    assert third.write_plan.dependency_install_contract.dependency_plan_digest != second_digest
+
+
+
+def test_dependency_plan_digest_changes_when_non_first_conflicting_spec_changes(
+    copied_seed_skills,
+    tmp_path,
+):
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path = _promoted_candidate(copied_seed_skills, runs_dir)
+    _append_dependency_declaration(source_path)
+    text = source_path.read_text(encoding="utf-8")
+    source_path.write_text(
+        text.replace(
+            "dependencies:\n  - example-package==1.0.0\n---",
+            "dependencies:\n  - example-package==1.0.0\n  - example-package==2.0.0\n---",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    first = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+    )
+    first_contract = first.write_plan.dependency_install_contract
+    source_path.write_text(
+        source_path.read_text(encoding="utf-8").replace(
+            "example-package==2.0.0",
+            "example-package==3.0.0",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    second = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+    )
+    second_contract = second.write_plan.dependency_install_contract
+
+    assert first_contract.normalized_dependencies[0].declared_specs == [
+        "example-package==1.0.0",
+        "example-package==2.0.0",
+    ]
+    assert "dependency_declaration_conflict" in first_contract.normalized_dependencies[0].warnings
+    assert second_contract.normalized_dependencies[0].declared_specs == [
+        "example-package==1.0.0",
+        "example-package==3.0.0",
+    ]
+    assert second_contract.dependency_plan_digest != first_contract.dependency_plan_digest
+
+
+def test_dependency_plan_digest_changes_when_non_selected_realization_changes(
+    copied_seed_skills,
+    tmp_path,
+):
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path = _promoted_candidate(copied_seed_skills, runs_dir)
+    _append_dependency_declaration(source_path, exact=True)
+    text = source_path.read_text(encoding="utf-8")
+    source_path.write_text(
+        text.replace(
+            "dependency_realization:\n"
+            "  - name: example-package\n"
+            "    version: 1.0.0\n"
+            "    sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n",
+            "dependency_realization:\n"
+            "  - name: example-package\n"
+            "    version: 1.0.0\n"
+            "    sha256: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef\n"
+            "  - name: example-package\n"
+            "    version: 1.0.0\n"
+            "    sha256: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    first = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+    )
+    first_contract = first.write_plan.dependency_install_contract
+    source_path.write_text(
+        source_path.read_text(encoding="utf-8").replace(
+            "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+            "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+            1,
+        ),
+        encoding="utf-8",
+    )
+    second = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+    )
+    second_contract = second.write_plan.dependency_install_contract
+
+    assert len(first_contract.normalized_dependencies[0].realization_candidates) == 2
+    assert len(second_contract.normalized_dependencies[0].realization_candidates) == 2
+    assert second_contract.dependency_plan_digest != first_contract.dependency_plan_digest
+
+def test_dependency_approval_is_evidence_only_and_digest_bound(
+    copied_seed_skills,
+    tmp_path,
+):
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path = _promoted_candidate(copied_seed_skills, runs_dir)
+    _append_dependency_declaration(source_path, exact=True)
+    initial = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+    )
+    digest = initial.write_plan.dependency_install_contract.dependency_plan_digest
+    assert digest is not None
+    approval_id = _append_dependency_approval_record(
+        candidate_id,
+        runs_dir,
+        dependency_plan_digest=digest,
+    )
+
+    preview = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        dependency_approval_id=approval_id,
+    )
+
+    contract = preview.write_plan.dependency_install_contract
+    assert contract.dependency_approval_verified is True
+    assert contract.dependency_approval_id == approval_id
+    assert contract.dependency_approval_digest == digest
+    assert "dependency_install_unsupported" in contract.blockers
+    assert "dependency_install_unsupported" in preview.write_plan.blockers
+    assert contract.install_supported is False
+    assert contract.install_attempted is False
+    assert contract.dependencies_installed is False
+
+
+def test_dependency_approval_rejects_mismatched_and_expired_records(
+    copied_seed_skills,
+    tmp_path,
+):
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path = _promoted_candidate(copied_seed_skills, runs_dir)
+    _append_dependency_declaration(source_path, exact=True)
+    mismatch_id = _append_dependency_approval_record(
+        candidate_id,
+        runs_dir,
+        dependency_plan_digest="0" * 64,
+    )
+    initial = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+    )
+    assert initial.write_plan.dependency_install_contract.dependency_plan_digest
+    expired_id = _append_dependency_approval_record(
+        candidate_id,
+        runs_dir,
+        dependency_plan_digest=initial.write_plan.dependency_install_contract.dependency_plan_digest,
+        expires_at="2000-01-01T00:00:00Z",
+    )
+    missing_expiry_id = _append_dependency_approval_record(
+        candidate_id,
+        runs_dir,
+        dependency_plan_digest=initial.write_plan.dependency_install_contract.dependency_plan_digest,
+        expires_at=None,
+    )
+
+    mismatch = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        dependency_approval_id=mismatch_id,
+    )
+    expired = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        dependency_approval_id=expired_id,
+    )
+    missing_expiry = build_durable_admission_preview(
+        candidate_id,
+        runs_dir=runs_dir,
+        skills_dir=copied_seed_skills,
+        dependency_approval_id=missing_expiry_id,
+    )
+
+    assert mismatch.write_plan.dependency_install_contract.dependency_approval_verified is False
+    assert "dependency_plan_approval_mismatch" in mismatch.write_plan.blockers
+    assert expired.write_plan.dependency_install_contract.dependency_approval_verified is False
+    assert "dependency_plan_approval_expired" in expired.write_plan.blockers
+    assert missing_expiry.write_plan.dependency_install_contract.dependency_approval_verified is False
+    assert "dependency_plan_approval_expiry_missing" in missing_expiry.write_plan.blockers
 
 
 def test_durable_admission_preview_rejects_mismatched_plan_digest_approval(
@@ -505,6 +782,10 @@ def test_admit_candidate_cli_outputs_preview_and_rejects_write_mode(
     assert "Operation: blocked" in text_result.stdout
     assert "Plan digest:" in text_result.stdout
     assert "Plan approval verified: false" in text_result.stdout
+    assert "Dependency install contract:" in text_result.stdout
+    assert "Dependency plan digest:" in text_result.stdout
+    assert "Install supported: false" in text_result.stdout
+    assert "Dependencies installed: false" in text_result.stdout
     assert "Mutation supported: false" in text_result.stdout
     assert "Resolution ledger mutated: false" in text_result.stdout
     assert "durable_review_resolution_missing" in text_result.stdout
@@ -623,6 +904,45 @@ def _append_plan_approval_record(
         notes=_approval_notes(plan_digest, expires_at),
         request=request,
         remaining_blocked_scope="durable skill install/copy",
+        next_steps=["Rerun admit-candidate --dry-run."],
+    )
+    record = append_input_request_resolution(report, runs_dir)
+    return record.id
+
+
+def _append_dependency_approval_record(
+    candidate_id: str,
+    runs_dir: Path,
+    *,
+    dependency_plan_digest: str | None,
+    expires_at: str | None = "2099-01-01T00:00:00Z",
+) -> str:
+    request = InputRequest(
+        id=f"inputreq_dependency_plan_{candidate_id}_{len(_snapshot_tree(runs_dir))}",
+        kind="durable_admission_review",
+        title=f"Approve dependency evidence for {candidate_id}",
+        reason="Test fixture approval for exact dependency plan digest.",
+        blocked_scope="dependency evidence review only",
+        requested_decision="Approve the exact dependency plan digest or defer.",
+        options=["approve_review", "defer"],
+        recommended_option="approve_review",
+        related_candidate_id=candidate_id,
+    )
+    notes = "Reviewed no-write dependency evidence."
+    if dependency_plan_digest:
+        notes = f"{notes} dependency_plan_digest={dependency_plan_digest}"
+        if expires_at is not None:
+            notes = f"{notes} expires_at={expires_at}"
+    report = InputRequestResolutionDryRun(
+        dry_run=True,
+        input_request_id=request.id,
+        decision="approve_review",
+        resolution_class="approve",
+        proposed_status="resolved",
+        reviewer="Ada",
+        notes=notes,
+        request=request,
+        remaining_blocked_scope="dependency install remains unsupported",
         next_steps=["Rerun admit-candidate --dry-run."],
     )
     record = append_input_request_resolution(report, runs_dir)

@@ -16,6 +16,11 @@ def write_run_log(run_log: RunLog, runs_dir: Path) -> Path:
     timestamp = run_log.created_at.strftime("%Y%m%d_%H%M%S")
     run_id = _filename_safe_run_id(run_log.run_id)
     path = runs_dir / f"run_{timestamp}_{run_id}.json"
+    return rewrite_run_log(path, run_log)
+
+
+def rewrite_run_log(path: Path, run_log: RunLog) -> Path:
+    path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_suffix(".tmp")
     tmp_path.write_text(
         json.dumps(run_log.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",

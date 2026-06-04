@@ -15,10 +15,12 @@ from app.input_resolution_ledger import (
     load_input_request_resolution_ledger,
 )
 from app.models import (
+    AdmissionDependencyDiff,
+    AdmissionDependencyInstallContract,
+    AdmissionDependencyInstallItem,
     AdmissionPlanReport,
     AdmissionPermissionDependencyDiff,
     AdmissionPermissionDiffItem,
-    AdmissionDependencyDiff,
     AdmissionSourceArtifact,
     DurableAdmissionPreviewOutcome,
     DurableAdmissionPreviewReport,
@@ -41,6 +43,26 @@ APPROVAL_BLOCKERS: set[str] = {
     "plan_digest_approval_expired",
 }
 
+DEPENDENCY_EVIDENCE_UNSAFE_ADMISSION_BLOCKERS: set[str] = {
+    "candidate_blocked",
+    "candidate_duplicate",
+    "candidate_quarantined",
+    "candidate_repair_required",
+    "candidate_temporary_use_missing",
+    "candidate_validation_failures",
+    "candidate_validation_pass_missing",
+    "evidence_run_log_missing",
+    "matching_request_missing",
+    "promotion_approval_missing",
+    "source_path_outside_runs",
+    "source_permission_widening",
+    "source_scripted_unsupported",
+    "source_skill_missing",
+    "source_skill_parse_failed",
+    "source_skill_path_missing",
+    "source_validation_failed",
+}
+
 
 def build_durable_admission_preview(
     candidate_id: str,
@@ -53,6 +75,9 @@ def build_durable_admission_preview(
     plan_approval_id: str | None = None,
     prepare_write_evidence: bool = False,
     expected_source_sha256: str | None = None,
+    prepare_dependency_evidence: bool = False,
+    expected_dependency_plan_digest: str | None = None,
+    dependency_approval_id: str | None = None,
 ) -> DurableAdmissionPreviewReport:
     if not dry_run:
         raise AdmissionPlanError(
@@ -70,7 +95,11 @@ def build_durable_admission_preview(
         skills_dir=skills_dir,
     )
     source_path = _selected_source_path(admission_plan)
-    source_sha256 = _sha256(source_path) if source_path is not None else None
+    source_sha256 = (
+        _sha256(source_path)
+        if source_path is not None and _source_hashing_allowed(admission_plan)
+        else None
+    )
     target_dir, target_path = _target_paths(admission_plan, skills_dir)
     snapshot_dir, snapshot_path = _snapshot_paths(candidate_id, source_sha256, runs_dir)
     destination_stage_dir, destination_stage_path = _destination_stage_paths(
@@ -123,7 +152,21 @@ def build_durable_admission_preview(
         and _has_permission_approval_resolution(permission_approval_id, runs_dir)
     )
     permission_dependency_diff = _permission_dependency_diff(admission_plan)
+    dependency_install_contract = _dependency_install_contract(
+        admission_plan=admission_plan,
+        candidate_id=candidate_id,
+        source_path=source_path,
+        source_sha256=source_sha256,
+        target_path=target_path,
+        runs_dir=runs_dir,
+        dependency_diff=permission_dependency_diff.dependency_diff,
+        prepare_dependency_evidence=prepare_dependency_evidence,
+        expected_dependency_plan_digest=expected_dependency_plan_digest,
+        expected_source_sha256=expected_source_sha256,
+        dependency_approval_id=dependency_approval_id,
+    )
     write_blockers.extend(permission_dependency_diff.blockers)
+    write_blockers.extend(dependency_install_contract.blockers)
 
     if replacement_approved:
         write_blockers = [
@@ -176,8 +219,12 @@ def build_durable_admission_preview(
         permission_approval_id=permission_approval_id,
         permission_dependency_diff=permission_dependency_diff,
         permission_widening=permission_widening,
+        dependency_install_contract=dependency_install_contract,
         prepare_write_evidence=prepare_write_evidence,
         expected_source_sha256=expected_source_sha256,
+        prepare_dependency_evidence=prepare_dependency_evidence,
+        expected_dependency_plan_digest=expected_dependency_plan_digest,
+        dependency_approval_id=dependency_approval_id,
     )
     plan_approval = _find_plan_approval_resolution(
         plan_digest=plan_digest,
@@ -228,6 +275,7 @@ def build_durable_admission_preview(
         collision_policy=collision_policy,
         permission_approval_id=permission_approval_id,
         permission_dependency_diff=permission_dependency_diff,
+        dependency_install_contract=dependency_install_contract,
         replacement_approved=replacement_approved,
         permission_widening_approved=permission_widening_approved,
         blockers=write_blockers,
@@ -258,6 +306,10 @@ def _selected_source_path(report: AdmissionPlanReport) -> Path | None:
         return None
     path = Path(report.selected_source_artifact)
     return path if path.exists() else None
+
+
+def _source_hashing_allowed(report: AdmissionPlanReport) -> bool:
+    return "source_path_outside_runs" not in report.blockers
 
 
 def _target_paths(
@@ -462,6 +514,509 @@ def _realized_dependency_names(declarations: dict[str, Any]) -> list[str]:
     return []
 
 
+def _dependency_install_contract(
+    *,
+    admission_plan: AdmissionPlanReport,
+    candidate_id: str,
+    source_path: Path | None,
+    source_sha256: str | None,
+    target_path: Path | None,
+    runs_dir: Path,
+    dependency_diff: AdmissionDependencyDiff,
+    prepare_dependency_evidence: bool,
+    expected_dependency_plan_digest: str | None,
+    expected_source_sha256: str | None,
+    dependency_approval_id: str | None,
+) -> AdmissionDependencyInstallContract:
+    source = _selected_source_artifact(admission_plan)
+    declarations = source.dependency_declarations if source is not None else {}
+    normalized_dependencies = _normalized_dependency_items(declarations, dependency_diff)
+    manifest_path, manifest_path_blocker = _dependency_evidence_manifest_path(
+        candidate_id,
+        source_sha256,
+        runs_dir,
+    )
+    dependency_plan_digest = _dependency_plan_digest(
+        candidate_id=candidate_id,
+        source_path=source_path,
+        source_sha256=source_sha256,
+        target_path=target_path,
+        manifest_path=manifest_path,
+        normalized_dependencies=normalized_dependencies,
+    )
+    blockers = list(dependency_diff.blockers)
+    warnings = list(dependency_diff.warnings)
+    unsafe_admission_blockers = _dependency_evidence_unsafe_admission_blockers(
+        admission_plan.blockers
+    )
+    if manifest_path_blocker is not None:
+        blockers.append(manifest_path_blocker)
+    if prepare_dependency_evidence:
+        blockers.extend(unsafe_admission_blockers)
+    digest_verified = bool(
+        expected_dependency_plan_digest is not None
+        and expected_dependency_plan_digest == dependency_plan_digest
+    )
+    if (
+        expected_dependency_plan_digest is not None
+        and expected_dependency_plan_digest != dependency_plan_digest
+    ):
+        blockers.append("dependency_plan_digest_mismatch")
+    if (
+        prepare_dependency_evidence
+        and expected_source_sha256 is not None
+        and expected_source_sha256 != source_sha256
+    ):
+        blockers.append("source_hash_mismatch")
+
+    approval = _find_dependency_approval_resolution(
+        dependency_plan_digest=dependency_plan_digest,
+        candidate_id=candidate_id,
+        runs_dir=runs_dir,
+        dependency_approval_id=dependency_approval_id,
+    )
+    if dependency_approval_id and not approval.verified:
+        blockers.append(approval.blocker)
+
+    manifest_sha256: str | None = None
+    manifest_created = False
+    manifest_retained = False
+    write_preventing_blockers = {
+        "dependency_evidence_manifest_path_escape",
+        "dependency_plan_digest_mismatch",
+        "source_hash_mismatch",
+        "source_skill_missing",
+        *unsafe_admission_blockers,
+    }
+    if prepare_dependency_evidence and not (set(blockers) & write_preventing_blockers):
+        evidence_blockers, manifest_sha256, manifest_created, manifest_retained = (
+            _prepare_dependency_evidence_manifest(
+                candidate_id=candidate_id,
+                source_path=source_path,
+                source_sha256=source_sha256,
+                target_path=target_path,
+                manifest_path=manifest_path,
+                runs_dir=runs_dir,
+                normalized_dependencies=normalized_dependencies,
+                dependency_blockers=dependency_diff.blockers,
+                dependency_plan_digest=dependency_plan_digest,
+            )
+        )
+        blockers.extend(evidence_blockers)
+    return AdmissionDependencyInstallContract(
+        dependency_plan_digest=dependency_plan_digest,
+        expected_dependency_plan_digest=expected_dependency_plan_digest,
+        dependency_plan_digest_verified=digest_verified,
+        prepare_dependency_evidence=prepare_dependency_evidence,
+        evidence_manifest_path=str(manifest_path) if manifest_path is not None else None,
+        evidence_manifest_sha256=manifest_sha256,
+        evidence_manifest_created=manifest_created,
+        evidence_manifest_retained=manifest_retained,
+        dependency_approval_id=approval.resolution_id,
+        dependency_approval_digest=approval.digest,
+        dependency_approval_expires_at=approval.expires_at,
+        dependency_approval_verified=approval.verified,
+        normalized_dependencies=normalized_dependencies,
+        blockers=_unique(blockers),
+        warnings=_unique(warnings),
+    )
+
+
+def _normalized_dependency_items(
+    declarations: dict[str, Any],
+    dependency_diff: AdmissionDependencyDiff,
+) -> list[AdmissionDependencyInstallItem]:
+    records: dict[str, dict[str, Any]] = {}
+    for key in ["dependencies", "requirements", "packages"]:
+        _collect_dependency_records(records, key, key, declarations.get(key))
+    lock_value = declarations.get("dependency_lock")
+    if isinstance(lock_value, dict):
+        for key in ["dependencies", "packages"]:
+            _collect_dependency_records(
+                records,
+                "dependency_lock",
+                f"dependency_lock.{key}",
+                lock_value.get(key),
+            )
+    _collect_realization_records(records, declarations.get("dependency_realization"))
+
+    realized = set(dependency_diff.realized)
+    items: list[AdmissionDependencyInstallItem] = []
+    for name in sorted(records):
+        record = records[name]
+        specs = sorted(record["declared_specs"])
+        versions = sorted(record["declared_versions"])
+        warnings: list[str] = []
+        if len(specs) > 1 or len(versions) > 1:
+            warnings.append("dependency_declaration_conflict")
+        realization_candidates = [
+            {"version": version, "sha256": sha256}
+            for version, sha256 in sorted(record["realization_candidates"])
+        ]
+        realization_version = record.get("realization_version")
+        realization_sha256 = record.get("realization_sha256")
+        if name in realized and realization_version and realization_sha256:
+            status = "exact_realized"
+        elif not record["declaration_keys"] and realization_version and realization_sha256:
+            status = "realization_without_declaration"
+            warnings.append("dependency_realization_without_declaration")
+        else:
+            status = "unresolved"
+        items.append(
+            AdmissionDependencyInstallItem(
+                name=name,
+                declaration_keys=sorted(record["declaration_keys"]),
+                declaration_sources=sorted(record["declaration_sources"]),
+                declared_spec=specs[0] if specs else None,
+                declared_version=versions[0] if versions else None,
+                declared_specs=specs,
+                declared_versions=versions,
+                realization_version=realization_version,
+                realization_sha256=realization_sha256,
+                realization_candidates=realization_candidates,
+                status=status,
+                warnings=warnings,
+            )
+        )
+    return items
+
+
+def _collect_dependency_records(
+    records: dict[str, dict[str, Any]],
+    declaration_key: str,
+    declaration_source: str,
+    value: Any,
+) -> None:
+    if isinstance(value, list):
+        for item in value:
+            name, declared_spec, declared_version = _dependency_record_parts(item)
+            _record_dependency(
+                records,
+                name,
+                declaration_key,
+                declaration_source,
+                declared_spec,
+                declared_version,
+            )
+    elif isinstance(value, dict):
+        for key, item in value.items():
+            name, declared_spec, declared_version = _dependency_record_parts(item, fallback_name=str(key))
+            _record_dependency(
+                records,
+                name,
+                declaration_key,
+                declaration_source,
+                declared_spec,
+                declared_version,
+            )
+
+
+def _dependency_record_parts(
+    value: Any,
+    *,
+    fallback_name: str | None = None,
+) -> tuple[str, str | None, str | None]:
+    if isinstance(value, str):
+        name = fallback_name or _dependency_name_from_value(value)
+        declared_version = _exact_version_from_spec(value)
+        if fallback_name and declared_version is None and not _looks_like_version_range(value):
+            declared_version = value
+        return name, value, declared_version
+    if isinstance(value, dict):
+        name = str(value.get("name") or fallback_name or "")
+        version = value.get("version")
+        spec = value.get("spec") or value.get("requirement") or version
+        return name, str(spec) if spec is not None else None, str(version) if version is not None else None
+    return fallback_name or "", None, None
+
+
+def _record_dependency(
+    records: dict[str, dict[str, Any]],
+    name: str,
+    declaration_key: str,
+    declaration_source: str,
+    declared_spec: str | None,
+    declared_version: str | None,
+) -> None:
+    if not name:
+        return
+    record = records.setdefault(
+        name,
+        {
+            "declaration_keys": set(),
+            "declaration_sources": set(),
+            "declared_specs": set(),
+            "declared_versions": set(),
+            "realization_version": None,
+            "realization_sha256": None,
+            "realization_candidates": set(),
+        },
+    )
+    record["declaration_keys"].add(declaration_key)
+    record["declaration_sources"].add(declaration_source)
+    if declared_spec:
+        record["declared_specs"].add(declared_spec)
+    if declared_version:
+        record["declared_versions"].add(declared_version)
+
+
+def _collect_realization_records(records: dict[str, dict[str, Any]], value: Any) -> None:
+    if isinstance(value, list):
+        for item in value:
+            if isinstance(item, dict):
+                _record_realization(records, item.get("name"), item)
+    elif isinstance(value, dict):
+        for name, item in value.items():
+            if isinstance(item, dict):
+                _record_realization(records, name, item)
+
+
+def _record_realization(records: dict[str, dict[str, Any]], name_value: Any, item: dict[str, Any]) -> None:
+    name = str(name_value or "")
+    version = item.get("version")
+    sha256 = item.get("sha256")
+    if not name or not version or not sha256:
+        return
+    record = records.setdefault(
+        name,
+        {
+            "declaration_keys": set(),
+            "declaration_sources": set(),
+            "declared_specs": set(),
+            "declared_versions": set(),
+            "realization_version": None,
+            "realization_sha256": None,
+            "realization_candidates": set(),
+        },
+    )
+    realization = (str(version), str(sha256))
+    record["realization_candidates"].add(realization)
+    candidates = sorted(record["realization_candidates"])
+    record["realization_version"] = candidates[0][0]
+    record["realization_sha256"] = candidates[0][1]
+
+
+def _exact_version_from_spec(spec: str) -> str | None:
+    if "==" not in spec:
+        return None
+    return spec.split("==", 1)[1].split(",", 1)[0].strip() or None
+
+
+def _looks_like_version_range(value: str) -> bool:
+    return any(operator in value for operator in ["<", ">", "=", "~", "!"])
+
+
+def _dependency_evidence_unsafe_admission_blockers(blockers: list[str]) -> list[str]:
+    return [
+        blocker
+        for blocker in blockers
+        if blocker in DEPENDENCY_EVIDENCE_UNSAFE_ADMISSION_BLOCKERS
+    ]
+
+
+def _dependency_evidence_manifest_path(
+    candidate_id: str,
+    source_sha256: str | None,
+    runs_dir: Path,
+) -> tuple[Path | None, str | None]:
+    if source_sha256 is None:
+        return None, None
+    path = (
+        runs_dir
+        / "admission_dependency_evidence"
+        / candidate_id
+        / source_sha256
+        / "dependency_plan.json"
+    )
+    return _safe_runs_child_path(path, runs_dir)
+
+
+def _safe_runs_child_path(path: Path, runs_dir: Path) -> tuple[Path | None, str | None]:
+    try:
+        resolved_runs = runs_dir.resolve()
+        resolved_path = path.resolve(strict=False)
+        resolved_path.relative_to(resolved_runs)
+        path.parent.resolve(strict=False).relative_to(resolved_runs)
+    except (OSError, RuntimeError, ValueError):
+        return None, "dependency_evidence_manifest_path_escape"
+    if _path_has_existing_symlink_component(path.parent, runs_dir):
+        return None, "dependency_evidence_manifest_path_escape"
+    return path, None
+
+
+def _path_has_existing_symlink_component(path: Path, base: Path) -> bool:
+    try:
+        relative = path.resolve(strict=False).relative_to(base.resolve())
+    except (OSError, RuntimeError, ValueError):
+        return True
+    current = base
+    for part in relative.parts:
+        current = current / part
+        if current.exists() and current.is_symlink():
+            return True
+    return False
+
+
+def _dependency_plan_digest(
+    *,
+    candidate_id: str,
+    source_path: Path | None,
+    source_sha256: str | None,
+    target_path: Path | None,
+    manifest_path: Path | None,
+    normalized_dependencies: list[AdmissionDependencyInstallItem],
+) -> str:
+    payload = {
+        "candidate_id": candidate_id,
+        "source_skill_path": str(source_path) if source_path is not None else None,
+        "source_sha256": source_sha256,
+        "target_skill_path": str(target_path) if target_path is not None else None,
+        "evidence_manifest_path": str(manifest_path) if manifest_path is not None else None,
+        "policy": "no_write_dependency_evidence_only",
+        "install_supported": False,
+        "install_attempted": False,
+        "dependencies_installed": False,
+        "normalized_dependencies": [
+            item.model_dump(mode="json") for item in normalized_dependencies
+        ],
+    }
+    return hashlib.sha256(_stable_json_bytes(payload)).hexdigest()
+
+
+def _prepare_dependency_evidence_manifest(
+    *,
+    candidate_id: str,
+    source_path: Path | None,
+    source_sha256: str | None,
+    target_path: Path | None,
+    manifest_path: Path | None,
+    runs_dir: Path,
+    normalized_dependencies: list[AdmissionDependencyInstallItem],
+    dependency_blockers: list[str],
+    dependency_plan_digest: str,
+) -> tuple[list[str], str | None, bool, bool]:
+    if source_path is None or source_sha256 is None:
+        return ["source_skill_missing"], None, False, False
+    if manifest_path is None:
+        return ["dependency_evidence_manifest_path_missing"], None, False, False
+    safe_manifest_path, path_blocker = _safe_runs_child_path(manifest_path, runs_dir)
+    if path_blocker is not None or safe_manifest_path is None:
+        return [path_blocker or "dependency_evidence_manifest_path_escape"], None, False, False
+    manifest_path = safe_manifest_path
+    manifest = {
+        "schema_version": 1,
+        "candidate_id": candidate_id,
+        "source_skill_path": str(source_path),
+        "source_sha256": source_sha256,
+        "target_skill_path": str(target_path) if target_path is not None else None,
+        "policy": "no_write_dependency_evidence_only",
+        "install_supported": False,
+        "install_attempted": False,
+        "dependencies_installed": False,
+        "normalized_dependencies": [
+            item.model_dump(mode="json") for item in normalized_dependencies
+        ],
+        "dependency_blockers": list(dependency_blockers),
+        "dependency_plan_digest": dependency_plan_digest,
+    }
+    content = _stable_json_bytes(manifest, trailing_newline=True)
+    manifest_sha256 = hashlib.sha256(content).hexdigest()
+    created, blocker = _retain_matching_file(
+        manifest_path,
+        content,
+        manifest_sha256,
+        mismatch_blocker="dependency_evidence_manifest_hash_mismatch",
+        write_blocker="dependency_evidence_manifest_write_failed",
+    )
+    if blocker is not None:
+        return [blocker], None, False, False
+    return [], manifest_sha256, created, True
+
+
+def _stable_json_bytes(payload: dict[str, Any], *, trailing_newline: bool = False) -> bytes:
+    text = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    if trailing_newline:
+        text += "\n"
+    return text.encode("utf-8")
+
+
+def _find_dependency_approval_resolution(
+    *,
+    dependency_plan_digest: str | None,
+    candidate_id: str,
+    runs_dir: Path,
+    dependency_approval_id: str | None,
+) -> _PlanApprovalEvidence:
+    if not dependency_approval_id:
+        return _PlanApprovalEvidence(False, "", resolution_id=None)
+    if dependency_plan_digest is None:
+        return _PlanApprovalEvidence(False, "dependency_plan_digest_missing", resolution_id=dependency_approval_id)
+    try:
+        ledger = load_input_request_resolution_ledger(runs_dir)
+    except InputResolutionLedgerError:
+        return _PlanApprovalEvidence(False, "dependency_plan_approval_invalid", resolution_id=dependency_approval_id)
+    matches = [
+        record
+        for record in ledger.resolutions
+        if (
+            (record.id == dependency_approval_id or record.input_request_id == dependency_approval_id)
+            and record.decision == "approve_review"
+            and record.status == "resolved"
+            and record.source_request.kind == "durable_admission_review"
+            and record.source_request.related_candidate_id == candidate_id
+        )
+    ]
+    if not matches:
+        return _PlanApprovalEvidence(False, "dependency_plan_approval_invalid", resolution_id=dependency_approval_id)
+
+    mismatch_seen: _PlanApprovalEvidence | None = None
+    expired_seen: _PlanApprovalEvidence | None = None
+    missing_expiry_seen: _PlanApprovalEvidence | None = None
+    for record in reversed(matches):
+        digest = _note_token(record.notes, "dependency_plan_digest")
+        expires_at = _note_token(record.notes, "expires_at")
+        resolution_id = record.id
+        if digest != dependency_plan_digest:
+            mismatch_seen = _PlanApprovalEvidence(
+                False,
+                "dependency_plan_approval_mismatch",
+                resolution_id=resolution_id,
+                digest=digest,
+                expires_at=expires_at,
+            )
+            continue
+        if not expires_at:
+            missing_expiry_seen = _PlanApprovalEvidence(
+                False,
+                "dependency_plan_approval_expiry_missing",
+                resolution_id=resolution_id,
+                digest=digest,
+            )
+            continue
+        if _approval_expired(expires_at):
+            expired_seen = _PlanApprovalEvidence(
+                False,
+                "dependency_plan_approval_expired",
+                resolution_id=resolution_id,
+                digest=digest,
+                expires_at=expires_at,
+            )
+            continue
+        return _PlanApprovalEvidence(
+            True,
+            "",
+            resolution_id=resolution_id,
+            digest=digest,
+            expires_at=expires_at,
+        )
+    return (
+        mismatch_seen
+        or expired_seen
+        or missing_expiry_seen
+        or _PlanApprovalEvidence(False, "dependency_plan_approval_invalid", resolution_id=dependency_approval_id)
+    )
+
+
 def _permission_diff_item(
     *,
     class_name: str,
@@ -632,8 +1187,12 @@ def _plan_digest(
     permission_approval_id: str | None,
     permission_dependency_diff: AdmissionPermissionDependencyDiff,
     permission_widening: list[str],
+    dependency_install_contract: AdmissionDependencyInstallContract,
     prepare_write_evidence: bool,
     expected_source_sha256: str | None,
+    prepare_dependency_evidence: bool,
+    expected_dependency_plan_digest: str | None,
+    dependency_approval_id: str | None,
 ) -> str:
     payload: dict[str, Any] = {
         "candidate_id": candidate_id,
@@ -656,8 +1215,24 @@ def _plan_digest(
         "permission_approval_id": permission_approval_id,
         "permission_dependency_diff": permission_dependency_diff.model_dump(mode="json"),
         "permission_widening": sorted(permission_widening),
+        "dependency_install_contract": {
+            "policy": dependency_install_contract.policy,
+            "schema_version": dependency_install_contract.schema_version,
+            "dependency_plan_digest": dependency_install_contract.dependency_plan_digest,
+            "evidence_manifest_path": dependency_install_contract.evidence_manifest_path,
+            "normalized_dependencies": [
+                item.model_dump(mode="json")
+                for item in dependency_install_contract.normalized_dependencies
+            ],
+            "install_supported": dependency_install_contract.install_supported,
+            "install_attempted": dependency_install_contract.install_attempted,
+            "dependencies_installed": dependency_install_contract.dependencies_installed,
+        },
         "prepare_write_evidence": prepare_write_evidence,
         "expected_source_sha256": expected_source_sha256,
+        "prepare_dependency_evidence": prepare_dependency_evidence,
+        "expected_dependency_plan_digest": expected_dependency_plan_digest,
+        "dependency_approval_id": dependency_approval_id,
     }
     encoded = json.dumps(payload, sort_keys=True, separators=(",", ":")).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
@@ -798,15 +1373,16 @@ def _retain_matching_file(
 def _atomic_write_bytes(path: Path, content: bytes) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temp_path: Path | None = None
-    with NamedTemporaryFile(dir=path.parent, delete=False) as handle:
-        temp_path = Path(handle.name)
-        handle.write(content)
+    replaced = False
     try:
+        with NamedTemporaryFile(dir=path.parent, delete=False) as handle:
+            temp_path = Path(handle.name)
+            handle.write(content)
         temp_path.replace(path)
-    except OSError:
-        if temp_path.exists():
+        replaced = True
+    finally:
+        if temp_path is not None and not replaced and temp_path.exists():
             temp_path.unlink()
-        raise
 
 
 def _only_replaceable_collision(

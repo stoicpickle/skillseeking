@@ -551,6 +551,49 @@ class AdmissionDependencyDiff(BaseModel):
     warnings: list[str] = Field(default_factory=list)
 
 
+class AdmissionDependencyInstallItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    name: str
+    declaration_keys: list[str] = Field(default_factory=list)
+    declaration_sources: list[str] = Field(default_factory=list)
+    declared_spec: str | None = None
+    declared_version: str | None = None
+    declared_specs: list[str] = Field(default_factory=list)
+    declared_versions: list[str] = Field(default_factory=list)
+    realization_version: str | None = None
+    realization_sha256: str | None = None
+    realization_candidates: list[dict[str, str]] = Field(default_factory=list)
+    status: str
+    warnings: list[str] = Field(default_factory=list)
+
+
+class AdmissionDependencyInstallContract(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    policy: str = "no_write_dependency_evidence_only"
+    schema_version: int = 1
+    digest_algorithm: str = "sha256"
+    dependency_plan_digest: str | None = None
+    expected_dependency_plan_digest: str | None = None
+    dependency_plan_digest_verified: bool = False
+    prepare_dependency_evidence: bool = False
+    evidence_manifest_path: str | None = None
+    evidence_manifest_sha256: str | None = None
+    evidence_manifest_created: bool = False
+    evidence_manifest_retained: bool = False
+    dependency_approval_id: str | None = None
+    dependency_approval_digest: str | None = None
+    dependency_approval_expires_at: str | None = None
+    dependency_approval_verified: bool = False
+    normalized_dependencies: list[AdmissionDependencyInstallItem] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    install_supported: bool = False
+    install_attempted: bool = False
+    dependencies_installed: bool = False
+
+
 class AdmissionPermissionDependencyDiff(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -703,6 +746,9 @@ class DurableAdmissionWritePlan(BaseModel):
     permission_approval_id: str | None = None
     permission_dependency_diff: AdmissionPermissionDependencyDiff = Field(
         default_factory=AdmissionPermissionDependencyDiff
+    )
+    dependency_install_contract: AdmissionDependencyInstallContract = Field(
+        default_factory=AdmissionDependencyInstallContract
     )
     replacement_approved: bool = False
     permission_widening_approved: bool = False

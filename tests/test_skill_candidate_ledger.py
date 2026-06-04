@@ -434,10 +434,15 @@ def test_agent_loop_preserves_run_when_candidate_ledger_is_corrupt(copied_seed_s
 
     assert result.exit_code == 1
     assert result.run_log_path.exists()
+    run_logs = sorted(runs_dir.glob("run_*.json"))
+    assert run_logs == [result.run_log_path]
+    persisted = json.loads(result.run_log_path.read_text(encoding="utf-8"))
     assert corrupt_ledger.read_text(encoding="utf-8") == "{not valid json"
     assert "LEDGER_RECORD_FAILED" in result.run_log.trace
     assert result.run_log.trace_events[-1].stage == "LEDGER_RECORD_FAILED"
     assert "invalid skill candidate ledger" in result.run_log.trace_events[-1].details["error"]
+    assert "LEDGER_RECORD_FAILED" in persisted["trace"]
+    assert persisted["trace_events"][-1]["stage"] == "LEDGER_RECORD_FAILED"
 
 
 def _promotable_entry() -> SkillCandidateLedgerEntry:

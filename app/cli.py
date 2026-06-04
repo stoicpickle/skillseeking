@@ -1066,6 +1066,27 @@ def admit_candidate(
             help="Optional expected source SHA-256; mismatches block evidence preparation.",
         ),
     ] = "",
+    prepare_dependency_evidence: Annotated[
+        bool,
+        typer.Option(
+            "--prepare-dependency-evidence/--no-prepare-dependency-evidence",
+            help="Create run-scoped no-write dependency evidence manifest for the dry-run plan.",
+        ),
+    ] = False,
+    expected_dependency_plan_digest: Annotated[
+        str,
+        typer.Option(
+            "--expected-dependency-plan-digest",
+            help="Optional expected dependency plan digest; mismatches block dependency evidence preparation.",
+        ),
+    ] = "",
+    dependency_approval_id: Annotated[
+        str,
+        typer.Option(
+            "--dependency-approval-id",
+            help="Optional resolved approve_review resolution ID whose notes bind review to dependency_plan_digest.",
+        ),
+    ] = "",
     json_output: Annotated[
         bool,
         typer.Option("--json", help="Print the durable admission preview as JSON."),
@@ -1082,6 +1103,9 @@ def admit_candidate(
             plan_approval_id=plan_approval_id or None,
             prepare_write_evidence=prepare_write_evidence,
             expected_source_sha256=expected_source_sha256 or None,
+            prepare_dependency_evidence=prepare_dependency_evidence,
+            expected_dependency_plan_digest=expected_dependency_plan_digest or None,
+            dependency_approval_id=dependency_approval_id or None,
         )
     except AdmissionPlanError as exc:
         typer.echo(str(exc))

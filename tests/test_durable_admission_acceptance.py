@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 from shutil import copytree
 
+import pytest
 from typer.testing import CliRunner
 
 from app.cli import app
@@ -13,6 +14,7 @@ from app.input_resolution_ledger import (
     load_input_request_resolution_ledger,
 )
 from app.models import InputRequest, InputRequestResolutionDryRun
+from app.skill_candidate_ledger import load_candidate_ledger, write_candidate_ledger
 
 
 def test_acceptance_write_plan_verifies_destination_snapshot_hash_and_no_writes(
@@ -324,6 +326,309 @@ def test_acceptance_prepare_write_evidence_blocks_stage_mismatch_without_rewriti
     assert result["write_plan"]["destination_stage_sha256"] is None
     _assert_no_durable_admission_mutation(result)
     assert stage_path.read_text(encoding="utf-8") == "historical staged mismatch\n"
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+
+
+def test_acceptance_prepare_dependency_evidence_creates_and_reuses_run_scoped_manifest(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path = _prepare_promoted_candidate(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+    )
+    _append_dependency_declaration(source_path)
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+
+    first = _admit_candidate_json(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-dependency-evidence",
+    )
+
+    contract = first["write_plan"]["dependency_install_contract"]
+    manifest_path = Path(contract["evidence_manifest_path"])
+    assert first["write_plan"]["operation"] == "blocked"
+    assert contract["prepare_dependency_evidence"] is True
+    assert contract["evidence_manifest_created"] is True
+    assert contract["evidence_manifest_retained"] is True
+    assert manifest_path == (
+        runs_dir
+        / "admission_dependency_evidence"
+        / candidate_id
+        / first["source_sha256"]
+        / "dependency_plan.json"
+    )
+    manifest_bytes = manifest_path.read_bytes()
+    assert hashlib.sha256(manifest_bytes).hexdigest() == contract["evidence_manifest_sha256"]
+    manifest = json.loads(manifest_bytes.decode("utf-8"))
+    assert manifest["dependency_plan_digest"] == contract["dependency_plan_digest"]
+    assert manifest["dependency_blockers"] == ["dependency_realization_missing"]
+    assert manifest["install_supported"] is False
+    assert manifest["install_attempted"] is False
+    assert manifest["dependencies_installed"] is False
+    assert contract["normalized_dependencies"][0]["status"] == "unresolved"
+    assert contract["install_supported"] is False
+    assert contract["install_attempted"] is False
+    assert contract["dependencies_installed"] is False
+    _assert_no_durable_admission_mutation(first)
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _without_dependency_evidence(_snapshot_tree(runs_dir)) == runs_before
+    assert not (runs_dir / "admission_snapshots").exists()
+    assert not (runs_dir / "admission_staging").exists()
+
+    runs_after_first = _snapshot_tree(runs_dir)
+    second = _admit_candidate_json(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-dependency-evidence",
+    )
+
+    second_contract = second["write_plan"]["dependency_install_contract"]
+    assert second_contract["evidence_manifest_created"] is False
+    assert second_contract["evidence_manifest_retained"] is True
+    assert second_contract["evidence_manifest_sha256"] == contract["evidence_manifest_sha256"]
+    _assert_no_durable_admission_mutation(second)
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_after_first
+
+
+def test_acceptance_expected_dependency_digest_mismatch_blocks_manifest_write(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path = _prepare_promoted_candidate(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+    )
+    _append_dependency_declaration(source_path)
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+
+    result = _admit_candidate_json(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-dependency-evidence",
+        "--expected-dependency-plan-digest",
+        "0" * 64,
+    )
+
+    contract = result["write_plan"]["dependency_install_contract"]
+    assert contract["dependency_plan_digest_verified"] is False
+    assert "dependency_plan_digest_mismatch" in contract["blockers"]
+    assert "dependency_plan_digest_mismatch" in result["write_plan"]["blockers"]
+    assert contract["evidence_manifest_created"] is False
+    assert contract["evidence_manifest_retained"] is False
+    assert not Path(contract["evidence_manifest_path"]).exists()
+    _assert_no_durable_admission_mutation(result)
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+
+
+def test_acceptance_dependency_manifest_mismatch_blocks_without_overwrite(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path = _prepare_promoted_candidate(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+    )
+    _append_dependency_declaration(source_path)
+    initial = _admit_candidate_json(runner, candidate_id, runs_dir, copied_seed_skills)
+    manifest_path = Path(
+        initial["write_plan"]["dependency_install_contract"]["evidence_manifest_path"]
+    )
+    manifest_path.parent.mkdir(parents=True)
+    manifest_path.write_text("historical dependency mismatch\n", encoding="utf-8")
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+
+    result = _admit_candidate_json(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-dependency-evidence",
+    )
+
+    contract = result["write_plan"]["dependency_install_contract"]
+    assert "dependency_evidence_manifest_hash_mismatch" in contract["blockers"]
+    assert "dependency_evidence_manifest_hash_mismatch" in result["write_plan"]["blockers"]
+    assert contract["evidence_manifest_created"] is False
+    assert contract["evidence_manifest_retained"] is False
+    assert manifest_path.read_text(encoding="utf-8") == "historical dependency mismatch\n"
+    _assert_no_durable_admission_mutation(result)
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+
+
+def test_acceptance_dependency_manifest_blocks_candidate_id_path_traversal(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    original_candidate_id, source_path = _prepare_promoted_candidate(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+    )
+    _append_dependency_declaration(source_path)
+    escaped_candidate_id = "../../escaped-candidate"
+    ledger = load_candidate_ledger(runs_dir)
+    assert ledger.entries[0].candidate_id == original_candidate_id
+    ledger.entries[0].candidate_id = escaped_candidate_id
+    write_candidate_ledger(ledger, runs_dir)
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+
+    result = _admit_candidate_json(
+        runner,
+        escaped_candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-dependency-evidence",
+    )
+
+    contract = result["write_plan"]["dependency_install_contract"]
+    assert "dependency_evidence_manifest_path_escape" in contract["blockers"]
+    assert "dependency_evidence_manifest_path_escape" in result["write_plan"]["blockers"]
+    assert contract["evidence_manifest_path"] is None
+    assert contract["evidence_manifest_created"] is False
+    assert contract["evidence_manifest_retained"] is False
+    assert not (tmp_path / "escaped-candidate").exists()
+    _assert_no_durable_admission_mutation(result)
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+
+
+def test_acceptance_dependency_manifest_blocks_symlinked_evidence_parent_escape(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path = _prepare_promoted_candidate(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+    )
+    _append_dependency_declaration(source_path)
+    outside_dir = tmp_path / "outside-evidence"
+    outside_dir.mkdir()
+    evidence_parent = runs_dir / "admission_dependency_evidence"
+    try:
+        evidence_parent.symlink_to(outside_dir, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"symlink creation unavailable: {exc}")
+    durable_before = _snapshot_tree(copied_seed_skills)
+
+    result = _admit_candidate_json(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-dependency-evidence",
+    )
+
+    contract = result["write_plan"]["dependency_install_contract"]
+    assert "dependency_evidence_manifest_path_escape" in contract["blockers"]
+    assert contract["evidence_manifest_created"] is False
+    assert contract["evidence_manifest_retained"] is False
+    assert list(outside_dir.rglob("*")) == []
+    _assert_no_durable_admission_mutation(result)
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+
+
+def test_acceptance_prepare_dependency_evidence_blocks_unsafe_source_admission_blockers(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path = _prepare_promoted_candidate(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+    )
+    _append_dependency_declaration(source_path)
+    (source_path.parent / "scripts").mkdir()
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+
+    result = _admit_candidate_json(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-dependency-evidence",
+    )
+
+    contract = result["write_plan"]["dependency_install_contract"]
+    assert "dependency_realization_missing" in contract["blockers"]
+    assert "source_scripted_unsupported" in contract["blockers"]
+    assert contract["evidence_manifest_path"] is not None
+    assert contract["evidence_manifest_created"] is False
+    assert contract["evidence_manifest_retained"] is False
+    assert not Path(contract["evidence_manifest_path"]).exists()
+    _assert_no_durable_admission_mutation(result)
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+
+
+def test_acceptance_prepare_dependency_evidence_blocks_source_outside_runs(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path = _prepare_promoted_candidate(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+    )
+    _append_dependency_declaration(source_path)
+    outside_source = tmp_path / "outside-source" / "SKILL.md"
+    outside_source.parent.mkdir()
+    outside_source.write_bytes(source_path.read_bytes())
+    _rewrite_single_run_log_source_path(runs_dir, outside_source)
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+
+    result = _admit_candidate_json(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--prepare-dependency-evidence",
+    )
+
+    contract = result["write_plan"]["dependency_install_contract"]
+    assert result["source_sha256"] is None
+    assert result["write_plan"]["source_sha256"] is None
+    assert result["write_plan"]["snapshot_skill_path"] is None
+    assert "source_path_outside_runs" in contract["blockers"]
+    assert contract["evidence_manifest_created"] is False
+    assert contract["evidence_manifest_retained"] is False
+    assert contract["evidence_manifest_path"] is None
+    _assert_no_durable_admission_mutation(result)
     assert _snapshot_tree(copied_seed_skills) == durable_before
     assert _snapshot_tree(runs_dir) == runs_before
 
@@ -664,6 +969,25 @@ def _approval_notes(plan_digest: str | None, expires_at: str) -> str:
     return notes
 
 
+def _append_dependency_declaration(source_path: Path) -> None:
+    text = source_path.read_text(encoding="utf-8")
+    marker = "\n---\n\n#"
+    assert marker in text
+    updated = text.replace(
+        marker,
+        "\ndependencies:\n  - example-package==1.0.0\n---\n\n#",
+        1,
+    )
+    source_path.write_text(updated, encoding="utf-8")
+
+
+def _rewrite_single_run_log_source_path(runs_dir: Path, source_path: Path) -> None:
+    run_log = _single_run_log(runs_dir)
+    data = json.loads(run_log.read_text(encoding="utf-8"))
+    data["skill_requests"][0]["temporary_skill"]["skill_path"] = str(source_path)
+    run_log.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
 def _append_plan_approval_record(
     candidate_id: str,
     runs_dir: Path,
@@ -747,6 +1071,10 @@ def _assert_no_durable_admission_mutation(report: dict) -> None:
         "governor_steering_enabled",
     ]:
         assert report["write_plan"][key] is False
+    contract = report["write_plan"]["dependency_install_contract"]
+    assert contract["install_supported"] is False
+    assert contract["install_attempted"] is False
+    assert contract["dependencies_installed"] is False
 
 
 def _single_run_log(runs_dir: Path) -> Path:
@@ -774,3 +1102,42 @@ def _without_admission_evidence(tree: dict[str, bytes]) -> dict[str, bytes]:
         if not key.startswith("admission_snapshots/")
         and not key.startswith("admission_staging/")
     }
+
+
+def _without_dependency_evidence(tree: dict[str, bytes]) -> dict[str, bytes]:
+    return {
+        key: value
+        for key, value in tree.items()
+        if not key.startswith("admission_dependency_evidence/")
+    }
+
+
+def test_atomic_write_bytes_cleans_temp_file_on_write_failure(tmp_path):
+    from app import durable_admission
+
+    target = tmp_path / "evidence" / "dependency_plan.json"
+
+    class FailingHandle:
+        name = str(tmp_path / "evidence" / ".tmp-dependency")
+
+        def __enter__(self):
+            Path(self.name).parent.mkdir(parents=True, exist_ok=True)
+            Path(self.name).write_bytes(b"partial")
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+        def write(self, content: bytes) -> None:
+            raise OSError("simulated write failure")
+
+    original = durable_admission.NamedTemporaryFile
+    durable_admission.NamedTemporaryFile = lambda **kwargs: FailingHandle()
+    try:
+        with pytest.raises(OSError):
+            durable_admission._atomic_write_bytes(target, b"payload")
+    finally:
+        durable_admission.NamedTemporaryFile = original
+
+    assert not Path(FailingHandle.name).exists()
+    assert not target.exists()
