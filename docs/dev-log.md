@@ -1000,3 +1000,63 @@ Boundaries:
 
 - The report is advisory only.
 - It does not mark candidates stable, authorize stable promotion, enable stable routing, copy or install durable skills, mutate ledgers, mutate registry state, widen permissions, or steer the governor.
+
+## 2026-06-04 Operator Decision Load Tasking
+
+Captured the external review's next-product-risk assessment as durable tasking.
+
+Added:
+
+- `docs/plans/operator-decision-load-and-stable-review-rehearsal-2026-06-04.md` with the review thesis, tasking list, explicit not-yet list, and Slice 1 goal.
+- Product-manager guidance that the current risk is operator decision overload, not missing proof infrastructure.
+- Operating roadmap and build-map updates naming candidate-to-stable review rehearsal as the next slice direction.
+- Evaluation-plan guidance for stable-readiness outcomes and not-stable-routed assertions.
+
+Boundaries:
+
+- This is docs-only tasking and mindset capture.
+- No stable promotion, stable routing, durable admission, dependency installation, UI, marketplace, permission widening, or governor steering was added.
+
+## 2026-06-04 Stable-Readiness Eval Dimension
+
+Added the first candidate-to-stable review rehearsal eval coverage.
+
+Added:
+
+- Stable-readiness eval expectations for outcome, ready-for-review state, stable-review authorization, stable-promotion authorization, stable-routing state, and blockers.
+- Eval-runner support for explicit stable-readiness fixture preparation inside the eval run directory only.
+- Fixture support for duplicate evidence and eval-only negative resolution evidence so blocked stable-review rehearsals can be asserted without durable mutation.
+- Lifecycle eval rows proving ready-for-review, duplicate-blocked, and negative-evidence-blocked candidates while stable review, stable promotion, and stable routing remain unauthorized.
+- Report output fields for `stable_readiness_reports`, stable-readiness accuracy, and `stable_readiness_mismatch` failure categorization.
+
+Boundaries:
+
+- Eval fixture candidate promotion and negative-resolution setup are not runtime auto-promotion or runtime human-review behavior.
+- No durable skill copy/install, stable routing, stable promotion authority, permission widening, registry mutation, or governor steering was added.
+
+## 2026-06-05 Dependency-Evidence Acceptance Matrix Hardening
+
+Closed the remaining acceptance-level proof gap for the no-write dependency install contract.
+
+Added:
+
+- Black-box CLI acceptance coverage proving a valid `--dependency-approval-id` verifies the dependency plan digest while unresolved dependencies continue to block with `dependency_realization_missing`.
+- A dependency approval fixture helper for acceptance tests, matching the preview-layer approval shape: resolved `durable_admission_review`, `approve_review`, related candidate ID, `dependency_plan_digest=<sha256>`, and non-expired `expires_at=<timestamp>` notes.
+- Assertions that dependency approval does not set install support, attempt installs, mark dependencies installed, mutate durable skills, or rewrite run evidence.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_durable_admission_acceptance.py tests/test_durable_admission_preview.py
+.venv/bin/python -m compileall -q app
+git diff --check
+```
+
+Result:
+
+- 34 focused durable-admission tests passed.
+
+Boundaries:
+
+- This was test and documentation hardening only.
+- No dependency installation, durable skill copy/install, stable promotion, stable routing, ledger mutation, registry mutation, permission widening, or governor steering was added.

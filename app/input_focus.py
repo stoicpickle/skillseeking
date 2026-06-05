@@ -400,7 +400,7 @@ def _apply_resolution_ledger(
 
 def _input_request_id(*parts: object) -> str:
     text = "|".join(str(part) for part in parts if part is not None)
-    return f"inputreq_{hashlib.sha1(text.encode('utf-8')).hexdigest()[:12]}"
+    return f"inputreq_{hashlib.sha256(text.encode('utf-8')).hexdigest()[:16]}"
 
 
 def _parse_datetime(value: Any) -> datetime | None:

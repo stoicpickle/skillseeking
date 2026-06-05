@@ -11,6 +11,7 @@ from app.cli import app
 from app.eval_runner import (
     EvalSuiteError,
     _input_request_expectation_issues,
+    _stable_readiness_expectation_issues,
     load_eval_suite,
     run_eval_suite,
     write_eval_reports,
@@ -225,6 +226,223 @@ def test_eval_report_asserts_lifecycle_candidate_evidence(copied_seed_skills, tm
     assert repair_entry["review_queues"] == ["repair_needed"]
     assert repair_entry["status"] not in {"candidate", "stable"}
     assert "Lifecycle evidence accuracy: 1.0 (4 / 4)" in md_path.read_text(encoding="utf-8")
+
+
+def test_eval_report_asserts_stable_readiness_not_routed(copied_seed_skills, tmp_path):
+    suite = tmp_path / "suite.jsonl"
+    suite.write_text(
+        json.dumps(
+            {
+                "id": "stable_ready_not_routed",
+                "task": "Cluster arguments from these sources.",
+                "temporary_skills": True,
+                "expected": {
+                    "outcome": "missing_skill_request",
+                    "capability": "argument clustering",
+                    "must_request_skill": True,
+                    "must_have_candidate_entry": True,
+                    "candidate_skill_name": "argument-clustering",
+                    "candidate_status": "candidate",
+                    "candidate_human_approval_required": False,
+                    "candidate_validation_pass_count_min": 1,
+                    "prepare_stable_readiness_candidate": True,
+                    "stable_readiness_successful_temporary_uses": 10,
+                    "must_have_stable_readiness_report": True,
+                    "stable_readiness_outcome": "ready_for_stable_review",
+                    "stable_readiness_ready_for_review": True,
+                    "stable_review_authorized": False,
+                    "stable_promotion_authorized": False,
+                    "stable_routing_enabled": False,
+                },
+                "tags": ["lifecycle", "stable_readiness"],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = run_eval_suite(suite, copied_seed_skills, tmp_path / "runs")
+    _, md_path = write_eval_reports(report, tmp_path / "reports")
+
+    assert report["passed"]
+    assert report["aggregate"]["stable_readiness_expected"] == 1
+    assert report["aggregate"]["stable_readiness_correct"] == 1
+    assert report["aggregate"]["stable_readiness_accuracy"] == 1.0
+    task = report["tasks"][0]
+    stable_report = task["stable_readiness_reports"][0]
+    assert stable_report["outcome"] == "ready_for_stable_review"
+    assert stable_report["ready_for_stable_review"] is True
+    assert stable_report["stable_review_authorized"] is False
+    assert stable_report["stable_promotion_authorized"] is False
+    assert stable_report["stable_routing_enabled"] is False
+    assert task["candidate_ledger_entries"][0]["status"] == "candidate"
+    assert "Stable-readiness accuracy: 1.0 (1 / 1)" in md_path.read_text(
+        encoding="utf-8"
+    )
+
+
+def test_eval_report_asserts_duplicate_blocked_stable_readiness(copied_seed_skills, tmp_path):
+    suite = tmp_path / "suite.jsonl"
+    suite.write_text(
+        json.dumps(
+            {
+                "id": "stable_duplicate_blocked",
+                "task": "Cluster arguments from these sources.",
+                "temporary_skills": True,
+                "expected": {
+                    "outcome": "missing_skill_request",
+                    "capability": "argument clustering",
+                    "must_request_skill": True,
+                    "must_have_candidate_entry": True,
+                    "candidate_skill_name": "argument-clustering",
+                    "candidate_status": "candidate",
+                    "candidate_human_approval_required": False,
+                    "candidate_validation_pass_count_min": 1,
+                    "prepare_stable_readiness_candidate": True,
+                    "stable_readiness_successful_temporary_uses": 10,
+                    "stable_readiness_duplicate_of": "candidate_existing_argument_clustering",
+                    "stable_readiness_duplicate_evidence": [
+                        "matches existing argument-clustering contract"
+                    ],
+                    "must_have_stable_readiness_report": True,
+                    "stable_readiness_outcome": "blocked",
+                    "stable_readiness_ready_for_review": False,
+                    "stable_review_authorized": False,
+                    "stable_promotion_authorized": False,
+                    "stable_routing_enabled": False,
+                    "stable_readiness_blocker": "candidate_duplicate",
+                },
+                "tags": ["lifecycle", "stable_readiness"],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = run_eval_suite(suite, copied_seed_skills, tmp_path / "runs")
+
+    assert report["passed"]
+    task = report["tasks"][0]
+    stable_report = task["stable_readiness_reports"][0]
+    assert stable_report["outcome"] == "blocked"
+    assert "candidate_duplicate" in stable_report["blockers"]
+    assert "negative_evidence_present" in stable_report["blockers"]
+    assert stable_report["stable_promotion_authorized"] is False
+    assert stable_report["stable_routing_enabled"] is False
+    assert task["candidate_ledger_entries"][0]["duplicate_of"] == (
+        "candidate_existing_argument_clustering"
+    )
+
+
+def test_eval_report_asserts_negative_evidence_blocked_stable_readiness(
+    copied_seed_skills, tmp_path
+):
+    suite = tmp_path / "suite.jsonl"
+    suite.write_text(
+        json.dumps(
+            {
+                "id": "stable_negative_blocked",
+                "task": "Cluster arguments from these sources.",
+                "temporary_skills": True,
+                "input_request_resolutions": [
+                    {
+                        "kind": "promotion_approval",
+                        "status": "open",
+                        "decision": "reject_candidate",
+                        "reviewer": "Grace",
+                        "notes": "Eval fixture rejection remains visible as negative evidence.",
+                    }
+                ],
+                "expected": {
+                    "outcome": "missing_skill_request",
+                    "capability": "argument clustering",
+                    "must_request_skill": True,
+                    "must_have_candidate_entry": True,
+                    "candidate_skill_name": "argument-clustering",
+                    "candidate_status": "candidate",
+                    "candidate_human_approval_required": False,
+                    "candidate_validation_pass_count_min": 1,
+                    "prepare_stable_readiness_candidate": True,
+                    "stable_readiness_successful_temporary_uses": 10,
+                    "must_have_stable_readiness_report": True,
+                    "stable_readiness_outcome": "blocked",
+                    "stable_readiness_ready_for_review": False,
+                    "stable_review_authorized": False,
+                    "stable_promotion_authorized": False,
+                    "stable_routing_enabled": False,
+                    "stable_readiness_blocker": "negative_evidence_present",
+                    "input_request_resolution_count": 1,
+                    "input_request_resolution_decisions": ["reject_candidate"],
+                },
+                "tags": ["lifecycle", "stable_readiness", "input_focus"],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = run_eval_suite(suite, copied_seed_skills, tmp_path / "runs")
+
+    assert report["passed"]
+    task = report["tasks"][0]
+    stable_report = task["stable_readiness_reports"][0]
+    assert stable_report["outcome"] == "blocked"
+    assert stable_report["negative_evidence"]["counts_by_type"] == {
+        "resolution_reject": 1
+    }
+    assert "negative_evidence_present" in stable_report["blockers"]
+    assert stable_report["stable_promotion_authorized"] is False
+    assert stable_report["stable_routing_enabled"] is False
+
+
+def test_stable_readiness_false_assertions_require_report_and_boolean_fields():
+    expected = {"stable_routing_enabled": False}
+
+    assert _stable_readiness_expectation_issues(expected, []) == [
+        "expected stable-readiness report"
+    ]
+    assert _stable_readiness_expectation_issues(expected, [{"outcome": "blocked"}]) == [
+        "stable-readiness report missing field stable_routing_enabled"
+    ]
+    assert _stable_readiness_expectation_issues(
+        expected,
+        [{"stable_routing_enabled": None}],
+    ) == ["stable-readiness field stable_routing_enabled must be boolean, got None"]
+
+
+def test_eval_report_categorizes_stable_readiness_mismatch(copied_seed_skills, tmp_path):
+    suite = tmp_path / "suite.jsonl"
+    suite.write_text(
+        json.dumps(
+            {
+                "id": "wrong_stable_readiness",
+                "task": "Cluster arguments from these sources.",
+                "temporary_skills": True,
+                "expected": {
+                    "outcome": "missing_skill_request",
+                    "capability": "argument clustering",
+                    "must_request_skill": True,
+                    "must_have_candidate_entry": True,
+                    "candidate_skill_name": "argument-clustering",
+                    "prepare_stable_readiness_candidate": True,
+                    "stable_readiness_successful_temporary_uses": 10,
+                    "must_have_stable_readiness_report": True,
+                    "stable_readiness_outcome": "blocked",
+                },
+                "tags": ["stable_readiness"],
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+
+    report = run_eval_suite(suite, copied_seed_skills, tmp_path / "runs")
+
+    assert not report["passed"]
+    task = report["tasks"][0]
+    assert task["stable_readiness_reports"][0]["outcome"] == "ready_for_stable_review"
+    assert task["failure_categories"] == ["stable_readiness_mismatch"]
+    assert "expected stable-readiness outcome blocked" in task["issues"][0]
 
 
 def test_eval_report_asserts_blocked_candidate_review_queue(

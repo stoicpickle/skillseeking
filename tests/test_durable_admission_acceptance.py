@@ -402,6 +402,53 @@ def test_acceptance_prepare_dependency_evidence_creates_and_reuses_run_scoped_ma
     assert _snapshot_tree(runs_dir) == runs_after_first
 
 
+def test_acceptance_dependency_approval_does_not_remove_unresolved_blocker(
+    copied_seed_skills,
+    tmp_path,
+):
+    runner = CliRunner()
+    runs_dir = tmp_path / "runs"
+    candidate_id, source_path = _prepare_promoted_candidate(
+        runner,
+        copied_seed_skills,
+        runs_dir,
+    )
+    _append_dependency_declaration(source_path)
+    initial = _admit_candidate_json(runner, candidate_id, runs_dir, copied_seed_skills)
+    digest = initial["write_plan"]["dependency_install_contract"]["dependency_plan_digest"]
+    assert digest
+    approval_id = _append_dependency_approval_record(
+        candidate_id,
+        runs_dir,
+        dependency_plan_digest=digest,
+    )
+    durable_before = _snapshot_tree(copied_seed_skills)
+    runs_before = _snapshot_tree(runs_dir)
+
+    result = _admit_candidate_json(
+        runner,
+        candidate_id,
+        runs_dir,
+        copied_seed_skills,
+        "--dependency-approval-id",
+        approval_id,
+    )
+
+    contract = result["write_plan"]["dependency_install_contract"]
+    assert contract["dependency_approval_verified"] is True
+    assert contract["dependency_approval_id"] == approval_id
+    assert contract["dependency_approval_digest"] == digest
+    assert "dependency_realization_missing" in contract["blockers"]
+    assert "dependency_realization_missing" in result["write_plan"]["blockers"]
+    assert "dependency_install_unsupported" not in contract["blockers"]
+    assert contract["install_supported"] is False
+    assert contract["install_attempted"] is False
+    assert contract["dependencies_installed"] is False
+    _assert_no_durable_admission_mutation(result)
+    assert _snapshot_tree(copied_seed_skills) == durable_before
+    assert _snapshot_tree(runs_dir) == runs_before
+
+
 def test_acceptance_expected_dependency_digest_mismatch_blocks_manifest_write(
     copied_seed_skills,
     tmp_path,
@@ -986,6 +1033,45 @@ def _rewrite_single_run_log_source_path(runs_dir: Path, source_path: Path) -> No
     data = json.loads(run_log.read_text(encoding="utf-8"))
     data["skill_requests"][0]["temporary_skill"]["skill_path"] = str(source_path)
     run_log.write_text(json.dumps(data, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+
+
+def _append_dependency_approval_record(
+    candidate_id: str,
+    runs_dir: Path,
+    *,
+    dependency_plan_digest: str | None,
+    expires_at: str | None = "2099-01-01T00:00:00Z",
+) -> str:
+    request = InputRequest(
+        id=f"inputreq_dependency_plan_{candidate_id}_{len(_snapshot_tree(runs_dir))}",
+        kind="durable_admission_review",
+        title=f"Approve dependency evidence for {candidate_id}",
+        reason="Acceptance fixture approval for an exact dependency plan digest.",
+        blocked_scope="dependency evidence review only",
+        requested_decision="Approve the exact dependency plan digest or defer.",
+        options=["approve_review", "defer"],
+        recommended_option="approve_review",
+        related_candidate_id=candidate_id,
+    )
+    notes = "Reviewed no-write dependency evidence."
+    if dependency_plan_digest:
+        notes = f"{notes} dependency_plan_digest={dependency_plan_digest}"
+        if expires_at is not None:
+            notes = f"{notes} expires_at={expires_at}"
+    report = InputRequestResolutionDryRun(
+        dry_run=True,
+        input_request_id=request.id,
+        decision="approve_review",
+        resolution_class="approve",
+        proposed_status="resolved",
+        reviewer="Ada",
+        notes=notes,
+        request=request,
+        remaining_blocked_scope="dependency install remains unsupported",
+        next_steps=["Rerun admit-candidate --dry-run."],
+    )
+    record = append_input_request_resolution(report, runs_dir)
+    return record.id
 
 
 def _append_plan_approval_record(

@@ -575,8 +575,10 @@ def _remove_stale_lock(path: Path, *, stale_after_seconds: float) -> bool:
         content = ""
 
     pid = _lock_pid(content)
-    if pid is not None and not _pid_is_alive(pid):
-        return _unlink_lock(path)
+    if pid is not None:
+        if not _pid_is_alive(pid):
+            return _unlink_lock(path)
+        return False
 
     try:
         age_seconds = time.time() - path.stat().st_mtime

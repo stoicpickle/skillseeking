@@ -282,7 +282,7 @@ Run the broader agent diagnostic suite when deciding what to improve next:
 .venv/bin/skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir runs/evals
 ```
 
-The eval writes a machine-readable JSON report and a Markdown summary. It scores task outcome, missing-skill detection, wrong skill loads, unsafe allowance, safe blocking, trace completeness, deterministic skill-request quality, governor assertions, lifecycle candidate evidence, input-needed requests, and diagnostic dimensions grouped by task tags. The lifecycle smoke suite lives at `evals/skill_lifecycle_v0.jsonl` and covers repeated gaps, temporary success, repair-required failure, advisory review queue expectations, and input-focus expectations.
+The eval writes a machine-readable JSON report and a Markdown summary. It scores task outcome, missing-skill detection, wrong skill loads, unsafe allowance, safe blocking, trace completeness, deterministic skill-request quality, governor assertions, lifecycle candidate evidence, stable-readiness evidence, input-needed requests, and diagnostic dimensions grouped by task tags. The lifecycle smoke suite lives at `evals/skill_lifecycle_v0.jsonl` and covers repeated gaps, temporary success, repair-required failure, advisory review queue expectations, stable-readiness not-routed assertions, and input-focus expectations.
 
 Inspect read-only human-input queues with:
 

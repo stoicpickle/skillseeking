@@ -259,6 +259,7 @@ Allowed receipt outcomes are `ready`, `incomplete`, and `blocked`. `ready` means
   "validation_pass_count": 10,
   "validation_failure_count": 0,
   "stable_review_approval_required": true,
+  "stable_review_authorized": false,
   "dry_run": true,
   "advisory_only": true,
   "stable_promotion_authorized": false,
@@ -291,7 +292,7 @@ Allowed receipt outcomes are `ready`, `incomplete`, and `blocked`. `ready` means
 }
 ```
 
-Allowed outcomes are `ready_for_stable_review`, `needs_more_evidence`, `blocked`, and `already_stable`. `ready_for_stable_review` means candidate promotion is recorded, the stable-use threshold is met, no validation/repair/duplicate/negative evidence blocks review, no same-name durable registry conflict exists, and no receipt proof category is blocked. It is still advisory review evidence only: stable promotion remains unauthorized and stable routing remains disabled. `needs_more_evidence` covers missing candidate promotion or too few successful temporary uses. `blocked` covers blocked/quarantined candidates, duplicate evidence, negative evidence, durable registry name conflicts, or blocked receipt proof. `already_stable` reports ledger state only and does not change routing.
+Allowed outcomes are `ready_for_stable_review`, `needs_more_evidence`, `blocked`, and `already_stable`. `ready_for_stable_review` means candidate promotion is recorded, the stable-use threshold is met, no validation/repair/duplicate/negative evidence blocks review, no same-name durable registry conflict exists, and no receipt proof category is blocked. It is still advisory review evidence only: stable review is not authorized by the report, stable promotion remains unauthorized, and stable routing remains disabled. `needs_more_evidence` covers missing candidate promotion or too few successful temporary uses. `blocked` covers blocked/quarantined candidates, duplicate evidence, negative evidence, durable registry name conflicts, or blocked receipt proof. `already_stable` reports ledger state only and does not change routing.
 
 ## Negative Evidence
 
@@ -1210,7 +1211,7 @@ Eval suites are JSONL. Blank lines and comment lines are ignored.
 }
 ```
 
-Eval tasks may optionally set `temporary_skills` or `scripted_skills` to override the suite-level execution mode for that row. Omitted values inherit the runner/CLI defaults. Tasks may also set `input_request_resolutions` as post-run eval fixture actions. Each action selects one task-scoped input request by `input_request_id` or by `kind`/`status`, calls the real non-dry-run resolver, appends to the resolution ledger, and then re-reads the queue before expectations are checked.
+Eval tasks may optionally set `temporary_skills` or `scripted_skills` to override the suite-level execution mode for that row. Omitted values inherit the runner/CLI defaults. Tasks may also set `input_request_resolutions` as post-run eval fixture actions. Each action selects one task-scoped input request by `input_request_id` or by `kind`/`status`, calls the real non-dry-run resolver, appends to the resolution ledger, and then re-reads the queue before expectations are checked. Stable-readiness eval fixture preparation may promote a candidate inside the eval run directory only when `prepare_stable_readiness_candidate` is explicitly set; it may also set duplicate evidence with `stable_readiness_duplicate_of` / `stable_readiness_duplicate_evidence` or append eval-only negative resolution evidence with `stable_readiness_negative_resolution_decision`. That fixture support is not runtime auto-promotion and does not authorize stable routing.
 
 Supported v0 expectations include:
 
@@ -1218,6 +1219,7 @@ Supported v0 expectations include:
 - Skill request control summaries: `must_have_request_control_summary`.
 - Governor assertions: `governor_decision`, `governor_risk_level`, `governor_approval_required`, and `governor_dominant_signal`.
 - Skill Candidate Ledger assertions: `candidate_id`, `candidate_skill_name`, `candidate_capability`, `must_have_candidate_entry`, `candidate_status`, `min_candidate_request_count`, `candidate_human_approval_required`, `must_have_candidate_evidence`, `must_not_auto_promote`, `candidate_validation_pass_count_min`, `candidate_validation_failure_count_min`, `candidate_duplicate_of_present`, `candidate_block_reason_contains`, `candidate_quarantine_reason_contains`, `candidate_repair_requirement_contains`, `candidate_promotion_requirement_contains`, and `candidate_review_queue`.
+- Stable-readiness assertions and fixtures: `must_have_stable_readiness_report`, `stable_readiness_outcome`, `stable_readiness_ready_for_review`, `stable_review_authorized`, `stable_promotion_authorized`, `stable_routing_enabled`, `stable_readiness_blocker`, `prepare_stable_readiness_candidate`, `stable_readiness_successful_temporary_uses`, `stable_readiness_duplicate_of`, `stable_readiness_duplicate_evidence`, and `stable_readiness_negative_resolution_decision`.
 - Input-focus assertions: `must_have_input_request`, `input_request_kind`, `input_request_status`, `input_request_active_count`, `input_request_resolution_count`, and `input_request_resolution_decisions`.
 
 ## Eval Report
@@ -1266,13 +1268,13 @@ Supported v0 expectations include:
 }
 ```
 
-Per-task records include `run_id`, `run_log_path`, `explain_command`, `result_category`, `loaded_skills`, `requested_skills`, `rejected_skills`, `skill_requests`, `input_requests`, `input_request_resolutions`, `request_quality`, `routing_decisions`, `trace`, `trace_complete`, `failure_categories`, `suggested_next_action`, and any assertion issues.
+Per-task records include `run_id`, `run_log_path`, `explain_command`, `result_category`, `loaded_skills`, `requested_skills`, `rejected_skills`, `skill_requests`, `input_requests`, `input_request_resolutions`, `stable_readiness_reports`, `request_quality`, `routing_decisions`, `trace`, `trace_complete`, `failure_categories`, `suggested_next_action`, and any assertion issues.
 
 Per-task records also include `governor_decisions` and `governor_expectation_passed` when governor assertions are evaluated.
 
 `diagnostic_dimensions` groups task results by non-generic tags, excluding bookkeeping tags such as `diagnostic`, `smoke`, `v0`, and `calibration`. `weakest_diagnostic_dimensions` lists up to three failing dimensions sorted by failed count, then pass rate, so local iteration can start with the largest visible failure bucket.
 
-Failure categories are one or more of `wrong_route`, `missing_skill_not_detected`, `unnecessary_skill_request`, `unsafe_not_blocked`, `safe_task_overblocked`, `approval_not_requested`, `bad_skill_request_contract`, `trace_incomplete`, `report_incomplete`, `planner_misclassified_task`, `governor_decision_mismatch`, `governor_signal_mismatch`, `request_control_summary_missing`, `lifecycle_evidence_mismatch`, `input_request_missing`, `input_request_kind_mismatch`, `input_request_status_mismatch`, and `input_request_resolution_mismatch`.
+Failure categories are one or more of `wrong_route`, `missing_skill_not_detected`, `unnecessary_skill_request`, `unsafe_not_blocked`, `safe_task_overblocked`, `approval_not_requested`, `bad_skill_request_contract`, `trace_incomplete`, `report_incomplete`, `planner_misclassified_task`, `governor_decision_mismatch`, `governor_signal_mismatch`, `request_control_summary_missing`, `lifecycle_evidence_mismatch`, `stable_readiness_mismatch`, `input_request_missing`, `input_request_kind_mismatch`, `input_request_status_mismatch`, and `input_request_resolution_mismatch`.
 
 ## Request Quality
 

@@ -430,7 +430,7 @@ Slices:
 | Ledger contract and persistence | complete | `runs/skill_candidate_ledger.json` records deterministic candidate entries and preserves evidence run IDs |
 | Runtime evidence recording | complete | Run logs feed missing requests, temporary outcomes, repair requirements, rejected skills, and duplicate contracts into the ledger |
 | Review surfaces | complete | `skill-agent candidates`, `health`, `explain --include-candidates`, and eval reports expose candidate evidence |
-| Lifecycle eval smoke | complete | `evals/skill_lifecycle_v0.jsonl` proves repeated gaps, temporary success, and repair-required failure accumulate evidence without auto-promotion |
+| Lifecycle eval smoke | complete | `evals/skill_lifecycle_v0.jsonl` proves repeated gaps, temporary success, repair-required failure, and stable-readiness-ready-but-not-routed evidence without auto-promotion or stable routing |
 | Degraded ledger handling | complete | Corrupt ledger summaries do not prevent task/run-log completion; the run trace records `LEDGER_RECORD_FAILED` |
 
 Boundaries:
@@ -480,6 +480,21 @@ Slices:
 | Human-approved managed-prefix write mode | complete | `skill-agent shadow-managed-write` materializes only the proven shadow managed-prefix store/generation/pointer/receipt write after exact digest/hash/checkpoint matches and a separate `managed_write_plan_digest` approval |
 | Stable readiness report | complete | `skill-agent stable-readiness` composes candidate ledger, skill receipt, negative evidence, and durable registry evidence to advise candidate-to-stable review without stable promotion or routing authority |
 | Roadmap checkpoint docs | complete | README and operating roadmap distinguish local testing readiness from production readiness |
+
+## Next Slice Goal: Candidate-to-Stable Review Rehearsal
+
+Status: not_started
+
+Goal:
+Make `skill-agent stable-readiness <candidate-id>` a candidate-to-stable review rehearsal that clearly states whether existing evidence is ready, missing, or blocked for human stable review while still refusing to promote, route, copy, install, mutate ledgers, widen permissions, or steer the governor.
+
+Slices:
+
+| Slice | Status | Checks |
+| --- | --- | --- |
+| Stable-readiness evidence compression | complete | Report names missing/blocking evidence and preserves `stable_promotion_authorized=false` plus `stable_routing_enabled=false` |
+| Stable-readiness eval dimension | complete | Eval expectations cover ready-for-review, duplicate-blocked, and negative-evidence-blocked stable-readiness states while stable routing remains disabled |
+| Operator decision-load guardrails | working | Tests/docs preserve advisory-only semantics and avoid adding unrelated proof surfaces |
 
 Boundaries:
 

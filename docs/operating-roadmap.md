@@ -38,6 +38,8 @@ The v0 surface is implemented and proven through the completed milestones in the
 
 The current product proof is a CLI-first prototype, not a production agent framework. The public phase framing remains in [Roadmap](roadmap.md): static skill loader -> skill request mode -> Markdown-only Skillsmith -> scripted skills -> SkillOps.
 
+The next product risk is proof-surface sprawl: many reports now expose useful evidence, but the operator still needs a smaller answer about what decision to make next. Near-term work should compress existing evidence into clearer advisory decisions before adding durable admission, stable routing, dependency installation, UI, marketplace, or active governor authority.
+
 ## Current Control Layer
 
 The current control layer is trace-only. Per [Homeostatic Governor](homeostatic-governor.md), the governor records deterministic decision evidence for capability decisions but does not steer execution.
@@ -84,7 +86,7 @@ Promotion remains human-governed:
 2. **Human promotion workflow design**
    - Current progress: `promote-candidate` records reviewer/notes approval and can move eligible temporary ledger entries to `candidate` evidence status; `candidate-usefulness` summarizes whether preserved temporary-skill evidence actually supports review and can compare a pinned no-temporary-skill baseline against a pinned temporary-skill treatment; `skill-receipt` aggregates origin, utility, containment, compatibility, approval, and reversibility categories for one candidate; `admission-plan` can inspect durable review readiness without mutating durable skills; durable admission workflow design defines the required proof gates; `admit-candidate --dry-run` previews source fingerprint, target path, source snapshot retention path, collision policy, permission approval evidence, permission/dependency diffs, exact plan digest approval, no-write dependency evidence (`dependency_install_contract`, `dependency_plan_digest`, and optional run-scoped manifest), write blockers, and required approval records while rejecting write mode; `shadow-activation-plan` previews a managed-prefix store/generation/pointer/rollback plan without writing it; `shadow-rollback-plan` verifies existing pointer/generation rollback evidence without writing it; `shadow-activation-acceptance` exercises store/generation copy, pointer switch, interrupted-pointer recovery, conflict blocking, and rollback only inside a run-scoped acceptance prefix; `shadow-write-gate` verifies the already prepared acceptance evidence, supplied exact acceptance digest, source hash, and restored rollback pointer without writing; `shadow-managed-write` is the first real write surface and is confined to the shadow managed prefix.
    - Operator sequence for `shadow-managed-write`: prepare durable admission proof, prepare acceptance evidence, verify `shadow-write-gate`, dry-run `shadow-managed-write` to capture `managed_write_plan_digest`, record a separate non-expired write approval with that digest, checkpoint and verify evidence, then execute `shadow-managed-write --no-dry-run` with every expected digest/hash plus the latest checkpoint hash and `--write-approval-id`.
-   - Next coverage: candidate-to-stable workflow design, promotion review queues, durable `skills/` admission, and stable routing after stable-readiness evidence, the managed-prefix boundary, and no-write dependency evidence boundary remain proven. `stable-readiness` is advisory only: it is not stable promotion, durable `skills/` admission, stable routing, registry mutation, ledger mutation, permission widening, or governor steering. Dependency evidence is not dependency installation, candidate-to-stable promotion, durable `skills/` admission, registry mutation, ledger mutation, stable routing, or governor steering.
+   - Next coverage: candidate-to-stable review rehearsal through `stable-readiness`, stable-readiness eval assertions, promotion review queues, durable `skills/` admission, and stable routing only after stable-readiness evidence, the managed-prefix boundary, and no-write dependency evidence boundary remain proven. `stable-readiness` is advisory only: it is not stable promotion, durable `skills/` admission, stable routing, registry mutation, ledger mutation, permission widening, or governor steering. Dependency evidence is not dependency installation, candidate-to-stable promotion, durable `skills/` admission, registry mutation, ledger mutation, stable routing, or governor steering.
    - Keep permission widening human-gated and evidence-backed.
 
 3. **Lifecycle review queues and health expansion**
@@ -166,6 +168,9 @@ The following are explicitly out of scope for the next runtime milestone:
 - Broad planner or router rewrites.
 
 ## Decision Log
+
+- 2026-06-04: Stable-readiness eval coverage now includes ready-for-review, duplicate-blocked, and negative-evidence-blocked candidate-to-stable rehearsal rows while stable review, stable promotion, and stable routing remain unauthorized.
+- 2026-06-04: Captured external review tasking in `docs/plans/operator-decision-load-and-stable-review-rehearsal-2026-06-04.md`; next work should reduce operator decision overload by strengthening stable-readiness review rehearsal and eval coverage before adding stable routing or durable admission authority.
 
 - 2026-06-01: Consolidated near-term roadmap into this document before runtime Skill Candidate Ledger work.
 - 2026-06-01: Named **Skill Candidate Ledger** as the next runtime milestone.

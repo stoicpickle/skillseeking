@@ -19,6 +19,7 @@ from app.skill_candidate_ledger import (
     ledger_path,
     load_candidate_ledger,
     record_run_in_candidate_ledger,
+    _remove_stale_lock,
     write_candidate_ledger,
 )
 
@@ -363,6 +364,18 @@ def test_replaying_duplicate_run_does_not_rewrite_ledger(tmp_path):
 
     assert replay_path is None
     assert ledger_path(runs_dir).read_text(encoding="utf-8") == before
+
+
+def test_live_candidate_ledger_lock_is_not_evicted_by_age(tmp_path):
+    runs_dir = tmp_path / "runs"
+    runs_dir.mkdir()
+    lock_path = runs_dir / LOCK_FILENAME
+    lock_path.write_text(f"pid={os.getpid()}\n", encoding="utf-8")
+    old_time = 1
+    os.utime(lock_path, (old_time, old_time))
+
+    assert _remove_stale_lock(lock_path, stale_after_seconds=0) is False
+    assert lock_path.exists()
 
 
 def test_stale_candidate_ledger_lock_is_recovered(tmp_path):

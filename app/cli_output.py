@@ -329,6 +329,7 @@ def emit_stable_readiness_output(report: StableReadinessReport) -> None:
         "Stable review approval required: "
         f"{str(report.stable_review_approval_required).lower()}"
     )
+    typer.echo(f"Stable review authorized: {str(report.stable_review_authorized).lower()}")
     typer.echo(f"Advisory only: {str(report.advisory_only).lower()}")
     typer.echo(
         "Stable promotion authorized: "

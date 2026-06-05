@@ -10,13 +10,18 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from app.agent_loop import run_task
 from app.input_focus import collect_input_requests
 from app.input_resolution import InputResolutionError, resolve_input_request
+from app.input_resolution_ledger import append_input_request_resolution
+from app.models import InputRequest, InputRequestResolutionDryRun
 from app.request_quality import score_skill_request
 from app.skill_candidate_ledger import (
     SkillCandidateLedgerError,
+    approve_candidate_promotion,
     candidate_id_for,
     candidate_review_queue_names,
     load_candidate_ledger,
+    write_candidate_ledger,
 )
+from app.stable_readiness import StableReadinessError, build_stable_readiness_report
 
 MISSING_SKILL_RESULTS = {"blocked_missing_skill", "repair_requested", "success"}
 NON_DIAGNOSTIC_TAGS = {"calibration", "diagnostic", "smoke", "v0"}
@@ -40,6 +45,7 @@ SUGGESTED_ACTIONS = {
     "input_request_kind_mismatch": "Align the input request kind with the expected human decision boundary.",
     "input_request_status_mismatch": "Align the input request status with the expected queue state.",
     "input_request_resolution_mismatch": "Inspect the resolution ledger proof and expected reviewer decision path.",
+    "stable_readiness_mismatch": "Inspect stable-readiness evidence and preserve no-authority review boundaries.",
 }
 
 
@@ -155,6 +161,7 @@ def render_markdown_summary(report: dict[str, Any]) -> str:
         f"- Average request quality: {aggregate['average_request_quality']}",
         f"- Governor decision accuracy: {aggregate['governor_decision_accuracy']} ({aggregate['governor_decision_correct']} / {aggregate['governor_decision_expected']})",
         f"- Lifecycle evidence accuracy: {aggregate['lifecycle_evidence_accuracy']} ({aggregate['lifecycle_evidence_correct']} / {aggregate['lifecycle_evidence_expected']})",
+        f"- Stable-readiness accuracy: {aggregate['stable_readiness_accuracy']} ({aggregate['stable_readiness_correct']} / {aggregate['stable_readiness_expected']})",
         f"- Trace completeness: {aggregate['trace_complete_count']} / {aggregate['total']}",
         "",
         "## Diagnostic Dimensions",
@@ -268,6 +275,30 @@ def _run_eval_task(
         run_log_input_requests=run_log_input_requests,
         candidate_ledger_entries=candidate_ledger_entries,
     )
+    stable_prep_changed, stable_prep_issues = _prepare_stable_readiness_fixture(
+        expected,
+        candidate_ledger_entries=candidate_ledger_entries,
+        runs_dir=runs_dir,
+    )
+    if stable_prep_changed or stable_prep_issues:
+        candidate_ledger_entries = _candidate_ledger_entries_for_task(
+            expected,
+            run_id=run_log.run_id,
+            skill_requests=run_log.skill_requests,
+            runs_dir=runs_dir,
+        )
+        input_requests = _input_requests_for_task(
+            runs_dir=runs_dir,
+            run_id=run_log.run_id,
+            run_log_input_requests=run_log_input_requests,
+            candidate_ledger_entries=candidate_ledger_entries,
+        )
+    stable_readiness_reports = _stable_readiness_reports_for_task(
+        expected,
+        candidate_ledger_entries=candidate_ledger_entries,
+        runs_dir=runs_dir,
+        skills_dir=skills_dir,
+    )
     issues = _evaluate_expectations(
         expected,
         result_category=run_log.result_category,
@@ -283,9 +314,10 @@ def _run_eval_task(
         candidate_ledger_entries=candidate_ledger_entries,
         input_requests=input_requests,
         input_request_resolutions=input_request_resolutions,
+        stable_readiness_reports=stable_readiness_reports,
         run_id=run_log.run_id,
     )
-    issues = resolution_issues + issues
+    issues = resolution_issues + stable_prep_issues + issues
     failure_categories = _failure_categories(
         expected,
         result_category=run_log.result_category,
@@ -300,6 +332,7 @@ def _run_eval_task(
         candidate_ledger_entries=candidate_ledger_entries,
         input_requests=input_requests,
         input_request_resolutions=input_request_resolutions,
+        stable_readiness_reports=stable_readiness_reports,
         issues=issues,
     )
     run_log_path = str(result.run_log_path)
@@ -324,10 +357,15 @@ def _run_eval_task(
         "input_requests": input_requests,
         "input_request_resolutions": input_request_resolutions,
         "candidate_ledger_entries": candidate_ledger_entries,
+        "stable_readiness_reports": stable_readiness_reports,
         "lifecycle_expectation_passed": not _candidate_ledger_expectation_issues(
             expected,
             candidate_ledger_entries,
             run_log.run_id,
+        ),
+        "stable_readiness_expectation_passed": not _stable_readiness_expectation_issues(
+            expected,
+            stable_readiness_reports,
         ),
         "request_quality": request_quality,
         "routing_decisions": run_log.capability_decisions,
@@ -356,6 +394,7 @@ def _evaluate_expectations(
     candidate_ledger_entries: list[dict[str, Any]],
     input_requests: list[dict[str, Any]],
     input_request_resolutions: list[dict[str, Any]],
+    stable_readiness_reports: list[dict[str, Any]],
     run_id: str,
 ) -> list[str]:
     issues: list[str] = []
@@ -408,6 +447,12 @@ def _evaluate_expectations(
             input_request_resolutions,
         )
     )
+    issues.extend(
+        _stable_readiness_expectation_issues(
+            expected,
+            stable_readiness_reports,
+        )
+    )
     return issues
 
 
@@ -422,6 +467,9 @@ def _aggregate(task_results: list[dict[str, Any]]) -> dict[str, Any]:
     trace_complete_count = sum(1 for task in task_results if task["trace_complete"])
     governor_expected = sum(1 for task in task_results if _has_governor_expectation(task["expected"]))
     lifecycle_expected = sum(1 for task in task_results if _has_candidate_ledger_expectation(task["expected"]))
+    stable_readiness_expected = sum(
+        1 for task in task_results if _has_stable_readiness_expectation(task["expected"])
+    )
     lifecycle_correct = sum(
         1
         for task in task_results
@@ -432,6 +480,12 @@ def _aggregate(task_results: list[dict[str, Any]]) -> dict[str, Any]:
         1
         for task in task_results
         if _has_governor_expectation(task["expected"]) and task["governor_expectation_passed"]
+    )
+    stable_readiness_correct = sum(
+        1
+        for task in task_results
+        if _has_stable_readiness_expectation(task["expected"])
+        and task["stable_readiness_expectation_passed"]
     )
     diagnostic_dimensions = _diagnostic_dimensions(task_results)
     return {
@@ -489,6 +543,13 @@ def _aggregate(task_results: list[dict[str, Any]]) -> dict[str, Any]:
         "lifecycle_evidence_accuracy": round(lifecycle_correct / lifecycle_expected, 3)
         if lifecycle_expected
         else None,
+        "stable_readiness_expected": stable_readiness_expected,
+        "stable_readiness_correct": stable_readiness_correct,
+        "stable_readiness_accuracy": round(
+            stable_readiness_correct / stable_readiness_expected, 3
+        )
+        if stable_readiness_expected
+        else None,
         "trace_complete_count": trace_complete_count,
         "trace_incomplete_count": total - trace_complete_count,
         "trace_completeness": round(trace_complete_count / total, 3) if total else 0,
@@ -512,6 +573,7 @@ def _failure_categories(
     candidate_ledger_entries: list[dict[str, Any]],
     input_requests: list[dict[str, Any]],
     input_request_resolutions: list[dict[str, Any]],
+    stable_readiness_reports: list[dict[str, Any]],
     issues: list[str],
 ) -> list[str]:
     if not issues:
@@ -585,6 +647,11 @@ def _failure_categories(
         add("input_request_resolution_mismatch")
     if any(issue.startswith("could not apply input request resolution") for issue in issues):
         add("input_request_resolution_mismatch")
+    if _has_stable_readiness_expectation(expected) and _stable_readiness_expectation_issues(
+        expected,
+        stable_readiness_reports,
+    ):
+        add("stable_readiness_mismatch")
 
     return categories or ["planner_misclassified_task"]
 
@@ -600,6 +667,7 @@ def _failure_markdown(task: dict[str, Any]) -> list[str]:
         f"- Requested skills: {_markdown_list(task['requested_skills'])}",
         f"- Governor decisions: {_markdown_list([decision.get('decision', '-') for decision in task['governor_decisions']])}",
         f"- Candidate ledger entries: {_markdown_list([entry.get('candidate_id', '-') for entry in task['candidate_ledger_entries']])}",
+        f"- Stable-readiness reports: {_markdown_list([report.get('candidate_id', '-') for report in task['stable_readiness_reports']])}",
         f"- Input requests: {_markdown_list([request.get('kind', '-') for request in task['input_requests']])}",
         f"- Failure categories: {_markdown_list(task['failure_categories'])}",
     ]
@@ -714,6 +782,15 @@ def _diagnostic_dimension_metrics(tasks: list[dict[str, Any]]) -> dict[str, Any]
         if _has_candidate_ledger_expectation(task["expected"])
         and task["lifecycle_expectation_passed"]
     )
+    stable_readiness_expected = sum(
+        1 for task in tasks if _has_stable_readiness_expectation(task["expected"])
+    )
+    stable_readiness_correct = sum(
+        1
+        for task in tasks
+        if _has_stable_readiness_expectation(task["expected"])
+        and task["stable_readiness_expectation_passed"]
+    )
     failure_categories = _category_counts(tasks)
 
     return {
@@ -734,6 +811,11 @@ def _diagnostic_dimension_metrics(tasks: list[dict[str, Any]]) -> dict[str, Any]
         else None,
         "lifecycle_evidence_accuracy": round(lifecycle_correct / lifecycle_expected, 3)
         if lifecycle_expected
+        else None,
+        "stable_readiness_accuracy": round(
+            stable_readiness_correct / stable_readiness_expected, 3
+        )
+        if stable_readiness_expected
         else None,
         "failure_categories": failure_categories,
         "suggested_next_action": _suggested_next_action(list(failure_categories)),
@@ -941,6 +1023,259 @@ def _has_input_request_expectation(expected: dict[str, Any]) -> bool:
     )
 
 
+def _has_stable_readiness_expectation(expected: dict[str, Any]) -> bool:
+    return any(
+        key in expected
+        for key in {
+            "must_have_stable_readiness_report",
+            "stable_readiness_outcome",
+            "stable_readiness_ready_for_review",
+            "stable_review_authorized",
+            "stable_promotion_authorized",
+            "stable_routing_enabled",
+            "stable_readiness_blocker",
+        }
+    )
+
+
+def _prepare_stable_readiness_fixture(
+    expected: dict[str, Any],
+    *,
+    candidate_ledger_entries: list[dict[str, Any]],
+    runs_dir: Path,
+) -> tuple[bool, list[str]]:
+    if not expected.get("prepare_stable_readiness_candidate"):
+        return False, []
+    if not candidate_ledger_entries:
+        return False, ["could not prepare stable-readiness candidate: no candidate entry"]
+
+    candidate_id = str(candidate_ledger_entries[0].get("candidate_id") or "")
+    if not candidate_id:
+        return False, ["could not prepare stable-readiness candidate: missing candidate id"]
+
+    changed = False
+    try:
+        ledger = load_candidate_ledger(runs_dir)
+        entry = next((item for item in ledger.entries if item.candidate_id == candidate_id), None)
+        if entry is None:
+            return False, [f"could not prepare stable-readiness candidate: {candidate_id} not found"]
+        if entry.status == "temporary":
+            approve_candidate_promotion(
+                runs_dir,
+                candidate_id,
+                reviewer=str(expected.get("stable_readiness_reviewer") or "eval-fixture"),
+                notes=str(
+                    expected.get("stable_readiness_notes")
+                    or "Eval fixture candidate promotion before stable-readiness review."
+                ),
+            )
+            changed = True
+            ledger = load_candidate_ledger(runs_dir)
+            entry = next(item for item in ledger.entries if item.candidate_id == candidate_id)
+        uses = expected.get("stable_readiness_successful_temporary_uses")
+        if uses is not None and int(entry.successful_temporary_uses) != int(uses):
+            entry.successful_temporary_uses = int(uses)
+            write_candidate_ledger(ledger, runs_dir)
+            changed = True
+        duplicate_of = expected.get("stable_readiness_duplicate_of")
+        if (
+            entry.status == "candidate"
+            and entry.promotion_approved_by
+            and entry.promotion_approved_at
+            and entry.human_approval_required is not False
+        ):
+            entry.human_approval_required = False
+            changed = True
+        duplicate_evidence = expected.get("stable_readiness_duplicate_evidence")
+        if duplicate_of is not None and entry.duplicate_of != str(duplicate_of):
+            entry.duplicate_of = str(duplicate_of)
+            changed = True
+        if duplicate_evidence is not None:
+            evidence = [str(item) for item in duplicate_evidence]
+            if entry.duplicate_evidence != evidence:
+                entry.duplicate_evidence = evidence
+                changed = True
+        negative_decision = expected.get("stable_readiness_negative_resolution_decision")
+        if negative_decision:
+            _append_stable_readiness_negative_resolution_fixture(
+                runs_dir=runs_dir,
+                entry=entry,
+                decision=str(negative_decision),
+            )
+            changed = True
+        if changed:
+            write_candidate_ledger(ledger, runs_dir)
+    except (SkillCandidateLedgerError, ValueError) as exc:
+        return changed, [f"could not prepare stable-readiness candidate: {exc}"]
+    return changed, []
+
+
+def _append_stable_readiness_negative_resolution_fixture(
+    *,
+    runs_dir: Path,
+    entry: Any,
+    decision: str,
+) -> None:
+    resolution_class_by_decision = {
+        "reject_candidate": "reject",
+        "defer": "defer",
+        "block": "block",
+        "repair_candidate": "repair",
+    }
+    resolution_class = resolution_class_by_decision.get(decision)
+    if resolution_class is None:
+        raise ValueError(f"unsupported stable-readiness negative decision: {decision}")
+    request = InputRequest(
+        id=f"inputreq_eval_negative_{entry.candidate_id}",
+        kind="promotion_approval",
+        status="open",
+        title=f"Eval negative stable-readiness evidence for {entry.skill_name}",
+        reason="Eval fixture negative evidence before stable review.",
+        blocked_scope="candidate stable review",
+        requested_decision="Record unfavorable review evidence before stable review.",
+        options=[decision],
+        recommended_option=decision,
+        evidence_refs=list(entry.evidence_run_ids),
+        related_run_id=entry.last_seen_run_id,
+        related_candidate_id=entry.candidate_id,
+    )
+    report = InputRequestResolutionDryRun(
+        dry_run=True,
+        input_request_id=request.id,
+        decision=decision,
+        resolution_class=resolution_class,
+        proposed_status="open" if resolution_class == "defer" else "resolved",
+        reviewer="eval-fixture",
+        notes="Eval fixture negative evidence remains visible to stable-readiness.",
+        request=request,
+        remaining_blocked_scope=(
+            None if resolution_class in {"recover", "merge", "keep_separate"} else request.blocked_scope
+        ),
+        next_steps=["Keep this candidate out of stable review until negative evidence is resolved."],
+    )
+    append_input_request_resolution(report, runs_dir)
+
+
+def _stable_readiness_reports_for_task(
+    expected: dict[str, Any],
+    *,
+    candidate_ledger_entries: list[dict[str, Any]],
+    runs_dir: Path,
+    skills_dir: Path,
+) -> list[dict[str, Any]]:
+    if not _has_stable_readiness_expectation(expected):
+        return []
+    reports: list[dict[str, Any]] = []
+    for entry in candidate_ledger_entries[:1]:
+        candidate_id = entry.get("candidate_id")
+        if not candidate_id:
+            continue
+        try:
+            report = build_stable_readiness_report(
+                str(candidate_id),
+                runs_dir=runs_dir,
+                skills_dir=skills_dir,
+            )
+        except StableReadinessError as exc:
+            reports.append(
+                {
+                    "candidate_id": str(candidate_id),
+                    "error": str(exc),
+                }
+            )
+        else:
+            reports.append(report.model_dump(mode="json"))
+    return reports
+
+
+def _stable_readiness_expectation_issues(
+    expected: dict[str, Any],
+    reports: list[dict[str, Any]],
+) -> list[str]:
+    if not _has_stable_readiness_expectation(expected):
+        return []
+    issues: list[str] = []
+    if not reports:
+        issues.append("expected stable-readiness report")
+        return issues
+
+    report = reports[0]
+    if report.get("error"):
+        issues.append(f"stable-readiness report failed: {report['error']}")
+        return issues
+
+    expected_outcome = expected.get("stable_readiness_outcome")
+    if expected_outcome is not None and report.get("outcome") != expected_outcome:
+        issues.append(
+            f"expected stable-readiness outcome {expected_outcome}, got {report.get('outcome')}"
+        )
+
+    _stable_readiness_bool_issue(
+        issues,
+        expected,
+        report,
+        "stable_readiness_ready_for_review",
+        "ready_for_stable_review",
+    )
+    _stable_readiness_bool_issue(
+        issues,
+        expected,
+        report,
+        "stable_review_authorized",
+        "stable_review_authorized",
+    )
+    _stable_readiness_bool_issue(
+        issues,
+        expected,
+        report,
+        "stable_promotion_authorized",
+        "stable_promotion_authorized",
+    )
+    _stable_readiness_bool_issue(
+        issues,
+        expected,
+        report,
+        "stable_routing_enabled",
+        "stable_routing_enabled",
+    )
+
+    expected_blocker = expected.get("stable_readiness_blocker")
+    if expected_blocker and expected_blocker not in (report.get("blockers") or []):
+        issues.append(
+            "expected stable-readiness blocker "
+            f"{expected_blocker}, got {report.get('blockers') or '-'}"
+        )
+    return issues
+
+
+def _stable_readiness_bool_issue(
+    issues: list[str],
+    expected: dict[str, Any],
+    report: dict[str, Any],
+    expected_key: str,
+    report_key: str,
+) -> None:
+    if expected_key not in expected:
+        return
+    expected_value = expected[expected_key]
+    if not isinstance(expected_value, bool):
+        issues.append(f"expected {expected_key} assertion must be boolean")
+        return
+    if report_key not in report:
+        issues.append(f"stable-readiness report missing field {report_key}")
+        return
+    actual_value = report[report_key]
+    if not isinstance(actual_value, bool):
+        issues.append(
+            f"stable-readiness field {report_key} must be boolean, got {actual_value!r}"
+        )
+        return
+    if actual_value != expected_value:
+        issues.append(
+            f"expected {expected_key} {expected_value}, got {actual_value}"
+        )
+
+
 def _input_request_expectation_issues(
     expected: dict[str, Any],
     input_requests: list[dict[str, Any]],
@@ -1130,6 +1465,12 @@ def _resolve_eval_input_requests(
             candidate_ledger_entries=candidate_ledger_entries,
         )
         matches = _matching_input_requests_for_resolution(action, input_requests)
+        if len(matches) != 1:
+            current_run_matches = [
+                request for request in matches if request.get("related_run_id") == run_id
+            ]
+            if len(current_run_matches) == 1:
+                matches = current_run_matches
         if len(matches) != 1:
             labels = sorted(
                 f"{request.get('kind')}:{request.get('status')}:{request.get('id')}"

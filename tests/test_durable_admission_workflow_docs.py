@@ -112,6 +112,7 @@ def test_stable_readiness_docs_preserve_advisory_boundary(repo_root: Path):
         "ready_for_stable_review",
         "needs_more_evidence",
         "already_stable",
+        '"stable_review_authorized": false',
         '"stable_promotion_authorized": false',
         '"stable_routing_enabled": false',
         "does not mark the candidate stable",

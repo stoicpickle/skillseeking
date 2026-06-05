@@ -82,6 +82,7 @@ def test_stable_readiness_reports_ready_for_review_without_authorizing_routing(
     assert report.ready_for_stable_review is True
     assert report.successful_temporary_uses == 10
     assert report.stable_review_approval_required is True
+    assert report.stable_review_authorized is False
     assert report.stable_promotion_authorized is False
     assert report.stable_routing_enabled is False
     assert report.negative_evidence is not None
@@ -102,6 +103,7 @@ def test_stable_readiness_reports_ready_for_review_without_authorizing_routing(
     data = json.loads(json_result.stdout)
     assert data["outcome"] == "ready_for_stable_review"
     assert data["ready_for_stable_review"] is True
+    assert data["stable_review_authorized"] is False
     assert data["stable_promotion_authorized"] is False
     assert data["stable_routing_enabled"] is False
     assert data["negative_evidence"]["evidence_count"] == 0
@@ -111,6 +113,7 @@ def test_stable_readiness_reports_ready_for_review_without_authorizing_routing(
     assert "STABLE_READINESS" in text_result.stdout
     assert "Outcome: ready_for_stable_review" in text_result.stdout
     assert "Ready for stable review: true" in text_result.stdout
+    assert "Stable review authorized: false" in text_result.stdout
     assert "Stable promotion authorized: false" in text_result.stdout
     assert "Stable routing enabled: false" in text_result.stdout
     assert "Durable skills mutated: false" in text_result.stdout

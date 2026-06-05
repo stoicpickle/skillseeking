@@ -1,17 +1,28 @@
 from __future__ import annotations
 
+import hashlib
 import json
 from pathlib import Path
 
 from typer.testing import CliRunner
 
 from app.cli import app
+from app.input_focus import _input_request_id
 from app.models import SkillCandidateLedger, SkillCandidateLedgerEntry
 from app.input_resolution_ledger import (
     input_request_resolution_ledger_path,
     load_input_request_resolution_ledger,
 )
 from app.skill_candidate_ledger import write_candidate_ledger
+
+
+def test_input_request_id_uses_sha256_with_expanded_collision_space():
+    expected = hashlib.sha256(b"promotion_approval|candidate_a").hexdigest()[:16]
+
+    request_id = _input_request_id("promotion_approval", "candidate_a")
+
+    assert request_id == f"inputreq_{expected}"
+    assert len(request_id.removeprefix("inputreq_")) == 16
 
 
 def test_resolve_input_request_dry_run_classifies_all_kinds_without_mutation(tmp_path):
@@ -90,7 +101,6 @@ def test_resolve_input_request_dry_run_classifies_all_kinds_without_mutation(tmp
         assert data["governor_steering_enabled"] is False
 
     assert _snapshot_tree(runs_dir) == before
-
 
 def test_resolve_input_request_non_dry_run_appends_and_updates_queue(tmp_path):
     runs_dir = tmp_path / "runs"
@@ -231,7 +241,6 @@ def test_repeated_resolutions_append_history_and_latest_status_controls_queue(tm
     resolved = json.loads(resolved_queue.stdout)
     assert resolved["input_request_count"] == 0
 
-
 def test_resolve_input_request_reads_candidate_ledger_without_mutating_it(tmp_path):
     runs_dir = tmp_path / "runs"
     runs_dir.mkdir()
@@ -341,7 +350,6 @@ def test_resolve_candidate_ledger_request_appends_without_mutating_candidate_led
     assert data["candidate_ledger_mutated"] is False
     assert candidate_ledger.read_bytes() == before_candidate_ledger
     assert input_request_resolution_ledger_path(runs_dir).exists()
-
 
 def test_resolve_input_request_rejects_invalid_and_missing_decisions_without_mutation(tmp_path):
     runs_dir = tmp_path / "runs"

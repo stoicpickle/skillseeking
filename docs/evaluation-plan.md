@@ -226,6 +226,18 @@ The homeostatic governor adds a control assertion to each capability decision. E
 
 The first governor eval slice should extend the current 20-task capability-gap suite without changing the suite's purpose. The suite remains the gate before new routing or planning features. Governor assertions simply make the reason for each route explicit and testable.
 
+## Stable-Readiness Evaluation
+
+Stable-readiness should become a first-class lifecycle diagnostic before any stable routing or durable `skills/` admission exists. Eval rows should be able to assert that a candidate is ready, missing evidence, or blocked for human stable review while `stable_review_authorized=false`, `stable_promotion_authorized=false`, and `stable_routing_enabled=false` remain explicit.
+
+Checked-in lifecycle rows cover:
+
+- ready for stable review but not stable-routed;
+- duplicate evidence blocking stable review;
+- negative evidence blocking stable review.
+
+Stable-readiness failures should appear under a stable-readiness diagnostic dimension instead of being reported as generic report failures.
+
 ## Skill Candidate Ledger Evaluation
 
 Lifecycle eval assertions can verify that repeated gaps, temporary validation success, and repair-required validation failure accumulate candidate evidence without enabling promotion. Eval rows can set `temporary_skills` or `scripted_skills` to override the suite-level execution mode for that task. Supported expectation keys include:
@@ -246,13 +258,14 @@ Lifecycle eval assertions can verify that repeated gaps, temporary validation su
 - `candidate_repair_requirement_contains`
 - `candidate_promotion_requirement_contains`
 
-The lifecycle smoke suite is `evals/skill_lifecycle_v0.jsonl`. It currently covers repeated requested gaps, temporary-skill success, repair-required validation failure, and advisory review queue expectations. It should continue to expand toward more blocked/quarantined and duplicate-candidate scenarios before any active governor behavior or durable candidate-to-stable workflow is implemented.
+The lifecycle smoke suite is `evals/skill_lifecycle_v0.jsonl`. It currently covers repeated requested gaps, temporary-skill success, repair-required validation failure, advisory review queue expectations, and stable-readiness rows for ready-for-review, duplicate-blocked, and negative-evidence-blocked candidates. It should continue to expand toward more blocked/quarantined lifecycle scenarios before any active governor behavior or durable candidate-to-stable workflow is implemented.
 
 Lifecycle evals can also assert advisory review queue membership with `candidate_review_queue`. Checked-in lifecycle rows cover:
 
 - `repeated_requested_gap` for repeated demand without temporary evidence,
 - `promotion_ready` for validated temporary use that still needs human promotion review,
-- `repair_needed` for failed temporary validation.
+- `repair_needed` for failed temporary validation,
+- `stable_readiness` for ready-for-stable-review evidence that remains not authorized and not stable-routed, plus duplicate-blocked and negative-evidence-blocked stable review.
 
 Blocked/quarantined and duplicate queue behavior is covered with focused fixture tests because those scenarios require intentionally rejected or colliding local skill fixtures. Review queues are evidence surfaces only; they do not change routing, governor behavior, promotion, or registry admission.
 

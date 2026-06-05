@@ -2,7 +2,7 @@
 
 ## Source
 
-Feedback source: `/Users/russ/.codex/attachments/329340cd-a3cd-4344-8f40-77bba702b9c8/pasted-text.txt`.
+Feedback source: `<local_attachment_path>/pasted-text.txt` (local-only reference; intentionally redacted).
 
 ## Critical Feedback Extracted
 

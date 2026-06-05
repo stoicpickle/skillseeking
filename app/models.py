@@ -916,6 +916,7 @@ class StableReadinessReport(BaseModel):
     validation_pass_count: int = 0
     validation_failure_count: int = 0
     stable_review_approval_required: bool = True
+    stable_review_authorized: bool = False
     dry_run: bool = True
     advisory_only: bool = True
     stable_promotion_authorized: bool = False

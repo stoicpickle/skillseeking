@@ -21,6 +21,8 @@ Prefer lifecycle evidence, candidate ledgers, input-request ledgers, capability-
 
 The current bet is not "make the agent more autonomous." The current bet is "make the agent's lack of capability, repair needs, admission readiness, and human decision points durable enough that autonomy can be earned later."
 
+The current product risk is **operator decision overload**, not missing proof infrastructure. The next slices should compress existing proof surfaces into clearer operator decisions before adding authority, durable admission, stable routing, UI, marketplace, dependency installation, or active governor steering.
+
 ## Target User And Use Case
 
 Target user:
@@ -60,6 +62,7 @@ A valid next slice should:
 - Name the product question it answers.
 - State the boundary it preserves.
 - Reuse existing CLI, model, ledger, eval, and docs surfaces where possible.
+- Prefer evidence compression over adding another isolated report when the operator decision can be clarified through an existing surface.
 - Prefer tests and eval rows that prove behavior over prose-only claims.
 - Keep changes narrow enough to review in one pass.
 - Update contracts or dev logs when the user-facing behavior changes.
@@ -92,6 +95,7 @@ Before approving a proposed slice, ask:
 - Does this mutate only the intended ledger or artifact?
 - Does this keep candidate promotion and durable admission human-governed?
 - Does this make a future eval clearer?
+- Does this reduce operator decision load instead of adding another proof surface to inspect?
 - Does it avoid adding active governor steering?
 - Does it avoid permission widening?
 - Is there a smaller slice that proves the same product bet?
