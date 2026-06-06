@@ -1,8 +1,14 @@
 # V1.0 Release Notes
 
-Status: local v1 release candidate
+Status: v1.0 local CLI release
 
-Skill-Seeking Agent is not stamped or tagged as `1.0.0` yet. These notes describe the current local CLI release-candidate state and the remaining final gate before a version bump or tag.
+Package version: `1.0.0`
+
+Git release tag: `v1.0.0`
+
+Release date: 2026-06-06
+
+These notes describe the v1.0 local CLI release state. This is a local CLI release, not a hosted service, marketplace launch, package publish, production-safety claim, or true-sandbox claim.
 
 ## Positioning
 
@@ -10,7 +16,7 @@ Skill-Seeking Agent is a local CLI for governed capability acquisition. The prod
 
 ## Current Abilities
 
-- Runs local tasks through `skill-agent run` and writes schema-versioned JSON run logs.
+- Runs local CLI tasks through `skill-agent run` and writes schema-versioned JSON run logs.
 - Explains existing run logs with `skill-agent explain`.
 - Loads durable Markdown skills from the local registry and rejects malformed or unsafe skill fixtures.
 - Emits structured skill requests when a capability is missing.
@@ -24,7 +30,7 @@ Skill-Seeking Agent is a local CLI for governed capability acquisition. The prod
 
 ## Explicit Boundaries
 
-- No `1.0.0` version stamp, tag, or published release has been created yet.
+- No hosted service, package publish, or marketplace release is included in v1.0.
 - The CLI is local-only and operator-governed; it is not a hosted service.
 - Scripted skills are trusted-local opt-in subprocesses with guardrails, not a true sandbox.
 - V1 does not provide an external skill marketplace.
@@ -43,7 +49,7 @@ The canonical local readiness smoke path is:
 bash scripts/v1_smoke.sh
 ```
 
-Before a final `1.0.0` stamp, run:
+The v1.0 release gate is:
 
 ```bash
 .venv/bin/python -m pytest -q
@@ -58,10 +64,6 @@ git diff --check
 
 Release-relevant changes should also receive one scoped CodeRabbit review or a clearly recorded bounded-stall fallback with local proof.
 
-## Remaining Final Gate
+## Release Gate Result
 
-- Keep the v1 release eval at 100 percent pass rate.
-- Expand the v1 release eval only if a later decision brings positive stable routing back into v1 scope.
-- Run the final validation bundle from the release contract.
-- Update `pyproject.toml` to `1.0.0` only after the final gate is clean.
-- Create the `1.0.0` tag only after version, changelog, release notes, and proof agree.
+The release gate must pass on the commit tagged `v1.0.0`. Stable routing remains deferred for v1, so the conditional positive stable-routing eval expansion remains out of scope. The named v1 release eval row `v1_release_stable_routing_policy_deferred_even_when_ready` is the intended release proof for that boundary.

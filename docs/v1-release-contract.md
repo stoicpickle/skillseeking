@@ -1,8 +1,8 @@
 # V1.0 Release Contract
 
-Status: release-candidate docs ready; final `1.0.0` gate pending
+Status: v1.0 local CLI release
 
-This contract defines what Skill-Seeking Agent must promise before the project can be stamped as `1.0.0`. It is not itself a version bump, tag, hosted deployment, marketplace launch, or production-safety claim.
+This contract defines what Skill-Seeking Agent promises as the `1.0.0` local CLI release. It is not a hosted deployment, marketplace launch, package publish, production-safety claim, or true-sandbox claim.
 
 ## Product Boundary
 
@@ -114,7 +114,7 @@ The smoke helper should prove:
 
 ## Release Gates
 
-Before stamping `1.0.0`, the release gate should include:
+The release gate includes:
 
 ```bash
 bash scripts/v1_smoke.sh
@@ -136,19 +136,14 @@ Context7 guidance for Python Semantic Release identifies `pyproject.toml:project
 
 For this repo:
 
-- `pyproject.toml` remains the authoritative package version stamp.
-- `CHANGELOG.md` should exist before `1.0.0`.
-- `docs/v1-release-notes.md` should summarize abilities, boundaries, proof, and known limitations.
-- A `1.0.0` tag should be created only after all release gates pass.
-- This contract does not itself authorize a `1.0.0` bump.
+- `pyproject.toml` is the authoritative package version stamp and is set to `1.0.0`.
+- `CHANGELOG.md` records the `1.0.0` local CLI release.
+- `docs/v1-release-notes.md` summarizes abilities, boundaries, proof, and known limitations.
+- The matching Git release tag is `v1.0.0`.
+- The branch and release tag are pushed only to the private remote for this release path.
 
 ## Current Status
 
-The repo is moving toward v1.0. It is not yet v1.0.
+The repo is in v1.0 local CLI release state.
 
-Release-candidate documentation is present in `CHANGELOG.md` and `docs/v1-release-notes.md`. That documentation prepares the repo for the final gate, but it does not authorize a `1.0.0` version bump or tag.
-
-Current v1 blockers remain:
-
-- final v1 release eval suite expansion, if later stable routing is included;
-- final `1.0.0` gate.
+Stable routing positive coverage remains intentionally out of scope because stable routing is deferred for v1. If a later release brings positive stable routing back into scope, the v1 release eval suite must be expanded before that future release.

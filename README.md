@@ -1,8 +1,8 @@
 # Skill-Seeking Agent
 
-Skill-Seeking Agent is a local v1 CLI release candidate for governed capability acquisition. It helps an operator identify capability gaps as structured skill requests, validate temporary Markdown skills, preserve evidence, ask for human decisions, and keep the capability-gap loop inspectable.
+Skill-Seeking Agent is a v1.0 local CLI release for governed capability acquisition. It helps an operator identify capability gaps as structured skill requests, validate temporary Markdown skills, preserve evidence, ask for human decisions, and keep the capability-gap loop inspectable.
 
-It is intentionally **local-only**, **operator-governed**, and **Markdown-first**. It is not stamped or tagged as `1.0.0` yet, not a production agent framework, not a hosted platform, and not production-safe.
+It is intentionally **local-only**, **operator-governed**, and **Markdown-first**. Version `1.0.0` is the local CLI compatibility stamp; the matching Git release tag is `v1.0.0`. It is not a production agent framework, not a hosted platform, and not production-safe.
 
 The product is not a generic skill marketplace or "a chatbot with many tools." The product is the agent's ability to say:
 
@@ -16,7 +16,7 @@ Use this repo as a local CLI workbench for governed capability acquisition and s
 
 > An agent that knows when it lacks a skill, requests it, validates it, and continues with an inspectable trace.
 
-The public proof is the CLI demo suite and v1 smoke gate, not a polished hosted product surface. Scripted skills are opt-in trusted-local subprocesses with guardrails; they are **not** a true sandbox yet.
+The public proof is the CLI demo suite and v1 smoke gate, not a polished hosted product surface. Scripted skills are opt-in trusted-local subprocesses with guardrails; they are **not** a true sandbox.
 
 ## Start Here: Skill Gauntlet
 
@@ -47,11 +47,11 @@ To verify the gauntlet as an acceptance test:
 
 See [Core demo suite](docs/demo-suite.md) for the smaller demos behind each behavior.
 
-## V1.0 Local Readiness Planning
+## V1.0 Local CLI Release
 
-V1.0 is being planned as a stable **local CLI** product for governed skill acquisition. It is not a hosted service, marketplace, production-safe framework, or true sandbox.
+V1.0 is a stable **local CLI** product for governed skill acquisition. It is not a hosted service, marketplace, production-safe framework, or true sandbox.
 
-The active v1 planning and release-candidate sources are:
+Release artifacts:
 
 - [V1.0 Release Tasking](docs/v1-release-tasking.md)
 - [V1.0 Release Contract](docs/v1-release-contract.md)
@@ -64,7 +64,26 @@ To run the current local v1 smoke path after installing the repo:
 bash scripts/v1_smoke.sh
 ```
 
-This smoke checks local operator readiness only, including the named `evals/v1_release.jsonl` gate, release-candidate documentation, and `skill-agent v1-local-use` managed-prefix checklist. It does not stamp `1.0.0`, publish releases, admit durable skills, or enable stable routing.
+This smoke checks local operator readiness only, including the named `evals/v1_release.jsonl` gate, v1 release documentation, and `skill-agent v1-local-use` managed-prefix checklist. It does not publish releases, admit durable skills, or enable stable routing.
+
+## V1.0 Ability Breakdown
+
+V1.0 can:
+
+- run local CLI tasks and write schema-versioned JSON run logs;
+- explain run logs with `skill-agent explain`;
+- load trusted local Markdown skills from the durable registry;
+- reject malformed, unsafe, or malicious skill fixtures;
+- emit structured skill requests when a capability is missing;
+- validate temporary Markdown skills and load them for one run;
+- preserve candidate evidence in local ledgers;
+- surface human decision requests and append-only resolutions;
+- summarize candidate review state with `skill-agent candidate-decision`;
+- provide deeper read-only proof reports for usefulness, receipts, readiness, negative evidence, checkpoints, and evidence-governor recommendations;
+- support a human-approved managed-prefix local-use lane through `shadow-managed-write`;
+- run release, lifecycle, diagnostic, and capability-gap eval suites.
+
+V1.0 still does not provide hosted operation, a marketplace, true sandboxing, dependency installation, durable `skills/` admission for generated candidates, positive stable routing, autonomous promotion, permission widening without review, or active governor steering.
 
 ## Current Documentation
 

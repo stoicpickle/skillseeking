@@ -24,12 +24,14 @@ def test_readme_positions_v1_as_local_cli_with_boundaries(repo_root: Path):
     lower = readme.lower()
     opening = lower[:500]
 
-    assert "local v1 cli release candidate" in lower
+    assert "v1.0 local cli release" in lower
     assert "governed capability acquisition" in lower
-    assert "not stamped or tagged as `1.0.0` yet" in lower
+    assert "version `1.0.0` is the local cli compatibility stamp" in lower
+    assert "git release tag is `v1.0.0`" in lower
     assert "not a production agent framework" in lower
     assert "not a hosted platform" in lower
     assert "not production-safe" in lower
+    assert "not stamped or tagged as `1.0.0` yet" not in lower
     assert "cli-first research prototype" not in opening
     assert "docs/v1-release-notes.md" in readme
     assert "CHANGELOG.md" in readme
@@ -41,18 +43,19 @@ def test_release_notes_are_honest_about_current_v1_state(repo_root: Path):
     )
     lower = notes.lower()
 
-    assert "local v1 release candidate" in lower
-    assert "not stamped or tagged as `1.0.0` yet" in lower
+    assert "status: v1.0 local cli release" in lower
+    assert "package version: `1.0.0`" in lower
+    assert "git release tag: `v1.0.0`" in lower
     assert "governed capability acquisition" in lower
     assert "stable routing is deferred for v1" in lower
     assert "not a true sandbox" in lower
     assert "not a hosted service" in lower
     assert "not provide an external skill marketplace" in lower
-    assert "no `1.0.0` version stamp, tag, or published release" in lower
-    assert "published release exists" not in lower
+    assert "not stamped or tagged as `1.0.0` yet" not in lower
+    assert "no `1.0.0` version stamp, tag, or published release" not in lower
 
 
-def test_changelog_is_ready_without_claiming_a_released_1_0_0(repo_root: Path):
+def test_changelog_and_version_are_stamped_for_1_0_0(repo_root: Path):
     changelog = (repo_root / "CHANGELOG.md").read_text(encoding="utf-8")
     pyproject = tomllib.loads(
         (repo_root / "pyproject.toml").read_text(encoding="utf-8")
@@ -60,21 +63,26 @@ def test_changelog_is_ready_without_claiming_a_released_1_0_0(repo_root: Path):
     project_version = pyproject["project"]["version"]
 
     assert "## Unreleased" in changelog
-    assert "local v1 cli release-candidate" in changelog.lower()
-    assert "pyproject.toml` has not been stamped as `1.0.0`" in changelog
+    assert "## [1.0.0] - 2026-06-06" in changelog
+    assert "local v1 cli release" in changelog.lower()
+    assert "`pyproject.toml` is stamped as `1.0.0`" in changelog
+    assert "the matching git release tag is `v1.0.0`" in changelog.lower()
+    assert project_version == "1.0.0"
     released_1_0_0 = re.search(r"^## \[?1\.0\.0\]?", changelog, re.MULTILINE)
-    if project_version != "1.0.0":
-        assert released_1_0_0 is None
+    assert released_1_0_0 is not None
 
 
-def test_release_contract_marks_docs_complete_but_keeps_final_gate(repo_root: Path):
+def test_release_contract_marks_final_v1_state_without_overclaiming(repo_root: Path):
     contract = (repo_root / "docs" / "v1-release-contract.md").read_text(
         encoding="utf-8"
     )
     lower = contract.lower()
 
-    assert "release-candidate docs ready" in lower
+    assert "status: v1.0 local cli release" in lower
     assert "changelog.md" in lower
     assert "docs/v1-release-notes.md" in lower
-    assert "final `1.0.0` gate" in lower
+    assert "set to `1.0.0`" in lower
+    assert "git release tag is `v1.0.0`" in lower
+    assert "stable routing positive coverage remains intentionally out of scope" in lower
     assert "- release notes and changelog;" not in lower
+    assert "production-safety claim" in lower

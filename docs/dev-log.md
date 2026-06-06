@@ -1257,3 +1257,34 @@ Validation:
 - `.venv/bin/python -m pytest -q` passed with 275 tests.
 - `.venv/bin/python -m compileall -q app && git diff --check` passed.
 - `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` completed with 1 minor finding; the over-escaped release-doc regex was fixed and local validation passed after the fix. CodeRabbit was not rerun.
+
+## 2026-06-06 Final V1 Release Gate
+
+Started Task 11 by stamping the v1.0 local CLI release state.
+
+Updated:
+
+- `pyproject.toml` package version to `1.0.0`.
+- README, changelog, release notes, release contract, and tasking from release-candidate language to v1.0 local CLI release language.
+- `scripts/v1_smoke.sh` from a pre-v1 guard into a v1 release verifier, with optional `REQUIRE_V1_TAG=1` post-tag verification.
+- `tests/test_v1_release_docs.py` from pre-v1 assertions to final release-state assertions.
+- `docs/plans/v1-final-release-gate-2026-06-06.md`.
+
+Boundaries:
+
+- The matching Git release tag is `v1.0.0` and must be created only after the final gate passes.
+- The release path remains private-remote-only.
+- No hosted service, marketplace, package publish, production-safety claim, true sandboxing claim, durable generated-skill admission, positive stable routing, permission widening, or governor steering was added.
+
+Validation:
+
+- `.venv/bin/python -m pytest -q tests/test_v1_release_docs.py` passed with 5 tests.
+- `bash scripts/v1_smoke.sh` passed, including stamped version/docs checks, v1 release eval 11/11, fixture compatibility 6/6, and release docs 5/5.
+- `.venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-final-capgap-smoke` passed 4/4.
+- `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-final-capgap-v0` passed 20/20.
+- `.venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-final-lifecycle` passed 7/7.
+- `.venv/bin/skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-final-diagnostic` passed 16/16.
+- `.venv/bin/skill-agent eval --suite evals/v1_release.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-final-release` passed 11/11.
+- `.venv/bin/python -m pytest -q` passed with 275 tests.
+- `.venv/bin/python -m compileall -q app && git diff --check` passed.
+- `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` completed with `findings:0`.

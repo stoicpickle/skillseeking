@@ -1,6 +1,6 @@
 # V1.0 Release Tasking
 
-Status: active planning source
+Status: complete for v1.0 local CLI release
 
 This is the working tasking list for getting Skill-Seeking Agent to v1.0. It should guide current building after the candidate-decision slice. V1.0 means a stable local CLI product for governed skill acquisition, not a hosted platform, production agent framework, marketplace, or true sandbox.
 
@@ -260,6 +260,8 @@ Evidence:
 
 ### 11. Final V1 Gate
 
+Status: complete in [Final V1 Release Gate](plans/v1-final-release-gate-2026-06-06.md)
+
 Goal:
 Only stamp and tag `1.0.0` after proof is clean.
 
@@ -275,12 +277,12 @@ Tasks:
 Checks:
 
 - Every release gate is green.
-- Version, changelog, release notes, and tag agree.
+- Version, changelog, release notes, and intended tag agree.
 - Public docs do not claim production safety, marketplace support, true sandboxing, or autonomous promotion.
 
 ## Likely Next Slice
 
-The next slice should be **Final V1 Gate**.
+The next slice should be **post-v1 routing/admission planning**.
 
 Reason:
-The v1 contract, smoke path, release eval, managed-prefix local-use path, stable-routing boundary, data-contract freeze, changelog, and release notes now exist. The remaining work is to run the final proof bundle, decide whether the conditional stable-routing eval expansion remains out of scope, stamp `pyproject.toml` to `1.0.0`, and tag only after the gate is clean.
+The v1 local CLI release is bounded around governed capability acquisition, managed-prefix-first local use, and deferred stable routing. The next product question is whether post-v1 should add positive stable routing, durable `skills/` admission, or a cleaner operator dashboard over the existing evidence surfaces.

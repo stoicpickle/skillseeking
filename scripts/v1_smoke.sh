@@ -50,15 +50,41 @@ for path in \
   printf 'found %s\n' "${path}"
 done
 
-step "Version has not been stamped as 1.0.0"
+step "Version is stamped as 1.0.0"
+"${PYTHON_BIN}" - <<'PY'
+from pathlib import Path
+import tomllib
+
+data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+version = data["project"]["version"]
+if version != "1.0.0":
+    raise SystemExit(f"pyproject.toml version must be 1.0.0 for v1 smoke, got {version}")
+print("pyproject.toml is stamped 1.0.0")
+PY
+
+step "Release docs are stamped"
 "${PYTHON_BIN}" - <<'PY'
 from pathlib import Path
 
-text = Path("pyproject.toml").read_text(encoding="utf-8")
-if 'version = "1.0.0"' in text:
-    raise SystemExit("pyproject.toml is already stamped 1.0.0; this smoke is pre-v1 readiness only")
-print("pyproject.toml is not stamped 1.0.0")
+required = {
+    "README.md": ["v1.0 local CLI release", "1.0.0", "v1.0.0"],
+    "CHANGELOG.md": ["## [1.0.0] - 2026-06-06", "v1.0.0"],
+    "docs/v1-release-notes.md": ["Status: v1.0 local CLI release", "Package version: `1.0.0`", "Git release tag: `v1.0.0`"],
+    "docs/v1-release-contract.md": ["Status: v1.0 local CLI release", "set to `1.0.0`", "`v1.0.0`"],
+}
+for path, needles in required.items():
+    text = Path(path).read_text(encoding="utf-8")
+    for needle in needles:
+        if needle not in text:
+            raise SystemExit(f"{path} missing release marker: {needle}")
+print("release docs are stamped")
 PY
+
+if [[ "${REQUIRE_V1_TAG:-0}" == "1" ]]; then
+  step "V1 git tag exists"
+  git rev-parse --verify refs/tags/v1.0.0 >/dev/null
+  printf 'v1.0.0 tag exists\n'
+fi
 
 step "Package and CLI availability"
 "${PYTHON_BIN}" - <<'PY'
