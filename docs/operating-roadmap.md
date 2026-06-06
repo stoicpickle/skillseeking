@@ -184,6 +184,7 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-06: Added `skill-agent v1-local-use` as the read-only v1 operator checklist for the managed-prefix-first local-use path. It points to `shadow-managed-write` and keeps durable `skills/` admission, stable routing, registry/ledger mutation, permission widening, and governor steering out of scope.
 - 2026-06-06: Closed the v1 stable routing policy as deferred/disabled. Positive stable routing remains post-v1; `evals/v1_release.jsonl` now includes a named not-routed policy row.
 - 2026-06-06: Froze representative v1 JSON/data-contract fixtures for run logs, candidate ledgers, input resolutions, checkpoints, candidate decisions, and eval reports. The freeze is a compatibility sentinel, not exhaustive JSON Schema generation.
+- 2026-06-06: Added v1 release-candidate documentation in `CHANGELOG.md` and `docs/v1-release-notes.md`; README now frames the repo as a local v1 CLI release candidate while keeping the final `1.0.0` gate pending.
 
 - 2026-06-01: Consolidated near-term roadmap into this document before runtime Skill Candidate Ledger work.
 - 2026-06-01: Named **Skill Candidate Ledger** as the next runtime milestone.

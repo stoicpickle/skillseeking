@@ -232,6 +232,8 @@ Evidence:
 
 ### 10. Release Documentation
 
+Status: complete in [V1 Release Candidate Documentation](plans/v1-release-candidate-docs-2026-06-06.md)
+
 Goal:
 Move from research-only docs to local-v1 docs without overstating safety.
 
@@ -247,6 +249,14 @@ Checks:
 - A new user can understand what to try, what to trust, and what not to trust.
 - Release notes name known limitations clearly.
 - Version and changelog are ready for a `1.0.0` tag.
+
+Evidence:
+
+- `README.md` positions the repo as a local v1 CLI release candidate for governed capability acquisition.
+- `CHANGELOG.md` records an Unreleased release-candidate section without claiming a stamped `1.0.0`.
+- `docs/v1-release-notes.md` summarizes current abilities, boundaries, verification commands, and the remaining final gate.
+- `tests/test_v1_release_docs.py` keeps release docs honest about local-only scope, no version stamp, no tag, no publish, deferred stable routing, and non-sandboxed scripted skills.
+- `scripts/v1_smoke.sh` checks the release docs exist and runs the release-doc regression test.
 
 ### 11. Final V1 Gate
 
@@ -270,7 +280,7 @@ Checks:
 
 ## Likely Next Slice
 
-The next slice should be **V1.0 Contract + Fresh-Checkout Operator Path**.
+The next slice should be **Final V1 Gate**.
 
 Reason:
-It gives the project a ruler before adding more behavior, and it will expose the real gaps faster than another proof surface.
+The v1 contract, smoke path, release eval, managed-prefix local-use path, stable-routing boundary, data-contract freeze, changelog, and release notes now exist. The remaining work is to run the final proof bundle, decide whether the conditional stable-routing eval expansion remains out of scope, stamp `pyproject.toml` to `1.0.0`, and tag only after the gate is clean.

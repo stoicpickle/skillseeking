@@ -1,8 +1,8 @@
 # V1.0 Release Contract
 
-Status: draft for local v1 readiness
+Status: release-candidate docs ready; final `1.0.0` gate pending
 
-This contract defines what Skill-Seeking Agent must promise before the project can be stamped as `1.0.0`. It is not itself a version bump, tag, release note, hosted deployment, marketplace launch, or production-safety claim.
+This contract defines what Skill-Seeking Agent must promise before the project can be stamped as `1.0.0`. It is not itself a version bump, tag, hosted deployment, marketplace launch, or production-safety claim.
 
 ## Product Boundary
 
@@ -146,8 +146,9 @@ For this repo:
 
 The repo is moving toward v1.0. It is not yet v1.0.
 
+Release-candidate documentation is present in `CHANGELOG.md` and `docs/v1-release-notes.md`. That documentation prepares the repo for the final gate, but it does not authorize a `1.0.0` version bump or tag.
+
 Current v1 blockers remain:
 
 - final v1 release eval suite expansion, if later stable routing is included;
-- release notes and changelog;
 - final `1.0.0` gate.

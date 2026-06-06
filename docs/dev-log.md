@@ -1229,3 +1229,31 @@ Validation:
 - `.venv/bin/python -m pytest -q` passed with 270 tests.
 - `.venv/bin/python -m compileall -q app && git diff --check` passed.
 - `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` completed with `findings:0`.
+
+## 2026-06-06 V1 Release Candidate Documentation
+
+Closed Task 10 by preparing release-candidate docs without stamping or tagging `1.0.0`.
+
+Added:
+
+- `CHANGELOG.md` with an Unreleased release-candidate section.
+- `docs/v1-release-notes.md` with current abilities, limitations, verification commands, and remaining final-gate work.
+- `docs/plans/v1-release-candidate-docs-2026-06-06.md`.
+- `tests/test_v1_release_docs.py` to keep docs honest about local-only scope, no publish/tag/version stamp, deferred stable routing, and non-sandboxed scripted skills.
+- `scripts/v1_smoke.sh` checks for release docs and runs the release-doc regression test.
+
+Boundaries:
+
+- No `pyproject.toml` version bump.
+- No `1.0.0` tag or publish step.
+- No durable `skills/` admission, positive stable routing, hosted service, marketplace, production-safety claim, true sandboxing claim, permission widening, or governor steering was added.
+
+Validation:
+
+- `.venv/bin/python -m pytest -q tests/test_v1_release_docs.py` passed with 5 tests.
+- `bash scripts/v1_smoke.sh` passed, including v1 release eval 11/11, fixture compatibility 6/6, and release docs 5/5.
+- `.venv/bin/skill-agent eval --suite evals/v1_release.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-release-check-task10` passed 11/11.
+- `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-capgap-v0-check-task10` passed 20/20.
+- `.venv/bin/python -m pytest -q` passed with 275 tests.
+- `.venv/bin/python -m compileall -q app && git diff --check` passed.
+- `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` completed with 1 minor finding; the over-escaped release-doc regex was fixed and local validation passed after the fix. CodeRabbit was not rerun.

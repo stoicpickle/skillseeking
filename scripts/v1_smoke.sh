@@ -37,7 +37,9 @@ step "Required files"
 for path in \
   "pyproject.toml" \
   "README.md" \
+  "CHANGELOG.md" \
   "docs/v1-release-contract.md" \
+  "docs/v1-release-notes.md" \
   "docs/v1-release-tasking.md" \
   "evals/v1_release.jsonl" \
   "scripts/run_gauntlet_demo.py"; do
@@ -122,6 +124,9 @@ step "V1 release eval"
 
 step "V1 fixture compatibility"
 "${PYTHON_BIN}" -m pytest -q tests/test_v1_fixture_compatibility.py
+
+step "V1 release documentation"
+"${PYTHON_BIN}" -m pytest -q tests/test_v1_release_docs.py
 
 step "Candidate decision isolated proof"
 CANDIDATE_RUNS="${SMOKE_ROOT}/candidate-decision-runs"

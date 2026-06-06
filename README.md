@@ -1,8 +1,8 @@
 # Skill-Seeking Agent
 
-Skill-Seeking Agent is a CLI-first research prototype exploring agents that can identify capability gaps as structured skill requests, validate temporary Markdown skills, and emit a visible trace of the capability-gap loop.
+Skill-Seeking Agent is a local v1 CLI release candidate for governed capability acquisition. It helps an operator identify capability gaps as structured skill requests, validate temporary Markdown skills, preserve evidence, ask for human decisions, and keep the capability-gap loop inspectable.
 
-It is intentionally **experimental**, **local-only**, and **Markdown-first**. It is not a production agent framework, not a hosted platform, and not production-safe.
+It is intentionally **local-only**, **operator-governed**, and **Markdown-first**. It is not stamped or tagged as `1.0.0` yet, not a production agent framework, not a hosted platform, and not production-safe.
 
 The product is not a generic skill marketplace or "a chatbot with many tools." The product is the agent's ability to say:
 
@@ -12,11 +12,11 @@ That capability-gap loop is the core demo, the trust surface, and the long-term 
 
 ## Public Repo Framing
 
-Use this repo as a research playground for capability-gap agents and skill-request flows. The core hook is:
+Use this repo as a local CLI workbench for governed capability acquisition and skill-request flows. The core hook is:
 
 > An agent that knows when it lacks a skill, requests it, validates it, and continues with an inspectable trace.
 
-The public proof is the CLI demo suite, not a polished product surface. Scripted skills are opt-in trusted-local subprocesses with guardrails; they are **not** a true sandbox yet.
+The public proof is the CLI demo suite and v1 smoke gate, not a polished hosted product surface. Scripted skills are opt-in trusted-local subprocesses with guardrails; they are **not** a true sandbox yet.
 
 ## Start Here: Skill Gauntlet
 
@@ -51,10 +51,12 @@ See [Core demo suite](docs/demo-suite.md) for the smaller demos behind each beha
 
 V1.0 is being planned as a stable **local CLI** product for governed skill acquisition. It is not a hosted service, marketplace, production-safe framework, or true sandbox.
 
-The active v1 planning sources are:
+The active v1 planning and release-candidate sources are:
 
 - [V1.0 Release Tasking](docs/v1-release-tasking.md)
 - [V1.0 Release Contract](docs/v1-release-contract.md)
+- [V1.0 Release Notes](docs/v1-release-notes.md)
+- [Changelog](CHANGELOG.md)
 
 To run the current local v1 smoke path after installing the repo:
 
@@ -62,7 +64,7 @@ To run the current local v1 smoke path after installing the repo:
 bash scripts/v1_smoke.sh
 ```
 
-This smoke checks local operator readiness only, including the named `evals/v1_release.jsonl` gate and `skill-agent v1-local-use` managed-prefix checklist. It does not stamp `1.0.0`, publish releases, admit durable skills, or enable stable routing.
+This smoke checks local operator readiness only, including the named `evals/v1_release.jsonl` gate, release-candidate documentation, and `skill-agent v1-local-use` managed-prefix checklist. It does not stamp `1.0.0`, publish releases, admit durable skills, or enable stable routing.
 
 ## Current Documentation
 
@@ -79,6 +81,8 @@ This smoke checks local operator readiness only, including the named `evals/v1_r
 - [Roadmap](docs/roadmap.md)
 - [V1.0 release tasking](docs/v1-release-tasking.md)
 - [V1.0 release contract](docs/v1-release-contract.md)
+- [V1.0 release notes](docs/v1-release-notes.md)
+- [Changelog](CHANGELOG.md)
 - [Stable routing policy](docs/stable-routing-policy.md)
 - [Dev log](docs/dev-log.md)
 - [Clarifying questions](docs/clarifying-questions.md)
