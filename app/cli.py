@@ -93,6 +93,7 @@ V1_LOCAL_USE_REPORT = {
     "scope": "managed-prefix-first local use",
     "primary_command": "shadow-managed-write",
     "mutation_surface": "managed prefix only",
+    "stable_routing_policy": "deferred_for_v1",
     "operator_sequence": [
         "Create or inspect candidate evidence with skill-agent run and candidate-decision.",
         "Record human promotion review with promote-candidate when temporary evidence supports review.",
@@ -121,6 +122,7 @@ V1_LOCAL_USE_REPORT = {
         "Blocks stale source hashes, digest mismatches, missing rollback evidence, conflicting bytes, and managed-prefix path escapes.",
         "Writes only the managed store skill file, profile generation skill file, profile pointer, and managed-prefix-local receipt.",
         "Supports idempotent already_applied verification for a matching prior write receipt.",
+        "Keeps stable routing deferred for v1 even when stable-readiness evidence is ready for review.",
     ],
     "unchanged_authority": [
         "durable skills",
@@ -159,6 +161,7 @@ def v1_local_use(
     typer.echo(f"Scope: {V1_LOCAL_USE_REPORT['scope']}")
     typer.echo(f"Primary command: skill-agent {V1_LOCAL_USE_REPORT['primary_command']}")
     typer.echo(f"Mutation surface: {V1_LOCAL_USE_REPORT['mutation_surface']}")
+    typer.echo(f"Stable routing policy: {V1_LOCAL_USE_REPORT['stable_routing_policy']}")
     typer.echo("")
     typer.echo("Operator sequence:")
     for index, item in enumerate(V1_LOCAL_USE_REPORT["operator_sequence"], start=1):

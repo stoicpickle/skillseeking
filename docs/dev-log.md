@@ -1175,3 +1175,29 @@ Validation:
 - `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-capgap-v0-check-3` passed 20/20.
 - `.venv/bin/python -m compileall -q app` and `git diff --check` passed.
 - `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` completed with 0 findings.
+
+## 2026-06-06 V1 Stable Routing Policy
+
+Closed Task 5 by making stable routing explicitly deferred for v1 instead of enabling positive stable routing.
+
+Added:
+
+- `docs/stable-routing-policy.md`.
+- `stable_routing_policy: "deferred_for_v1"` in `skill-agent v1-local-use --json`.
+- A named v1 release eval row, `v1_release_stable_routing_policy_deferred_even_when_ready`.
+- Docs and tests tying the release policy to advisory stable-readiness, managed-prefix-first local use, and disabled stable review/promotion/routing.
+
+Boundaries:
+
+- No stable route registry, positive stable routing, stable promotion, durable `skills/` admission, dependency installation, marketplace, hosted service, true sandboxing claim, permission widening, registry/ledger mutation, or governor steering was added.
+- Positive stable routing is post-v1 work requiring a separate human-approved workflow and route visibility in `run`, `run --json`, and `explain`.
+
+Validation:
+
+- `.venv/bin/python -m pytest -q tests/test_stable_readiness.py tests/test_v1_release_eval.py tests/test_v1_local_use.py tests/test_stable_routing_policy_docs.py` passed with 11 tests.
+- `.venv/bin/skill-agent eval --suite evals/v1_release.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-release-check-task5` passed 11/11.
+- `bash scripts/v1_smoke.sh` passed, including v1 release eval 11/11.
+- `.venv/bin/python -m pytest -q` passed with 264 tests.
+- `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-capgap-v0-check-task5` passed 20/20.
+- `.venv/bin/python -m compileall -q app` and `git diff --check` passed.
+- `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` completed with 0 findings.

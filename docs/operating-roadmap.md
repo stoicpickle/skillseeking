@@ -34,6 +34,7 @@ The v0 surface is implemented and proven through the completed milestones in the
 - Human write-gate verification through `skill-agent shadow-write-gate`, proving prepared acceptance evidence, restored rollback pointer, supplied exact acceptance digest, and unchanged source hash before the managed-prefix write command runs.
 - Human-approved managed-prefix write mode through `skill-agent shadow-managed-write`, writing only the shadow managed store, profile generation, profile pointer, and managed-prefix-local receipt after exact digest/hash/checkpoint matches plus a separate non-expired `managed_write_plan_digest` approval; durable `skills/`, stable routing, registries, ledgers, permission widening, and governor steering remain unchanged.
 - V1 local-use checklist through `skill-agent v1-local-use`, making the managed-prefix-first operator path discoverable without adding another mutation surface.
+- V1 stable routing policy through [Stable Routing Policy](stable-routing-policy.md), explicitly deferring positive stable routing while preserving not-routed eval proof.
 - Stable readiness reports through `skill-agent stable-readiness`, composing candidate ledger, skill receipt, negative evidence, and durable registry evidence to advise candidate-to-stable review without authorizing stable promotion or routing.
 - Candidate decision summaries through `skill-agent candidate-decision`, compressing stable-readiness, receipt, usefulness, admission, and negative evidence into one advisory next decision without granting approval, install, promotion, routing, permission, or governor authority.
 - Advisory lifecycle review queues for promotion-ready, repair-needed, blocked/quarantined, duplicate-merge-needed, and repeated-requested-gap candidate records.
@@ -181,6 +182,7 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-06: Added `skill-agent candidate-decision` as the first compact operator-decision summary over existing candidate proof reports. It returns only advisory decisions and leaves approval, install, stable promotion, stable routing, permission widening, evidence mutation, registry mutation, and governor steering disabled.
 - 2026-06-06: Started the v1 contract and fresh-checkout operator path slice. `scripts/v1_smoke.sh` is the local readiness smoke helper; it does not stamp `1.0.0`, publish releases, admit durable skills, enable stable routing, claim true sandboxing, or add hosted/marketplace scope.
 - 2026-06-06: Added `skill-agent v1-local-use` as the read-only v1 operator checklist for the managed-prefix-first local-use path. It points to `shadow-managed-write` and keeps durable `skills/` admission, stable routing, registry/ledger mutation, permission widening, and governor steering out of scope.
+- 2026-06-06: Closed the v1 stable routing policy as deferred/disabled. Positive stable routing remains post-v1; `evals/v1_release.jsonl` now includes a named not-routed policy row.
 
 - 2026-06-01: Consolidated near-term roadmap into this document before runtime Skill Candidate Ledger work.
 - 2026-06-01: Named **Skill Candidate Ledger** as the next runtime milestone.

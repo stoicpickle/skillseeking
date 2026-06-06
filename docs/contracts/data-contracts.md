@@ -294,6 +294,10 @@ Allowed receipt outcomes are `ready`, `incomplete`, and `blocked`. `ready` means
 
 Allowed outcomes are `ready_for_stable_review`, `needs_more_evidence`, `blocked`, and `already_stable`. `ready_for_stable_review` means candidate promotion is recorded, the stable-use threshold is met, no validation/repair/duplicate/negative evidence blocks review, no same-name durable registry conflict exists, and no receipt proof category is blocked. It is still advisory review evidence only: stable review is not authorized by the report, stable promotion remains unauthorized, and stable routing remains disabled. `needs_more_evidence` covers missing candidate promotion or too few successful temporary uses. `blocked` covers blocked/quarantined candidates, duplicate evidence, negative evidence, durable registry name conflicts, or blocked receipt proof. `already_stable` reports ledger state only and does not change routing.
 
+## Stable Routing Policy
+
+V1 stable routing is explicitly deferred. `stable_routing_enabled` must remain `false` in stable-readiness and candidate-decision reports, and managed-prefix writes must keep `stable_routing_policy: "stable_routing_unchanged"`. The v1 local-use checklist reports `stable_routing_policy: "deferred_for_v1"` to make the release policy visible to operators. Positive stable routing requires a separate post-v1 human-approved workflow and route visibility in `run`, `run --json`, and `explain`.
+
 ## Candidate Decision Summary
 
 `skill-agent candidate-decision <candidate-id>` emits a read-only `CandidateDecisionReport`. It is a compact operator index over existing proof surfaces, not a new authority layer. The report builds `stable-readiness`, then summarizes its nested `skill-receipt`, `candidate-usefulness`, `admit-candidate` preview, and `negative-evidence` proof into one advisory next decision.
@@ -1239,7 +1243,7 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `skill-agent shadow-rollback-plan --json` emits the read-only managed-prefix rollback verifier for one candidate.
 - `skill-agent shadow-activation-acceptance --json` emits the controlled acceptance harness report for one candidate. With `--prepare-acceptance-evidence`, it may write matching acceptance evidence under `runs/` only.
 - `skill-agent shadow-write-gate --json` emits the read-only human write-gate verifier for prepared acceptance evidence. It never prepares evidence or mutates the real managed prefix.
-- `skill-agent v1-local-use --json` emits the read-only v1 managed-prefix local-use checklist. It names `shadow-managed-write` as the primary command, lists required digest/checkpoint/write-approval inputs, and records unchanged authority for durable skills, registries, ledgers, run logs, stable routing, and governor steering.
+- `skill-agent v1-local-use --json` emits the read-only v1 managed-prefix local-use checklist. It names `shadow-managed-write` as the primary command, reports `stable_routing_policy: "deferred_for_v1"`, lists required digest/checkpoint/write-approval inputs, and records unchanged authority for durable skills, registries, ledgers, run logs, stable routing, and governor steering.
 - `skill-agent eval --json` emits the eval suite path, timestamp, per-task run-log paths, task pass/fail status, routing decisions, skill requests, input requests, request-quality scores, diagnostic dimensions, and aggregate counts.
 - `skill-agent explain <run-log.json>` reads an existing run log and prints a human-readable trace summary. It does not mutate the run log.
 

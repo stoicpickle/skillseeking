@@ -79,6 +79,8 @@ if data.get("primary_command") != "shadow-managed-write":
     raise SystemExit("v1-local-use does not point to shadow-managed-write")
 if data.get("mutation_surface") != "managed prefix only":
     raise SystemExit("v1-local-use changed the managed-prefix mutation boundary")
+if data.get("stable_routing_policy") != "deferred_for_v1":
+    raise SystemExit("v1-local-use must defer stable routing for v1")
 if "stable routing" not in data.get("unchanged_authority", []):
     raise SystemExit("v1-local-use must keep stable routing unchanged")
 if "durable skills admission" not in data.get("excluded_authority", []):

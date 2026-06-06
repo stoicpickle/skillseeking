@@ -372,9 +372,9 @@ def _next_steps(
 ) -> list[str]:
     if outcome == "ready_for_stable_review":
         return [
-            "Use this report as advisory stable-review evidence only.",
-            "Record maintainer approval before any future candidate-to-stable workflow.",
-            "Keep stable routing disabled until a separate human-approved stable workflow exists.",
+            "Use this report as advisory stable-review evidence only for v1.",
+            "Record maintainer approval before any future post-v1 candidate-to-stable workflow.",
+            "Keep stable review, stable promotion, and stable routing disabled until a separate human-approved post-v1 workflow exists.",
         ]
     if outcome == "already_stable":
         return ["Inspect monitoring, repair, or deprecation evidence before changing routing."]

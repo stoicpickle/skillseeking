@@ -114,6 +114,8 @@ Evidence:
 
 ### 5. Stable Routing Policy
 
+Status: complete for v1 as deferred/disabled in [Stable Routing Policy](stable-routing-policy.md)
+
 Goal:
 Define when a stable skill is eligible for normal routing.
 
@@ -128,7 +130,23 @@ Checks:
 
 - Stable routing cannot activate from candidate status alone.
 - Evals prove ready-for-review is still not stable-routed.
-- Stable routing is visible in explain/run logs when it is used.
+- Stable routing is visible in explain/run logs when it is used in a future post-v1 routing workflow.
+
+V1 policy:
+
+- Stable routing is not enabled in v1.
+- Stable-readiness remains advisory evidence only.
+- Candidate readiness does not authorize stable review, stable promotion, durable `skills/` admission, or normal routing.
+- Managed-prefix-first local use through `shadow-managed-write` remains the v1 stable local-use path.
+- Positive stable routing is post-v1 work and requires a separate human-approved workflow plus run/run-json/explain visibility.
+
+Evidence:
+
+- `docs/stable-routing-policy.md` defines the v1 deferred policy.
+- `evals/v1_release.jsonl` includes `v1_release_stable_routing_policy_deferred_even_when_ready`.
+- `tests/test_v1_release_eval.py` requires all stable-readiness rows to keep stable review, promotion, and routing disabled.
+- `tests/test_stable_readiness.py` verifies ready-for-review reports keep stable routing disabled and point to a post-v1 workflow.
+- `tests/test_v1_local_use.py` and `scripts/v1_smoke.sh` verify `v1-local-use --json` reports `stable_routing_policy=deferred_for_v1`.
 
 ### 6. Release Eval Suite
 

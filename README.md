@@ -79,6 +79,7 @@ This smoke checks local operator readiness only, including the named `evals/v1_r
 - [Roadmap](docs/roadmap.md)
 - [V1.0 release tasking](docs/v1-release-tasking.md)
 - [V1.0 release contract](docs/v1-release-contract.md)
+- [Stable routing policy](docs/stable-routing-policy.md)
 - [Dev log](docs/dev-log.md)
 - [Clarifying questions](docs/clarifying-questions.md)
 - [References](docs/reference/references.md)

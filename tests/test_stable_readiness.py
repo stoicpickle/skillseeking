@@ -117,6 +117,8 @@ def test_stable_readiness_reports_ready_for_review_without_authorizing_routing(
     assert "Stable promotion authorized: false" in text_result.stdout
     assert "Stable routing enabled: false" in text_result.stdout
     assert "Durable skills mutated: false" in text_result.stdout
+    assert any("advisory stable-review evidence only for v1" in step for step in data["next_steps"])
+    assert any("post-v1 workflow" in step for step in data["next_steps"])
 
     assert _snapshot_tree(copied_seed_skills) == durable_before
     assert _snapshot_tree(runs_dir) == runs_before

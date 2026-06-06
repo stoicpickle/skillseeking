@@ -224,7 +224,7 @@ skill-agent eval --suite evals/v1_release.jsonl --skills-dir skills --runs-dir r
 
 It bundles the current release-critical behaviors into one suite: happy-path routing, missing capability requests, unsafe stops, approval waits, adversarial routing resistance, temporary success that still requires review, repair-needed evidence, duplicate-blocked stable review, negative-evidence-blocked stable review, and ready-for-stable-review evidence that still leaves stable routing disabled.
 
-This suite is intentionally managed-prefix-first and human-governed. It does not prove autonomous durable admission or positive stable routing. If v1 later includes stable routing, add a positive stable-routing row only after the policy and implementation exist.
+This suite is intentionally managed-prefix-first and human-governed. It does not prove autonomous durable admission or positive stable routing. The named `v1_release_stable_routing_policy_deferred_even_when_ready` row proves the v1 stable-routing policy: readiness can be advisory while stable review, stable promotion, and stable routing remain disabled. Positive stable routing is post-v1 work.
 
 ## Governor Evaluation
 

@@ -15,6 +15,7 @@ def test_v1_local_use_outputs_managed_prefix_operator_checklist():
     assert result.exit_code == 0
     assert "V1_LOCAL_USE" in result.stdout
     assert "skill-agent shadow-managed-write" in result.stdout
+    assert "Stable routing policy: deferred_for_v1" in result.stdout
     assert "dry-run mode" in result.stdout
     assert "shadow-managed-write --no-dry-run" in result.stdout
     assert "managed_write_plan_digest=<digest>" in result.stdout
@@ -43,6 +44,7 @@ def test_v1_local_use_json_names_read_only_boundaries():
     assert data["scope"] == "managed-prefix-first local use"
     assert data["primary_command"] == "shadow-managed-write"
     assert data["mutation_surface"] == "managed prefix only"
+    assert data["stable_routing_policy"] == "deferred_for_v1"
     assert "--write-approval-id" in data["required_inputs"]
     assert "--expected-managed-write-plan-digest" in data["required_inputs"]
     assert "stable routing" in data["unchanged_authority"]

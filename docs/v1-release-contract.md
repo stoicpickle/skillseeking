@@ -46,7 +46,7 @@ The v1 compatibility surface should include these local CLI categories:
 - Promotion and admission review: `skill-agent promote-candidate`, `skill-agent admission-plan`, `skill-agent admit-candidate --dry-run`.
 - Evaluation: `skill-agent eval`.
 
-The detailed JSON surfaces live in [Data Contracts](contracts/data-contracts.md). Breaking v1 JSON fields should be treated as a deliberate versioned change after v1 is stamped.
+The stable routing policy is deferred for v1 and documented in [Stable Routing Policy](stable-routing-policy.md). The detailed JSON surfaces live in [Data Contracts](contracts/data-contracts.md). Breaking v1 JSON fields should be treated as a deliberate versioned change after v1 is stamped.
 
 ## Lifecycle Boundary
 
@@ -60,7 +60,7 @@ For v1 readiness:
 
 - `requested`, `draft`, and `temporary` are runtime evidence states.
 - `candidate` is human-review evidence, not stable admission.
-- `stable` must require explicit reviewed evidence and a separate stable-use path.
+- `stable` must require explicit reviewed evidence and a separate post-v1 stable routing path.
 - `blocked` and negative evidence remain visible and must not be erased by later summaries.
 
 Candidate evidence may support a decision. It must not become durable admission or stable routing by itself.
@@ -149,7 +149,6 @@ The repo is moving toward v1.0. It is not yet v1.0.
 Current v1 blockers remain:
 
 - final v1 release eval suite expansion, if later stable routing is included;
-- stable routing policy and proof, if included in v1;
 - versioned data-contract freeze;
 - release notes and changelog;
 - final `1.0.0` gate.
