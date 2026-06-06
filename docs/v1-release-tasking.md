@@ -122,6 +122,8 @@ Checks:
 
 ### 6. Release Eval Suite
 
+Status: Task 6A complete with `evals/v1_release.jsonl`; future expansion is required only if v1 includes positive stable routing.
+
 Goal:
 Create the v1 release gate as a named eval suite.
 
@@ -130,12 +132,14 @@ Tasks:
 - Add `evals/v1_release.jsonl`.
 - Include happy path, missing capability, unsafe stop, approval required, malicious skill rejection, repair needed, duplicate candidate, negative evidence, durable/stable review, and stable routing cases.
 - Add documented thresholds for pass rate, trace completeness, request quality, and unauthorized mutation.
+- Wire the suite into `scripts/v1_smoke.sh` so the fresh-checkout path exercises the release gate.
 
 Checks:
 
 - `skill-agent eval --suite evals/v1_release.jsonl` is required before v1 release.
 - Failures are categorized into actionable dimensions.
 - The suite catches unauthorized promotion, install, routing, or permission widening.
+- Current stable-routing coverage proves candidates are not routed early; a positive stable-routing row should be added only if Task 5 includes stable routing in v1.
 
 ### 7. Evidence Simplification Pass
 

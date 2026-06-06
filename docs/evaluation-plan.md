@@ -214,6 +214,18 @@ skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --r
 
 It covers existing-skill routing, missing-skill detection, request quality, safety aborts, approval waits, adversarial routing resistance, lifecycle candidate evidence, temporary-skill success, repair-required validation failure, and the admission-plan follow-up through pytest. Its report should make the weakest behavior area visible without reading every run log first.
 
+## V1 Release Eval
+
+The v1 release suite is the named release gate for the local CLI contract:
+
+```bash
+skill-agent eval --suite evals/v1_release.jsonl --skills-dir skills --runs-dir runs/evals
+```
+
+It bundles the current release-critical behaviors into one suite: happy-path routing, missing capability requests, unsafe stops, approval waits, adversarial routing resistance, temporary success that still requires review, repair-needed evidence, duplicate-blocked stable review, negative-evidence-blocked stable review, and ready-for-stable-review evidence that still leaves stable routing disabled.
+
+This suite is intentionally managed-prefix-first and human-governed. It does not prove autonomous durable admission or positive stable routing. If v1 later includes stable routing, add a positive stable-routing row only after the policy and implementation exist.
+
 ## Governor Evaluation
 
 The homeostatic governor adds a control assertion to each capability decision. Eval tasks should be able to assert:

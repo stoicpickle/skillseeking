@@ -39,6 +39,7 @@ for path in \
   "README.md" \
   "docs/v1-release-contract.md" \
   "docs/v1-release-tasking.md" \
+  "evals/v1_release.jsonl" \
   "scripts/run_gauntlet_demo.py"; do
   test -f "${path}" || {
     printf 'Missing required file: %s\n' "${path}" >&2
@@ -92,6 +93,12 @@ step "Agent diagnostic eval"
   --suite evals/agent_diagnostic_v0.jsonl \
   --skills-dir skills \
   --runs-dir "${SMOKE_ROOT}/evals/diagnostic"
+
+step "V1 release eval"
+"${SKILL_AGENT_BIN}" eval \
+  --suite evals/v1_release.jsonl \
+  --skills-dir skills \
+  --runs-dir "${SMOKE_ROOT}/evals/v1-release"
 
 step "Candidate decision isolated proof"
 CANDIDATE_RUNS="${SMOKE_ROOT}/candidate-decision-runs"

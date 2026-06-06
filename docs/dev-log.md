@@ -1124,3 +1124,28 @@ Validation:
 - `.venv/bin/python -m pytest -q` passed with 259 tests.
 - `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-capgap-v0-check` passed 20/20.
 - `.venv/bin/python -m compileall -q app` and `git diff --check` passed.
+
+## 2026-06-06 V1 Release Eval Gate
+
+Added the named v1 release eval suite before implementing any new admission or routing authority.
+
+Added:
+
+- `evals/v1_release.jsonl` with 10 release-gate rows covering happy path, missing capability, unsafe stop, approval gate, adversarial routing, temporary success requiring review, repair-needed evidence, stable-readiness ready-not-routed, duplicate-blocked stable review, and negative-evidence-blocked stable review.
+- `tests/test_v1_release_eval.py` proving the suite loads, passes, preserves durable `skills/`, and keeps stable review, promotion, and routing unauthorized in stable-readiness reports.
+- `scripts/v1_smoke.sh` now runs `skill-agent eval --suite evals/v1_release.jsonl`.
+- README, v1 contract, release tasking, and evaluation-plan references to the release gate.
+
+Boundaries:
+
+- No durable `skills/` admission, positive stable routing, permission widening, hosted service, marketplace, or true sandboxing claim was added.
+- Current stable-routing coverage proves candidates are not routed early; a positive stable-routing row remains future work only if v1 includes Task 5 stable routing.
+
+Validation:
+
+- `bash scripts/v1_smoke.sh` passed, including `evals/v1_release.jsonl` at 10/10.
+- `.venv/bin/python -m pytest -q tests/test_v1_release_eval.py tests/test_agent_diagnostic_eval.py` passed with 4 tests.
+- `.venv/bin/python -m pytest -q` passed with 261 tests.
+- `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-capgap-v0-check-2` passed 20/20.
+- `.venv/bin/python -m compileall -q app` and `git diff --check` passed.
+- `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` was run once; it reached `reviewing` and heartbeat status but did not emit findings before the bounded stall cutoff.
