@@ -11,6 +11,8 @@ from app.agent_loop import run_task
 from app.cli_output import (
     emit_admission_plan_json,
     emit_admission_plan_output,
+    emit_candidate_decision_json,
+    emit_candidate_decision_output,
     emit_candidate_usefulness_json,
     emit_candidate_usefulness_output,
     emit_candidates_json,
@@ -40,6 +42,10 @@ from app.cli_output import (
     emit_skill_receipt_output,
     emit_stable_readiness_json,
     emit_stable_readiness_output,
+)
+from app.candidate_decision import (
+    CandidateDecisionError,
+    build_candidate_decision_report,
 )
 from app.candidate_usefulness import (
     CandidateUsefulnessError,
@@ -478,6 +484,47 @@ def stable_readiness(
         emit_stable_readiness_json(report)
     else:
         emit_stable_readiness_output(report)
+
+
+@app.command("candidate-decision")
+def candidate_decision(
+    candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to summarize into one advisory next decision.")],
+    runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate and resolution ledgers.")] = Path("runs"),
+    skills_dir: Annotated[Path, typer.Option(help="Durable local skills directory for read-only registry conflict checks.")] = Path("skills"),
+    baseline_run_id: Annotated[
+        str | None,
+        typer.Option("--baseline-run-id", help="Optional pinned baseline run ID for nested usefulness comparison."),
+    ] = None,
+    treatment_run_id: Annotated[
+        str | None,
+        typer.Option("--treatment-run-id", help="Optional pinned treatment run ID for nested usefulness comparison."),
+    ] = None,
+    required_successful_temporary_uses: Annotated[
+        int,
+        typer.Option("--required-successful-temporary-uses", help="Stable-review success threshold; defaults to lifecycle rule of 10."),
+    ] = 10,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the candidate decision report as JSON."),
+    ] = False,
+) -> None:
+    try:
+        report = build_candidate_decision_report(
+            candidate_id,
+            runs_dir=runs_dir,
+            skills_dir=skills_dir,
+            baseline_run_id=baseline_run_id,
+            treatment_run_id=treatment_run_id,
+            required_successful_temporary_uses=required_successful_temporary_uses,
+        )
+    except CandidateDecisionError as exc:
+        typer.echo(str(exc))
+        raise typer.Exit(1) from exc
+
+    if json_output:
+        emit_candidate_decision_json(report)
+    else:
+        emit_candidate_decision_output(report)
 
 
 @app.command("negative-evidence")

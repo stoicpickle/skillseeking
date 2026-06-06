@@ -294,6 +294,59 @@ Allowed receipt outcomes are `ready`, `incomplete`, and `blocked`. `ready` means
 
 Allowed outcomes are `ready_for_stable_review`, `needs_more_evidence`, `blocked`, and `already_stable`. `ready_for_stable_review` means candidate promotion is recorded, the stable-use threshold is met, no validation/repair/duplicate/negative evidence blocks review, no same-name durable registry conflict exists, and no receipt proof category is blocked. It is still advisory review evidence only: stable review is not authorized by the report, stable promotion remains unauthorized, and stable routing remains disabled. `needs_more_evidence` covers missing candidate promotion or too few successful temporary uses. `blocked` covers blocked/quarantined candidates, duplicate evidence, negative evidence, durable registry name conflicts, or blocked receipt proof. `already_stable` reports ledger state only and does not change routing.
 
+## Candidate Decision Summary
+
+`skill-agent candidate-decision <candidate-id>` emits a read-only `CandidateDecisionReport`. It is a compact operator index over existing proof surfaces, not a new authority layer. The report builds `stable-readiness`, then summarizes its nested `skill-receipt`, `candidate-usefulness`, `admit-candidate` preview, and `negative-evidence` proof into one advisory next decision.
+
+Allowed decisions are `ask_human`, `test_more`, `deny`, and `defer`.
+
+- `ask_human` means the next useful action is human review, candidate promotion evidence, or exact digest-bound approval.
+- `test_more` means candidate utility, lifecycle, validation, or source evidence is still incomplete and should be gathered or repaired before asking for stable review.
+- `deny` means duplicate, block, durable registry conflict, reject, or other negative evidence should keep the candidate out of stable review until explicitly resolved.
+- `defer` means the strongest current proof still depends on intentionally unavailable authority, such as dependency installation support, durable install/copy, stable promotion, or stable routing.
+
+Each `why` item cites a `source_report`, `signal`, `status`, summary, evidence refs, blockers, and warnings. The report also includes `next_command`, currently `skill-agent stable-readiness <candidate-id>`, so the operator can inspect the underlying stable-review rehearsal.
+
+```json
+{
+  "candidate_id": "candidate_abc123def456",
+  "skill_name": "argument-clustering",
+  "capability": "argument clustering",
+  "decision": "ask_human",
+  "decision_reason": "Human review or exact digest-bound approval is missing.",
+  "allowed_decisions": ["ask_human", "test_more", "deny", "defer"],
+  "advisory_only": true,
+  "approval_granted": false,
+  "install_authorized": false,
+  "stable_review_authorized": false,
+  "stable_promotion_authorized": false,
+  "stable_routing_enabled": false,
+  "permission_widening_authorized": false,
+  "governor_steering_enabled": false,
+  "why": [
+    {
+      "source_report": "stable-readiness",
+      "signal": "stable_readiness",
+      "status": "ready_for_stable_review",
+      "summary": "Candidate is ready for human stable review, but this report does not authorize stable promotion or routing.",
+      "evidence_refs": [],
+      "blockers": ["stable_review_authorization_unavailable", "stable_routing_disabled"],
+      "warnings": []
+    }
+  ],
+  "next_command": "skill-agent stable-readiness candidate_abc123def456",
+  "source_reports": ["stable-readiness", "skill-receipt", "candidate-usefulness", "admit-candidate", "negative-evidence"],
+  "run_logs_mutated": false,
+  "candidate_ledger_mutated": false,
+  "resolution_ledger_mutated": false,
+  "checkpoint_ledger_mutated": false,
+  "durable_skills_mutated": false,
+  "registry_mutated": false
+}
+```
+
+The command does not append input resolutions, checkpoint evidence, run logs, candidate ledgers, or registries. It does not approve, install, copy into durable `skills/`, mark candidates stable, enable stable routing, widen permissions, or steer the governor.
+
 ## Negative Evidence
 
 `skill-agent negative-evidence` is a read-only report over preserved unfavorable or limiting evidence. It reads `runs/input_request_resolutions.json` and `runs/skill_candidate_ledger.json` to surface rejected, deferred, blocked, and repair-class input request resolutions plus blocked, quarantined, duplicate, or repair-required candidate records. It does not append resolutions, rewrite run logs, mutate candidate ledgers, copy or install durable skills, mutate the registry, create snapshots, create staging files, widen permissions, or steer the governor.
@@ -1178,6 +1231,7 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `skill-agent admit-candidate --dry-run --json` emits the durable admission preview report with its nested write plan. `--no-dry-run` is intentionally rejected.
 - `skill-agent skill-receipt --json` emits the read-only proof bundle for one candidate, including nested candidate usefulness and durable admission preview evidence.
 - `skill-agent stable-readiness --json` emits the read-only advisory candidate-to-stable review report. It does not authorize stable promotion or enable stable routing.
+- `skill-agent candidate-decision --json` emits the compact read-only operator decision report for one candidate, including `candidate_id`, `decision`, source-backed `why` items, nested stable-readiness evidence, and `next_command`.
 - `skill-agent negative-evidence --json` emits read-only unfavorable/limiting evidence from candidate and resolution ledgers.
 - `skill-agent evidence-checkpoint --json` emits the local evidence checkpoint create or verify report. `--no-dry-run` appends only to `runs/evidence_checkpoints.json`; `--verify` is read-only.
 - `skill-agent evidence-governor --json` emits the read-only advisory recommendation report for one candidate. It never grants approval or steers execution.

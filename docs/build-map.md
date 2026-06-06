@@ -479,6 +479,7 @@ Slices:
 | Human write-gate verifier | complete | `skill-agent shadow-write-gate` verifies unchanged source hash, prepared acceptance store/generation copies, restored rollback pointer, rollback marker, and exact acceptance digest without writing |
 | Human-approved managed-prefix write mode | complete | `skill-agent shadow-managed-write` materializes only the proven shadow managed-prefix store/generation/pointer/receipt write after exact digest/hash/checkpoint matches and a separate `managed_write_plan_digest` approval |
 | Stable readiness report | complete | `skill-agent stable-readiness` composes candidate ledger, skill receipt, negative evidence, and durable registry evidence to advise candidate-to-stable review without stable promotion or routing authority |
+| Candidate decision summary | complete | `skill-agent candidate-decision` compresses stable-readiness, receipt, usefulness, admission, and negative evidence into one advisory `ask_human`, `test_more`, `deny`, or `defer` answer without granting approval or mutating evidence |
 | Roadmap checkpoint docs | complete | README and operating roadmap distinguish local testing readiness from production readiness |
 
 ## Next Slice Goal: Candidate-to-Stable Review Rehearsal
@@ -494,6 +495,7 @@ Slices:
 | --- | --- | --- |
 | Stable-readiness evidence compression | complete | Report names missing/blocking evidence and preserves `stable_promotion_authorized=false` plus `stable_routing_enabled=false` |
 | Stable-readiness eval dimension | complete | Eval expectations cover ready-for-review, duplicate-blocked, and negative-evidence-blocked stable-readiness states while stable routing remains disabled |
+| Candidate decision summary | complete | `candidate-decision` cites source reports for every reason and keeps approval/install/promotion/routing/mutation flags false |
 | Operator decision-load guardrails | working | Tests/docs preserve advisory-only semantics and avoid adding unrelated proof surfaces |
 
 Boundaries:

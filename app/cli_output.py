@@ -9,6 +9,7 @@ from app.models import (
     AdmissionPlanReport,
     AdmissionSourceArtifact,
     AgentRunResult,
+    CandidateDecisionReport,
     CandidateUsefulnessReport,
     DurableAdmissionPreviewReport,
     EvidenceCheckpointReport,
@@ -308,6 +309,85 @@ def emit_skill_receipt_output(report: SkillReceiptReport) -> None:
 
 def emit_stable_readiness_json(report: StableReadinessReport) -> None:
     typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_candidate_decision_json(report: CandidateDecisionReport) -> None:
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_candidate_decision_output(report: CandidateDecisionReport) -> None:
+    typer.echo("CANDIDATE_DECISION")
+    typer.echo(f"Candidate: {report.candidate_id}")
+    typer.echo(f"Skill: {report.skill_name or '-'}")
+    typer.echo(f"Capability: {report.capability or '-'}")
+    typer.echo(f"Decision: {report.decision}")
+    typer.echo(f"Reason: {report.decision_reason}")
+    typer.echo(f"Advisory only: {str(report.advisory_only).lower()}")
+    typer.echo(f"Approval granted: {str(report.approval_granted).lower()}")
+    typer.echo(f"Install authorized: {str(report.install_authorized).lower()}")
+    typer.echo(
+        "Stable review authorized: "
+        f"{str(report.stable_review_authorized).lower()}"
+    )
+    typer.echo(
+        "Stable promotion authorized: "
+        f"{str(report.stable_promotion_authorized).lower()}"
+    )
+    typer.echo(f"Stable routing enabled: {str(report.stable_routing_enabled).lower()}")
+    typer.echo(
+        "Permission widening authorized: "
+        f"{str(report.permission_widening_authorized).lower()}"
+    )
+    typer.echo(
+        f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}"
+    )
+    typer.echo(f"Next command: {report.next_command}")
+
+    typer.echo("")
+    typer.echo("WHY")
+    for item in report.why:
+        typer.echo(f"- {item.source_report}:{item.signal}: {item.status}")
+        typer.echo(f"  summary: {item.summary}")
+        if item.evidence_refs:
+            typer.echo(f"  evidence: {_format_list(item.evidence_refs)}")
+        if item.blockers:
+            typer.echo(f"  blockers: {_format_list(item.blockers)}")
+        if item.warnings:
+            typer.echo(f"  warnings: {_format_list(item.warnings)}")
+
+    typer.echo("")
+    typer.echo("SOURCE_REPORTS")
+    _emit_string_items(report.source_reports)
+
+    typer.echo("")
+    typer.echo("BLOCKERS")
+    _emit_string_items(report.blockers)
+
+    typer.echo("")
+    typer.echo("WARNINGS")
+    _emit_string_items(report.warnings)
+
+    typer.echo("")
+    typer.echo("MUTATION_BOUNDARY")
+    typer.echo(f"Run logs mutated: {str(report.run_logs_mutated).lower()}")
+    typer.echo(
+        f"Candidate ledger mutated: {str(report.candidate_ledger_mutated).lower()}"
+    )
+    typer.echo(
+        f"Resolution ledger mutated: {str(report.resolution_ledger_mutated).lower()}"
+    )
+    typer.echo(
+        f"Checkpoint ledger mutated: {str(report.checkpoint_ledger_mutated).lower()}"
+    )
+    typer.echo(f"Durable skills mutated: {str(report.durable_skills_mutated).lower()}")
+    typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
+    typer.echo(
+        f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}"
+    )
+
+    typer.echo("")
+    typer.echo("NEXT_STEPS")
+    _emit_string_items(report.next_steps)
 
 
 def emit_stable_readiness_output(report: StableReadinessReport) -> None:

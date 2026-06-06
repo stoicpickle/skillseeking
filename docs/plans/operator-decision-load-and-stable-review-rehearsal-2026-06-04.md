@@ -82,6 +82,8 @@ Boundary: still no resolver, package download, dependency installation, permissi
 
 ### 4. Candidate decision summary report
 
+Status: complete as `skill-agent candidate-decision`.
+
 After Slice 1 and the eval dimension are stable, consider a compact CLI index over existing reports, for example:
 
 ```bash

@@ -1060,3 +1060,42 @@ Boundaries:
 
 - This was test and documentation hardening only.
 - No dependency installation, durable skill copy/install, stable promotion, stable routing, ledger mutation, registry mutation, permission widening, or governor steering was added.
+
+## 2026-06-06 Candidate Decision Summary
+
+Added the first compact operator-decision summary over existing candidate proof reports.
+
+Added:
+
+- `skill-agent candidate-decision <candidate-id>` with human and `--json` output.
+- `CandidateDecisionReport` and `CandidateDecisionWhy` contracts.
+- Read-only composition over `stable-readiness` and its nested `skill-receipt`, `candidate-usefulness`, durable admission preview, and `negative-evidence` proof.
+- Deterministic advisory decisions: `ask_human`, `test_more`, `deny`, and `defer`.
+- Source-backed `why` items plus a `next_command` pointing back to `skill-agent stable-readiness <candidate-id>`.
+- Focused tests for ready-for-review human ask, missing promotion ask, duplicate/negative denial, and dependency-install-unsupported deferral.
+
+Verified:
+
+```bash
+.venv/bin/python -m pytest -q tests/test_candidate_decision.py
+.venv/bin/python -m pytest -q tests/test_candidate_decision.py tests/test_stable_readiness.py tests/test_evidence_governor.py
+.venv/bin/python -m pytest -q
+.venv/bin/python -m compileall -q app
+git diff --check
+.venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals
+.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir runs/evals
+.venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir runs/evals
+.venv/bin/skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir runs/evals
+```
+
+Result:
+
+- 4 focused candidate-decision tests passed.
+- 14 related candidate/readiness/governor tests passed.
+- Full test suite passed: 259 tests.
+- Eval gates passed: capgap smoke 4/4, capgap v0 20/20, lifecycle 7/7, diagnostic 16/16.
+
+Boundaries:
+
+- The report is advisory only.
+- It does not grant approval, install/copy durable skills, promote candidates, enable stable routing, widen permissions, mutate run logs, mutate candidate/resolution/checkpoint ledgers, mutate registries, or steer the governor.

@@ -93,6 +93,7 @@ SkillRepairRequestStatus = Literal["requested"]
 HealthSeverity = Literal["info", "warning", "critical"]
 SkillLifecycleStage = Literal["durable", "temporary", "generated", "requested"]
 EvidenceGovernorRecommendation = Literal["ask", "test_more", "deny", "defer"]
+CandidateDecision = Literal["ask_human", "test_more", "deny", "defer"]
 StableReadinessOutcome = Literal[
     "ready_for_stable_review",
     "needs_more_evidence",
@@ -1073,6 +1074,53 @@ class EvidenceGovernorReport(BaseModel):
     durable_skills_mutated: bool = False
     registry_mutated: bool = False
     governor_steering_enabled: bool = False
+
+
+class CandidateDecisionWhy(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    source_report: str
+    signal: str
+    status: str
+    summary: str
+    evidence_refs: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class CandidateDecisionReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    candidate_id: str
+    skill_name: str | None = None
+    capability: str | None = None
+    decision: CandidateDecision
+    decision_reason: str
+    allowed_decisions: list[CandidateDecision] = Field(
+        default_factory=lambda: ["ask_human", "test_more", "deny", "defer"]
+    )
+    dry_run: bool = True
+    advisory_only: bool = True
+    approval_granted: bool = False
+    install_authorized: bool = False
+    stable_review_authorized: bool = False
+    stable_promotion_authorized: bool = False
+    stable_routing_enabled: bool = False
+    permission_widening_authorized: bool = False
+    governor_steering_enabled: bool = False
+    why: list[CandidateDecisionWhy] = Field(default_factory=list)
+    stable_readiness: StableReadinessReport
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    next_command: str
+    next_steps: list[str] = Field(default_factory=list)
+    source_reports: list[str] = Field(default_factory=list)
+    run_logs_mutated: bool = False
+    candidate_ledger_mutated: bool = False
+    resolution_ledger_mutated: bool = False
+    checkpoint_ledger_mutated: bool = False
+    durable_skills_mutated: bool = False
+    registry_mutated: bool = False
 
 
 class ShadowActivationPlanReport(BaseModel):
