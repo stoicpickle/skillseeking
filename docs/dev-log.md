@@ -1201,3 +1201,31 @@ Validation:
 - `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-capgap-v0-check-task5` passed 20/20.
 - `.venv/bin/python -m compileall -q app` and `git diff --check` passed.
 - `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` completed with 0 findings.
+
+## 2026-06-06 V1 Data Contract Freeze
+
+Closed Task 9 by adding representative compatibility fixtures for the v1 JSON/data-contract surface.
+
+Added:
+
+- `docs/plans/v1-data-contract-freeze-2026-06-06.md`.
+- `tests/fixtures/v1_contracts/` with deterministic fixtures for run logs, skill candidate ledgers, input request resolution ledgers, evidence checkpoint ledgers, candidate decision reports, and eval reports.
+- `tests/test_v1_fixture_compatibility.py`, which validates model-backed fixtures with Pydantic v2 `model_validate` and `model_dump(mode="json")`.
+- A v1 public JSON contract freeze section in `docs/contracts/data-contracts.md`.
+- `scripts/v1_smoke.sh` coverage for the compatibility fixture test.
+
+Boundaries:
+
+- This is not exhaustive JSON Schema generation.
+- Eval reports remain plain dict reports; the v1 fixture freezes their public envelope and representative aggregate/task keys.
+- Volatile timestamps, local paths, temporary directories, process duration, random IDs, host details, and non-deterministic ordering are not stability guarantees unless explicitly documented.
+
+Validation:
+
+- `.venv/bin/python -m pytest -q tests/test_v1_fixture_compatibility.py` passed with 6 tests.
+- `bash scripts/v1_smoke.sh` passed, including v1 release eval 11/11 and v1 fixture compatibility 6/6.
+- `.venv/bin/skill-agent eval --suite evals/v1_release.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-release-check-task9` passed 11/11.
+- `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-capgap-v0-check-task9` passed 20/20.
+- `.venv/bin/python -m pytest -q` passed with 270 tests.
+- `.venv/bin/python -m compileall -q app && git diff --check` passed.
+- `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` completed with `findings:0`.

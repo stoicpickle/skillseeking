@@ -120,6 +120,9 @@ step "V1 release eval"
   --skills-dir skills \
   --runs-dir "${SMOKE_ROOT}/evals/v1-release"
 
+step "V1 fixture compatibility"
+"${PYTHON_BIN}" -m pytest -q tests/test_v1_fixture_compatibility.py
+
 step "Candidate decision isolated proof"
 CANDIDATE_RUNS="${SMOKE_ROOT}/candidate-decision-runs"
 "${SKILL_AGENT_BIN}" run \

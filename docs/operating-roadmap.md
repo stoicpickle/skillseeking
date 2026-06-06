@@ -183,6 +183,7 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-06: Started the v1 contract and fresh-checkout operator path slice. `scripts/v1_smoke.sh` is the local readiness smoke helper; it does not stamp `1.0.0`, publish releases, admit durable skills, enable stable routing, claim true sandboxing, or add hosted/marketplace scope.
 - 2026-06-06: Added `skill-agent v1-local-use` as the read-only v1 operator checklist for the managed-prefix-first local-use path. It points to `shadow-managed-write` and keeps durable `skills/` admission, stable routing, registry/ledger mutation, permission widening, and governor steering out of scope.
 - 2026-06-06: Closed the v1 stable routing policy as deferred/disabled. Positive stable routing remains post-v1; `evals/v1_release.jsonl` now includes a named not-routed policy row.
+- 2026-06-06: Froze representative v1 JSON/data-contract fixtures for run logs, candidate ledgers, input resolutions, checkpoints, candidate decisions, and eval reports. The freeze is a compatibility sentinel, not exhaustive JSON Schema generation.
 
 - 2026-06-01: Consolidated near-term roadmap into this document before runtime Skill Candidate Ledger work.
 - 2026-06-01: Named **Skill Candidate Ledger** as the next runtime milestone.

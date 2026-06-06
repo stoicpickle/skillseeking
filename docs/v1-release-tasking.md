@@ -206,6 +206,8 @@ Checks:
 
 ### 9. Versioned Data Contract Freeze
 
+Status: complete in [V1 Data Contract Freeze](plans/v1-data-contract-freeze-2026-06-06.md)
+
 Goal:
 Define v1 JSON and ledger compatibility surfaces.
 
@@ -220,6 +222,13 @@ Checks:
 - Breaking a public JSON field becomes a deliberate versioned change.
 - Existing v1 fixture outputs remain readable.
 - Contract docs match model fields.
+
+Evidence:
+
+- `docs/contracts/data-contracts.md` marks the v1 public JSON contract freeze and schema/version notes.
+- `tests/fixtures/v1_contracts/` stores representative v1 payloads for run logs, candidate ledgers, input resolution ledgers, evidence checkpoint ledgers, candidate decision reports, and eval reports.
+- `tests/test_v1_fixture_compatibility.py` validates model-backed fixtures with Pydantic v2 and checks the eval report dict envelope.
+- `scripts/v1_smoke.sh` runs the fixture compatibility test.
 
 ### 10. Release Documentation
 

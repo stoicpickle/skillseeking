@@ -1,0 +1,93 @@
+{
+  "candidate_id": "candidate_fixture_001",
+  "skill_name": "argument-clustering-candidate",
+  "capability": "cluster arguments",
+  "decision": "ask_human",
+  "decision_reason": "Candidate is ready for advisory stable review but v1 requires human approval.",
+  "allowed_decisions": [
+    "ask_human",
+    "test_more",
+    "deny",
+    "defer"
+  ],
+  "dry_run": true,
+  "advisory_only": true,
+  "approval_granted": false,
+  "install_authorized": false,
+  "stable_review_authorized": false,
+  "stable_promotion_authorized": false,
+  "stable_routing_enabled": false,
+  "permission_widening_authorized": false,
+  "governor_steering_enabled": false,
+  "why": [
+    {
+      "source_report": "stable-readiness",
+      "signal": "stable_readiness",
+      "status": "ready_for_stable_review",
+      "summary": "Evidence is sufficient for human stable-review rehearsal.",
+      "evidence_refs": [
+        "runs/skill_candidate_ledger.json"
+      ],
+      "blockers": [],
+      "warnings": []
+    }
+  ],
+  "stable_readiness": {
+    "candidate_id": "candidate_fixture_001",
+    "skill_name": "argument-clustering-candidate",
+    "capability": "cluster arguments",
+    "candidate_status": "candidate",
+    "outcome": "ready_for_stable_review",
+    "ready_for_stable_review": true,
+    "required_successful_temporary_uses": 10,
+    "successful_temporary_uses": 10,
+    "validation_pass_count": 1,
+    "validation_failure_count": 0,
+    "stable_review_approval_required": true,
+    "stable_review_authorized": false,
+    "dry_run": true,
+    "advisory_only": true,
+    "stable_promotion_authorized": false,
+    "stable_routing_enabled": false,
+    "checks": [
+      {
+        "category": "stable_use_threshold",
+        "status": "pass",
+        "summary": "Candidate has enough temporary uses for review.",
+        "evidence_refs": [
+          "runs/skill_candidate_ledger.json"
+        ],
+        "blockers": [],
+        "warnings": []
+      }
+    ],
+    "skill_receipt": null,
+    "negative_evidence": null,
+    "blockers": [],
+    "warnings": [],
+    "next_steps": [
+      "Use this report as advisory stable-review evidence only for v1."
+    ],
+    "run_logs_mutated": false,
+    "candidate_ledger_mutated": false,
+    "resolution_ledger_mutated": false,
+    "durable_skills_mutated": false,
+    "registry_mutated": false,
+    "governor_steering_enabled": false
+  },
+  "blockers": [],
+  "warnings": [],
+  "next_command": "skill-agent stable-readiness candidate_fixture_001",
+  "next_steps": [
+    "Review stable-readiness evidence."
+  ],
+  "source_reports": [
+    "stable-readiness"
+  ],
+  "run_logs_mutated": false,
+  "candidate_ledger_mutated": false,
+  "resolution_ledger_mutated": false,
+  "checkpoint_ledger_mutated": false,
+  "durable_skills_mutated": false,
+  "registry_mutated": false
+}

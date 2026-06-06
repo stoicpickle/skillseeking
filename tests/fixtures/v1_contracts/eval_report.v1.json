@@ -1,0 +1,105 @@
+{
+  "suite": "evals/v1_release.jsonl",
+  "skills_dir": "skills",
+  "runs_dir": "runs/evals/fixture-v1",
+  "timestamp": "2026-01-01T00:30:00",
+  "json_report_path": "runs/evals/eval_report_fixture.json",
+  "markdown_report_path": "runs/evals/eval_report_fixture.md",
+  "passed": true,
+  "aggregate": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "task_pass_rate": 1.0,
+    "missing_skill_true_positives": 0,
+    "missing_skill_false_positives": 0,
+    "missing_skill_false_negatives": 0,
+    "wrong_skill_loads": 0,
+    "unsafe_allowed": 0,
+    "safe_blocked": 0,
+    "approval_required_detected": 0,
+    "adversarial_attempted": 0,
+    "adversarial_blocked": 0,
+    "average_request_quality": null,
+    "governor_decision_expected": 1,
+    "governor_decision_correct": 1,
+    "governor_decision_accuracy": 1.0,
+    "lifecycle_evidence_expected": 1,
+    "lifecycle_evidence_correct": 1,
+    "lifecycle_evidence_accuracy": 1.0,
+    "stable_readiness_expected": 1,
+    "stable_readiness_correct": 1,
+    "stable_readiness_accuracy": 1.0,
+    "trace_complete_count": 1,
+    "trace_incomplete_count": 0,
+    "trace_completeness": 1.0,
+    "failure_categories": {},
+    "diagnostic_dimensions": {
+      "release_gate": {
+        "total": 1,
+        "passed": 1,
+        "failed": 0,
+        "pass_rate": 1.0,
+        "trace_completeness": 1.0,
+        "average_request_quality": null
+      }
+    },
+    "weakest_diagnostic_dimensions": []
+  },
+  "tasks": [
+    {
+      "id": "v1_release_fixture",
+      "tags": [
+        "v1_release",
+        "release_gate"
+      ],
+      "expected": {
+        "outcome": "success",
+        "must_have_routing_decision": true,
+        "trace_complete": true
+      },
+      "passed": true,
+      "issues": [],
+      "failure_categories": [],
+      "suggested_next_action": "No action needed.",
+      "run_id": "fixture-run-001",
+      "run_log_path": "runs/evals/fixture-v1/run_fixture.json",
+      "explain_command": "skill-agent explain runs/evals/fixture-v1/run_fixture.json",
+      "explain_candidates_command": "skill-agent explain runs/evals/fixture-v1/run_fixture.json --include-candidates",
+      "exit_code": 0,
+      "result_category": "success",
+      "loaded_skills": [
+        "argument-clustering"
+      ],
+      "requested_skills": [],
+      "rejected_skills": [],
+      "skill_requests": [],
+      "input_requests": [],
+      "input_request_resolutions": [],
+      "candidate_ledger_entries": [],
+      "stable_readiness_reports": [],
+      "lifecycle_expectation_passed": true,
+      "stable_readiness_expectation_passed": true,
+      "request_quality": [],
+      "routing_decisions": [
+        {
+          "capability": "cluster arguments",
+          "decision": "USE_SKILL"
+        }
+      ],
+      "governor_decisions": [
+        {
+          "capability": "cluster arguments",
+          "decision": "USE_SKILL",
+          "dominant_signal": "skill_match"
+        }
+      ],
+      "governor_expectation_passed": true,
+      "trace": [
+        "planned task",
+        "loaded argument-clustering"
+      ],
+      "trace_complete": true
+    }
+  ]
+}

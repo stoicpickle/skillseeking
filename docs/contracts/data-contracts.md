@@ -2,6 +2,30 @@
 
 Contracts are schema-v3 and serialized with Pydantic `model_dump(mode="json")`. Older run logs without `schema_version`, `run_id`, governor records, or request control summaries are tolerated by health analysis and explain output where applicable.
 
+## V1 Public JSON Contract Freeze
+
+For the v1 local CLI release, compatibility is frozen through representative fixture tests in `tests/fixtures/v1_contracts/` and `tests/test_v1_fixture_compatibility.py`. These fixtures are compatibility sentinels, not an exhaustive JSON Schema generator. They freeze required version fields, stable identity fields, required nested objects, and JSON-serializable Pydantic output shape for:
+
+- run logs;
+- skill candidate ledgers;
+- input request resolution ledgers;
+- evidence checkpoint ledgers;
+- candidate decision reports;
+- eval reports.
+
+Version notes:
+
+- Run logs use `SCHEMA_VERSION`, currently `3`, and serialize through `RunLog.model_dump(mode="json")`.
+- Skill candidate ledgers use `SkillCandidateLedger.schema_version == 1`.
+- Input request resolution ledgers use `InputRequestResolutionLedger.schema_version == 1`.
+- Evidence checkpoint ledgers use `EvidenceCheckpointLedger.schema_version == SCHEMA_VERSION`, currently `3`.
+- Candidate decision reports validate through `CandidateDecisionReport` with `extra="forbid"` and preserve the v1 no-authority fields for install, stable review, stable promotion, stable routing, durable skills, and registry mutation.
+- Eval reports are currently plain dict reports from `skill-agent eval --json`; the v1 fixture freezes the public report envelope, aggregate summary, task result keys, routing decisions, governor decisions, and trace-completeness fields.
+
+Fields derived from wall-clock time, local filesystem paths, temporary directories, process duration, random IDs, host environment, or non-deterministic ordering are not contract-stability guarantees unless explicitly documented. V1 fixtures use deterministic sample values for required fields of that kind.
+
+Breaking a frozen public field should be treated as a deliberate versioned change after v1 is stamped.
+
 ## Skill Request
 
 ```json

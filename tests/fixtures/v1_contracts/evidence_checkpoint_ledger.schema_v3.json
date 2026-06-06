@@ -1,0 +1,26 @@
+{
+  "schema_version": 3,
+  "checkpoints": [
+    {
+      "id": "checkpoint_fixture_001",
+      "created_at": "2026-01-01T00:20:00",
+      "scope": "runs_core",
+      "previous_checkpoint_hash": null,
+      "checkpoint_hash_algorithm": "sha256",
+      "checkpoint_hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "evidence_file_count": 2,
+      "evidence_files": [
+        {
+          "path": "run_fixture.json",
+          "sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+          "size_bytes": 512
+        },
+        {
+          "path": "skill_candidate_ledger.json",
+          "sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+          "size_bytes": 1024
+        }
+      ]
+    }
+  ]
+}

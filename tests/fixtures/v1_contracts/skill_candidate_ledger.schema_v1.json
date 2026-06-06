@@ -1,0 +1,43 @@
+{
+  "schema_version": 1,
+  "entries": [
+    {
+      "candidate_id": "candidate_fixture_001",
+      "skill_name": "argument-clustering-candidate",
+      "capability": "cluster arguments",
+      "status": "candidate",
+      "first_seen_run_id": "fixture-run-001",
+      "last_seen_run_id": "fixture-run-001",
+      "request_count": 1,
+      "successful_temporary_uses": 10,
+      "validation_pass_count": 1,
+      "validation_failure_count": 0,
+      "safety_flags": [],
+      "duplicate_of": null,
+      "duplicate_evidence": [],
+      "quarantine_reason": null,
+      "block_reason": null,
+      "repair_requirements": [],
+      "promotion_requirements": [],
+      "human_approval_required": true,
+      "promotion_approved_by": "Ada",
+      "promotion_approved_at": "2026-01-01T00:10:00",
+      "promotion_approval_notes": "Fixture approval for stable-readiness rehearsal.",
+      "governor_summary": {
+        "dominant_signal": "missing_skill"
+      },
+      "evidence_run_ids": [
+        "fixture-run-001"
+      ],
+      "input_schema": {
+        "sources": "array"
+      },
+      "output_schema": {
+        "clusters": "array"
+      },
+      "created_at": "2026-01-01T00:00:00",
+      "updated_at": "2026-01-01T00:10:00"
+    }
+  ],
+  "updated_at": "2026-01-01T00:10:00"
+}

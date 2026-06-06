@@ -1,0 +1,95 @@
+{
+  "schema_version": 3,
+  "run_id": "fixture-run-001",
+  "task_id": "task_fixture_001",
+  "task": "Cluster arguments from these sources.",
+  "created_at": "2026-01-01T00:00:00",
+  "exit_code": 0,
+  "result_category": "success",
+  "plan": [
+    "Use the durable argument clustering skill."
+  ],
+  "capability_decisions": [
+    {
+      "capability": "cluster arguments",
+      "decision": "USE_SKILL",
+      "selected_skill": "argument-clustering",
+      "reason": "Durable skill covers the requested capability."
+    }
+  ],
+  "governor_decisions": [
+    {
+      "capability": "cluster arguments",
+      "decision": "USE_SKILL",
+      "confidence": 0.91,
+      "risk_level": "low",
+      "reversibility": "reversible",
+      "approval_required": false,
+      "freshness_required": false,
+      "tool_failure_history": false,
+      "cost_or_latency_concern": false,
+      "dominant_signal": "skill_match",
+      "reason": "Existing durable skill matches the task."
+    }
+  ],
+  "skills_loaded": [
+    {
+      "name": "argument-clustering",
+      "version": "1.0.0",
+      "path": "skills/argument-clustering/SKILL.md",
+      "loaded_for_capability": "cluster arguments",
+      "load_reason": "matched durable registry record",
+      "temporary": false,
+      "lifecycle": {
+        "stage": "durable",
+        "source": "registry",
+        "run_id": null,
+        "temporary": false,
+        "notes": ""
+      }
+    }
+  ],
+  "script_executions": [],
+  "skill_requests": [],
+  "skill_repair_requests": [],
+  "input_requests": [],
+  "rejected_skills": [],
+  "trace": [
+    "planned task",
+    "loaded argument-clustering"
+  ],
+  "trace_events": [
+    {
+      "sequence": 1,
+      "stage": "route",
+      "timestamp": "2026-01-01T00:00:01",
+      "message": "Selected durable skill.",
+      "details": {
+        "skill": "argument-clustering"
+      }
+    }
+  ],
+  "execution_summary": {
+    "loaded_skills": [
+      "argument-clustering"
+    ],
+    "temporary_skills": [],
+    "requested_skills": [],
+    "repair_requested_skills": [],
+    "rejected_skills": [],
+    "script_executions": [],
+    "failed_scripts": [],
+    "safety_decisions": [],
+    "skill_request_count": 0,
+    "skill_repair_request_count": 0,
+    "rejected_skill_count": 0,
+    "script_execution_count": 0,
+    "failed_script_count": 0,
+    "safety_decision_count": 0,
+    "result_category": "success"
+  },
+  "result_quality": {
+    "score": null,
+    "notes": "Route/request execution; quality scoring deferred."
+  }
+}

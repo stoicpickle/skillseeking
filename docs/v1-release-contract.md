@@ -46,7 +46,7 @@ The v1 compatibility surface should include these local CLI categories:
 - Promotion and admission review: `skill-agent promote-candidate`, `skill-agent admission-plan`, `skill-agent admit-candidate --dry-run`.
 - Evaluation: `skill-agent eval`.
 
-The stable routing policy is deferred for v1 and documented in [Stable Routing Policy](stable-routing-policy.md). The detailed JSON surfaces live in [Data Contracts](contracts/data-contracts.md). Breaking v1 JSON fields should be treated as a deliberate versioned change after v1 is stamped.
+The stable routing policy is deferred for v1 and documented in [Stable Routing Policy](stable-routing-policy.md). The detailed JSON surfaces live in [Data Contracts](contracts/data-contracts.md), including the representative v1 fixture freeze for run logs, candidate ledgers, input resolutions, checkpoints, decision reports, and eval reports. Breaking frozen v1 JSON fields should be treated as a deliberate versioned change after v1 is stamped.
 
 ## Lifecycle Boundary
 
@@ -149,6 +149,5 @@ The repo is moving toward v1.0. It is not yet v1.0.
 Current v1 blockers remain:
 
 - final v1 release eval suite expansion, if later stable routing is included;
-- versioned data-contract freeze;
 - release notes and changelog;
 - final `1.0.0` gate.
