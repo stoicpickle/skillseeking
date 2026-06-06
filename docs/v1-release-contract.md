@@ -42,6 +42,7 @@ The v1 compatibility surface should include these local CLI categories:
 - Candidate review: `skill-agent candidates`, `skill-agent candidate-usefulness`, `skill-agent skill-receipt`, `skill-agent stable-readiness`, `skill-agent candidate-decision`.
 - Negative and checkpoint evidence: `skill-agent negative-evidence`, `skill-agent evidence-checkpoint`, `skill-agent evidence-governor`.
 - Managed-prefix proof path: `skill-agent shadow-activation-plan`, `skill-agent shadow-rollback-plan`, `skill-agent shadow-activation-acceptance`, `skill-agent shadow-write-gate`, `skill-agent shadow-managed-write`.
+- V1 operator checklist: `skill-agent v1-local-use`, pointing to the managed-prefix-first local-use path without adding a second mutation surface.
 - Promotion and admission review: `skill-agent promote-candidate`, `skill-agent admission-plan`, `skill-agent admit-candidate --dry-run`.
 - Evaluation: `skill-agent eval`.
 
@@ -102,6 +103,7 @@ The smoke helper is a local readiness check. It does not install dependencies, c
 The smoke helper should prove:
 
 - CLI/package availability;
+- the v1 local-use checklist;
 - the Skill Gauntlet demo path;
 - capability-gap smoke eval;
 - lifecycle eval;
@@ -147,7 +149,6 @@ The repo is moving toward v1.0. It is not yet v1.0.
 Current v1 blockers remain:
 
 - final v1 release eval suite expansion, if later stable routing is included;
-- final stable local-use path decision;
 - stable routing policy and proof, if included in v1;
 - versioned data-contract freeze;
 - release notes and changelog;

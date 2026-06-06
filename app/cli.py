@@ -89,6 +89,98 @@ from app.registry import SkillRegistry
 app = typer.Typer(no_args_is_help=True)
 
 
+V1_LOCAL_USE_REPORT = {
+    "scope": "managed-prefix-first local use",
+    "primary_command": "shadow-managed-write",
+    "mutation_surface": "managed prefix only",
+    "operator_sequence": [
+        "Create or inspect candidate evidence with skill-agent run and candidate-decision.",
+        "Record human promotion review with promote-candidate when temporary evidence supports review.",
+        "Inspect durable admission evidence with admit-candidate --dry-run and capture the durable plan digest.",
+        "Prepare run-scoped acceptance evidence with shadow-activation-acceptance --prepare-acceptance-evidence.",
+        "Verify rollback and acceptance evidence with shadow-write-gate.",
+        "Run shadow-managed-write in dry-run mode and capture the managed-write plan digest.",
+        "Record a separate approve_review input resolution whose notes include managed_write_plan_digest=<digest>.",
+        "Append or verify an evidence checkpoint and capture the latest checkpoint hash.",
+        "Run shadow-managed-write --no-dry-run only with every expected digest, checkpoint hash, and write approval id.",
+        "Rerun shadow-managed-write --no-dry-run with the same proof to verify already_applied idempotency if needed.",
+    ],
+    "required_inputs": [
+        "--expected-source-sha256",
+        "--expected-durable-plan-digest",
+        "--expected-shadow-plan-digest",
+        "--expected-rollback-plan-digest",
+        "--expected-acceptance-plan-digest",
+        "--expected-managed-write-plan-digest",
+        "--expected-checkpoint-hash",
+        "--write-approval-id",
+    ],
+    "safety_guarantees": [
+        "Requires a non-expired human write approval bound to the exact managed-write digest.",
+        "Requires exact source, durable, shadow, rollback, acceptance, managed-write, and checkpoint matches.",
+        "Blocks stale source hashes, digest mismatches, missing rollback evidence, conflicting bytes, and managed-prefix path escapes.",
+        "Writes only the managed store skill file, profile generation skill file, profile pointer, and managed-prefix-local receipt.",
+        "Supports idempotent already_applied verification for a matching prior write receipt.",
+    ],
+    "unchanged_authority": [
+        "durable skills",
+        "registry",
+        "candidate ledger",
+        "resolution ledger",
+        "run logs",
+        "permissions",
+        "stable routing",
+        "governor steering",
+    ],
+    "excluded_authority": [
+        "durable skills admission",
+        "automatic candidate-to-stable promotion",
+        "positive stable routing",
+        "dependency installation",
+        "marketplace publication",
+        "hosted service behavior",
+        "true sandboxing claims",
+    ],
+}
+
+
+@app.command("v1-local-use")
+def v1_local_use(
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the v1 local-use checklist as JSON."),
+    ] = False,
+) -> None:
+    if json_output:
+        typer.echo(json.dumps(V1_LOCAL_USE_REPORT, indent=2, sort_keys=True))
+        return
+
+    typer.echo("V1_LOCAL_USE")
+    typer.echo(f"Scope: {V1_LOCAL_USE_REPORT['scope']}")
+    typer.echo(f"Primary command: skill-agent {V1_LOCAL_USE_REPORT['primary_command']}")
+    typer.echo(f"Mutation surface: {V1_LOCAL_USE_REPORT['mutation_surface']}")
+    typer.echo("")
+    typer.echo("Operator sequence:")
+    for index, item in enumerate(V1_LOCAL_USE_REPORT["operator_sequence"], start=1):
+        typer.echo(f"{index}. {item}")
+    typer.echo("")
+    typer.echo("Required inputs:")
+    for item in V1_LOCAL_USE_REPORT["required_inputs"]:
+        typer.echo(f"- {item}")
+    typer.echo("")
+    typer.echo("Safety guarantees:")
+    for item in V1_LOCAL_USE_REPORT["safety_guarantees"]:
+        typer.echo(f"- {item}")
+    typer.echo("")
+    typer.echo("Unchanged authority:")
+    for item in V1_LOCAL_USE_REPORT["unchanged_authority"]:
+        typer.echo(f"- {item}")
+    typer.echo("")
+    typer.echo("Excluded authority:")
+    for item in V1_LOCAL_USE_REPORT["excluded_authority"]:
+        typer.echo(f"- {item}")
+
+
 @app.command()
 def run(
     task: Annotated[str, typer.Argument(help="Task text to route through local skills.")],

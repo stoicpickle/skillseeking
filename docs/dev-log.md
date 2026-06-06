@@ -1149,3 +1149,29 @@ Validation:
 - `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-capgap-v0-check-2` passed 20/20.
 - `.venv/bin/python -m compileall -q app` and `git diff --check` passed.
 - `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` was run once; it reached `reviewing` and heartbeat status but did not emit findings before the bounded stall cutoff.
+
+## 2026-06-06 V1 Local-Use Operator Checklist
+
+Closed the v1 stable local-use decision around the already implemented managed-prefix-first path.
+
+Added:
+
+- `skill-agent v1-local-use` with human and `--json` output.
+- A read-only v1 checklist pointing operators to `shadow-managed-write` as the only managed-prefix local-use write surface.
+- `tests/test_v1_local_use.py` to keep the checklist aligned with required digest/checkpoint/write-approval inputs and excluded authority.
+- `scripts/v1_smoke.sh` validation for `v1-local-use --json`.
+- V1 contract, tasking, data-contract, README, and roadmap updates marking Task 4 complete through managed-prefix-first local use.
+
+Boundaries:
+
+- No durable `skills/` admission, stable routing, dependency installation, marketplace, hosted service, true sandboxing claim, registry/ledger mutation, permission widening, or governor steering was added.
+- `v1-local-use` does not inspect candidates or execute writes; it only makes the existing human-governed local-use path discoverable.
+
+Validation:
+
+- `bash scripts/v1_smoke.sh` passed, including `v1-local-use --json`, v1 release eval 10/10, lifecycle 7/7, diagnostic 16/16, and candidate-decision proof.
+- `.venv/bin/python -m pytest -q tests/test_v1_local_use.py tests/test_shadow_activation.py tests/test_durable_admission_workflow_docs.py` passed with 31 tests.
+- `.venv/bin/python -m pytest -q` passed with 263 tests.
+- `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-capgap-v0-check-3` passed 20/20.
+- `.venv/bin/python -m compileall -q app` and `git diff --check` passed.
+- `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` completed with 0 findings.

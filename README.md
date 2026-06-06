@@ -62,7 +62,7 @@ To run the current local v1 smoke path after installing the repo:
 bash scripts/v1_smoke.sh
 ```
 
-This smoke checks local operator readiness only, including the named `evals/v1_release.jsonl` gate. It does not stamp `1.0.0`, publish releases, admit durable skills, or enable stable routing.
+This smoke checks local operator readiness only, including the named `evals/v1_release.jsonl` gate and `skill-agent v1-local-use` managed-prefix checklist. It does not stamp `1.0.0`, publish releases, admit durable skills, or enable stable routing.
 
 ## Current Documentation
 

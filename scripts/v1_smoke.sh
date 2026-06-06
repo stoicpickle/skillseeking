@@ -66,7 +66,25 @@ import app.agent_loop
 print("app imports ok")
 PY
 "${SKILL_AGENT_BIN}" --help >/dev/null
+"${SKILL_AGENT_BIN}" v1-local-use --help >/dev/null
 "${SKILL_AGENT_BIN}" candidate-decision --help >/dev/null
+"${SKILL_AGENT_BIN}" v1-local-use --json >"${SMOKE_ROOT}/v1-local-use.json"
+"${PYTHON_BIN}" - "${SMOKE_ROOT}/v1-local-use.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if data.get("primary_command") != "shadow-managed-write":
+    raise SystemExit("v1-local-use does not point to shadow-managed-write")
+if data.get("mutation_surface") != "managed prefix only":
+    raise SystemExit("v1-local-use changed the managed-prefix mutation boundary")
+if "stable routing" not in data.get("unchanged_authority", []):
+    raise SystemExit("v1-local-use must keep stable routing unchanged")
+if "durable skills admission" not in data.get("excluded_authority", []):
+    raise SystemExit("v1-local-use must exclude durable skills admission")
+print("v1-local-use ok")
+PY
 printf 'skill-agent CLI ok\n'
 
 step "Skill Gauntlet demo"

@@ -86,6 +86,8 @@ Checks:
 
 ### 4. One Complete Human-Governed Promotion Path
 
+Status: complete with managed-prefix-first local use through `skill-agent shadow-managed-write` and the read-only `skill-agent v1-local-use` checklist.
+
 Goal:
 Provide one safe local path from temporary candidate evidence to durable local skill admission or an explicitly chosen managed-prefix stable lane.
 
@@ -101,6 +103,14 @@ Checks:
 - One candidate can move through review into a stable local-use state without mutating unrelated evidence.
 - Permission widening remains blocked unless explicitly approved.
 - No generated skill can self-promote.
+
+Evidence:
+
+- V1 chooses managed-prefix-first local use, not durable `skills/` admission.
+- `shadow-managed-write --no-dry-run` is the only real write surface in this lane, and it is confined to the managed prefix.
+- The path requires human promotion review, exact source/durable/shadow/rollback/acceptance/managed-write digests, latest checkpoint hash, and a separate non-expired write approval id.
+- `tests/test_shadow_activation.py` covers success, idempotent rerun, stale/mismatched digest and checkpoint blockers, approval blockers, conflicting managed-prefix bytes, symlink escape blocking, rollback/interruption behavior, and no durable skills/registry/ledger/governor mutation.
+- `tests/test_v1_local_use.py` keeps the v1-facing operator checklist aligned to that boundary.
 
 ### 5. Stable Routing Policy
 

@@ -1239,6 +1239,7 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `skill-agent shadow-rollback-plan --json` emits the read-only managed-prefix rollback verifier for one candidate.
 - `skill-agent shadow-activation-acceptance --json` emits the controlled acceptance harness report for one candidate. With `--prepare-acceptance-evidence`, it may write matching acceptance evidence under `runs/` only.
 - `skill-agent shadow-write-gate --json` emits the read-only human write-gate verifier for prepared acceptance evidence. It never prepares evidence or mutates the real managed prefix.
+- `skill-agent v1-local-use --json` emits the read-only v1 managed-prefix local-use checklist. It names `shadow-managed-write` as the primary command, lists required digest/checkpoint/write-approval inputs, and records unchanged authority for durable skills, registries, ledgers, run logs, stable routing, and governor steering.
 - `skill-agent eval --json` emits the eval suite path, timestamp, per-task run-log paths, task pass/fail status, routing decisions, skill requests, input requests, request-quality scores, diagnostic dimensions, and aggregate counts.
 - `skill-agent explain <run-log.json>` reads an existing run log and prints a human-readable trace summary. It does not mutate the run log.
 
