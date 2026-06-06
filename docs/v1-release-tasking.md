@@ -252,7 +252,7 @@ Checks:
 
 Evidence:
 
-- `README.md` positions the repo as a local v1 CLI release candidate for governed capability acquisition.
+- `README.md` positions the repo as a v1.0 local CLI release for governed capability acquisition.
 - `CHANGELOG.md` records an Unreleased release-candidate section without claiming a stamped `1.0.0`.
 - `docs/v1-release-notes.md` summarizes current abilities, boundaries, verification commands, and the remaining final gate.
 - `tests/test_v1_release_docs.py` keeps release docs honest about local-only scope, no version stamp, no tag, no publish, deferred stable routing, and non-sandboxed scripted skills.

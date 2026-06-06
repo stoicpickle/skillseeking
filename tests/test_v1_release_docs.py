@@ -86,3 +86,14 @@ def test_release_contract_marks_final_v1_state_without_overclaiming(repo_root: P
     assert "stable routing positive coverage remains intentionally out of scope" in lower
     assert "- release notes and changelog;" not in lower
     assert "production-safety claim" in lower
+
+
+def test_v1_tasking_marks_final_release_without_stale_candidate_status(repo_root: Path):
+    tasking = (repo_root / "docs" / "v1-release-tasking.md").read_text(
+        encoding="utf-8"
+    )
+    lower = tasking.lower()
+
+    assert "status: complete for v1.0 local cli release" in lower
+    assert "v1.0 local cli release for governed capability acquisition" in lower
+    assert "local v1 cli release candidate for governed capability acquisition" not in lower
