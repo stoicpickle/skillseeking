@@ -1,0 +1,139 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd -- "${SCRIPT_DIR}/.." && pwd)"
+cd "${REPO_ROOT}"
+
+if [[ -x ".venv/bin/python" ]]; then
+  PYTHON_BIN="${PYTHON_BIN:-.venv/bin/python}"
+else
+  PYTHON_BIN="${PYTHON_BIN:-python}"
+fi
+
+if [[ -x ".venv/bin/skill-agent" ]]; then
+  SKILL_AGENT_BIN="${SKILL_AGENT_BIN:-.venv/bin/skill-agent}"
+else
+  SKILL_AGENT_BIN="${SKILL_AGENT_BIN:-skill-agent}"
+fi
+
+SMOKE_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/skill-agent-v1-smoke.XXXXXX")"
+cleanup() {
+  rm -rf "${SMOKE_ROOT}"
+}
+trap cleanup EXIT
+
+step() {
+  printf '\n==> %s\n' "$1"
+}
+
+step "Repo root"
+printf '%s\n' "${REPO_ROOT}"
+
+step "Python version"
+"${PYTHON_BIN}" --version
+
+step "Required files"
+for path in \
+  "pyproject.toml" \
+  "README.md" \
+  "docs/v1-release-contract.md" \
+  "docs/v1-release-tasking.md" \
+  "scripts/run_gauntlet_demo.py"; do
+  test -f "${path}" || {
+    printf 'Missing required file: %s\n' "${path}" >&2
+    exit 1
+  }
+  printf 'found %s\n' "${path}"
+done
+
+step "Version has not been stamped as 1.0.0"
+"${PYTHON_BIN}" - <<'PY'
+from pathlib import Path
+
+text = Path("pyproject.toml").read_text(encoding="utf-8")
+if 'version = "1.0.0"' in text:
+    raise SystemExit("pyproject.toml is already stamped 1.0.0; this smoke is pre-v1 readiness only")
+print("pyproject.toml is not stamped 1.0.0")
+PY
+
+step "Package and CLI availability"
+"${PYTHON_BIN}" - <<'PY'
+import app.cli
+import app.agent_loop
+
+print("app imports ok")
+PY
+"${SKILL_AGENT_BIN}" --help >/dev/null
+"${SKILL_AGENT_BIN}" candidate-decision --help >/dev/null
+printf 'skill-agent CLI ok\n'
+
+step "Skill Gauntlet demo"
+GAUNTLET_OUTPUT="${SMOKE_ROOT}/gauntlet.out"
+"${PYTHON_BIN}" scripts/run_gauntlet_demo.py --runs-dir "${SMOKE_ROOT}/gauntlet-runs" >"${GAUNTLET_OUTPUT}"
+grep -q "SKILL GAUNTLET" "${GAUNTLET_OUTPUT}"
+grep -q "Result category:" "${GAUNTLET_OUTPUT}"
+printf 'gauntlet ok\n'
+
+step "Capability-gap smoke eval"
+"${SKILL_AGENT_BIN}" eval \
+  --suite evals/capgap_smoke.jsonl \
+  --skills-dir skills \
+  --runs-dir "${SMOKE_ROOT}/evals/capgap-smoke"
+
+step "Lifecycle eval"
+"${SKILL_AGENT_BIN}" eval \
+  --suite evals/skill_lifecycle_v0.jsonl \
+  --skills-dir skills \
+  --runs-dir "${SMOKE_ROOT}/evals/lifecycle"
+
+step "Agent diagnostic eval"
+"${SKILL_AGENT_BIN}" eval \
+  --suite evals/agent_diagnostic_v0.jsonl \
+  --skills-dir skills \
+  --runs-dir "${SMOKE_ROOT}/evals/diagnostic"
+
+step "Candidate decision isolated proof"
+CANDIDATE_RUNS="${SMOKE_ROOT}/candidate-decision-runs"
+"${SKILL_AGENT_BIN}" run \
+  "Cluster arguments from these sources." \
+  --skills-dir skills \
+  --runs-dir "${CANDIDATE_RUNS}" >"${SMOKE_ROOT}/candidate-run.out"
+CANDIDATE_ID="$("${PYTHON_BIN}" - "${CANDIDATE_RUNS}" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+ledger_path = Path(sys.argv[1]) / "skill_candidate_ledger.json"
+ledger = json.loads(ledger_path.read_text(encoding="utf-8"))
+entries = ledger.get("entries", [])
+if not entries:
+    raise SystemExit("candidate ledger has no entries")
+print(entries[0]["candidate_id"])
+PY
+)"
+"${SKILL_AGENT_BIN}" candidate-decision "${CANDIDATE_ID}" \
+  --skills-dir skills \
+  --runs-dir "${CANDIDATE_RUNS}" \
+  --json >"${SMOKE_ROOT}/candidate-decision.json"
+"${PYTHON_BIN}" - "${SMOKE_ROOT}/candidate-decision.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+required = {"candidate_id", "decision", "why", "next_command"}
+missing = sorted(required - set(data))
+if missing:
+    raise SystemExit(f"candidate-decision output missing fields: {missing}")
+if data.get("durable_skills_mutated") is not False:
+    raise SystemExit("candidate-decision unexpectedly reports durable skill mutation")
+if data.get("stable_routing_enabled") is not False:
+    raise SystemExit("candidate-decision unexpectedly reports stable routing enabled")
+print(f"candidate-decision ok: {data['decision']}")
+PY
+
+step "Compile app"
+"${PYTHON_BIN}" -m compileall -q app
+
+printf '\nV1 smoke passed. Evidence directory was temporary: %s\n' "${SMOKE_ROOT}"

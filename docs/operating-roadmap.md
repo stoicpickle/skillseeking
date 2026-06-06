@@ -8,6 +8,7 @@ This document is the near-term operating source of truth for Skill-Seeking Agent
 - [Skill Lifecycle](skill-lifecycle.md)
 - [Evaluation Plan](evaluation-plan.md)
 - [V1.0 Release Tasking](v1-release-tasking.md)
+- [V1.0 Release Contract](v1-release-contract.md)
 
 ## Current Proven Surface
 
@@ -42,7 +43,7 @@ The current product proof is a CLI-first prototype, not a production agent frame
 
 The next product risk is proof-surface sprawl: many reports now expose useful evidence, but the operator still needs a smaller answer about what decision to make next. Near-term work should compress existing evidence into clearer advisory decisions before adding durable admission, stable routing, dependency installation, UI, marketplace, or active governor authority.
 
-The current v1 planning source is [V1.0 Release Tasking](v1-release-tasking.md). The next planned slice is [V1 Contract And Fresh-Checkout Operator Path](plans/v1-contract-and-fresh-checkout-operator-path-2026-06-06.md).
+The current v1 planning source is [V1.0 Release Tasking](v1-release-tasking.md), and the local v1 promise is drafted in [V1.0 Release Contract](v1-release-contract.md). The active slice is [V1 Contract And Fresh-Checkout Operator Path](plans/v1-contract-and-fresh-checkout-operator-path-2026-06-06.md).
 
 ## Current Control Layer
 
@@ -177,6 +178,7 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-04: Stable-readiness eval coverage now includes ready-for-review, duplicate-blocked, and negative-evidence-blocked candidate-to-stable rehearsal rows while stable review, stable promotion, and stable routing remain unauthorized.
 - 2026-06-04: Captured external review tasking in `docs/plans/operator-decision-load-and-stable-review-rehearsal-2026-06-04.md`; next work should reduce operator decision overload by strengthening stable-readiness review rehearsal and eval coverage before adding stable routing or durable admission authority.
 - 2026-06-06: Added `skill-agent candidate-decision` as the first compact operator-decision summary over existing candidate proof reports. It returns only advisory decisions and leaves approval, install, stable promotion, stable routing, permission widening, evidence mutation, registry mutation, and governor steering disabled.
+- 2026-06-06: Started the v1 contract and fresh-checkout operator path slice. `scripts/v1_smoke.sh` is the local readiness smoke helper; it does not stamp `1.0.0`, publish releases, admit durable skills, enable stable routing, claim true sandboxing, or add hosted/marketplace scope.
 
 - 2026-06-01: Consolidated near-term roadmap into this document before runtime Skill Candidate Ledger work.
 - 2026-06-01: Named **Skill Candidate Ledger** as the next runtime milestone.

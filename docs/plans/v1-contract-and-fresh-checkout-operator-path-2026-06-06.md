@@ -1,6 +1,6 @@
 # V1 Contract And Fresh-Checkout Operator Path
 
-Status: planned
+Status: complete
 
 ## Source
 
@@ -9,7 +9,7 @@ This plan implements the first slice from [V1.0 Release Tasking](../v1-release-t
 Current branch context:
 
 - Branch: `codex/capgap-eval-private` tracking `private/codex/capgap-eval-private`.
-- Current dirty work: `candidate-decision` implementation, tests, and docs are uncommitted.
+- Baseline: `candidate-decision` is committed and pushed as `2397dae feat: add candidate decision summary`.
 - `pyproject.toml` currently declares `version = "0.1.0"`.
 
 ## Product Question
@@ -55,18 +55,18 @@ Create the v1 release contract and a fresh-checkout smoke path that prove the lo
 - Do not add active governor steering.
 - Do not claim true sandboxing.
 - Do not add marketplace, hosted, or UI scope.
-- Preserve the current candidate-decision dirty work unless this slice explicitly ships it first.
+- Start from the committed `candidate-decision` baseline; do not redo or broaden that slice.
 
 ## Tasks
 
-### 1. Ship Or Isolate Current Dirty Slice
+### 1. Confirm Current Baseline
 
-Before editing behavior, decide whether the current `candidate-decision` dirty work is part of this branch's next commit.
+Before editing behavior, confirm the current branch starts from the pushed `candidate-decision` baseline.
 
 Checks:
 
 - `git status --short --branch` is inspected.
-- Candidate-decision validation remains green if included.
+- `git log --oneline -1` shows the current slice starts after `2397dae` or a descendant.
 - No unrelated dirty files are reverted.
 
 ### 2. Draft V1 Release Contract

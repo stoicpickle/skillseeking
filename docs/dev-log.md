@@ -1099,3 +1099,28 @@ Boundaries:
 
 - The report is advisory only.
 - It does not grant approval, install/copy durable skills, promote candidates, enable stable routing, widen permissions, mutate run logs, mutate candidate/resolution/checkpoint ledgers, mutate registries, or steer the governor.
+
+## 2026-06-06 V1 Contract And Fresh-Checkout Smoke
+
+Started the first v1 release-readiness slice after `candidate-decision`.
+
+Added:
+
+- `docs/v1-release-contract.md` as the draft local v1 compatibility and safety-boundary contract.
+- `scripts/v1_smoke.sh` as a fail-fast local smoke helper for fresh-checkout operator readiness.
+- README pointers to v1 tasking, the v1 contract, and the smoke command.
+- Operating-roadmap pointers to the active v1 tasking/contract/plan.
+- Plan and tasking updates marking `candidate-decision` as the committed baseline.
+
+Boundaries:
+
+- No `1.0.0` version bump was made.
+- No durable `skills/` admission, stable routing, hosted service, marketplace, true sandboxing claim, or active governor steering was added.
+- The smoke helper writes only temporary smoke evidence and does not publish, tag, install dependencies, or mutate durable skills.
+
+Validation:
+
+- `bash scripts/v1_smoke.sh` passed.
+- `.venv/bin/python -m pytest -q` passed with 259 tests.
+- `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-capgap-v0-check` passed 20/20.
+- `.venv/bin/python -m compileall -q app` and `git diff --check` passed.

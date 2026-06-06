@@ -47,6 +47,23 @@ To verify the gauntlet as an acceptance test:
 
 See [Core demo suite](docs/demo-suite.md) for the smaller demos behind each behavior.
 
+## V1.0 Local Readiness Planning
+
+V1.0 is being planned as a stable **local CLI** product for governed skill acquisition. It is not a hosted service, marketplace, production-safe framework, or true sandbox.
+
+The active v1 planning sources are:
+
+- [V1.0 Release Tasking](docs/v1-release-tasking.md)
+- [V1.0 Release Contract](docs/v1-release-contract.md)
+
+To run the current local v1 smoke path after installing the repo:
+
+```bash
+bash scripts/v1_smoke.sh
+```
+
+This smoke checks local operator readiness only. It does not stamp `1.0.0`, publish releases, admit durable skills, or enable stable routing.
+
 ## Current Documentation
 
 - [Product brief](docs/product-brief.md)
@@ -60,6 +77,8 @@ See [Core demo suite](docs/demo-suite.md) for the smaller demos behind each beha
 - [Evaluation plan](docs/evaluation-plan.md)
 - [Safety model](docs/safety-model.md)
 - [Roadmap](docs/roadmap.md)
+- [V1.0 release tasking](docs/v1-release-tasking.md)
+- [V1.0 release contract](docs/v1-release-contract.md)
 - [Dev log](docs/dev-log.md)
 - [Clarifying questions](docs/clarifying-questions.md)
 - [References](docs/reference/references.md)

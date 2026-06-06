@@ -27,6 +27,8 @@ V1.0 does not mean:
 
 ### 1. Ship Current Decision-Compression Slice
 
+Status: complete as `2397dae feat: add candidate decision summary`
+
 Goal:
 Finish the current `candidate-decision` slice and get it reviewed, committed, and pushed.
 
@@ -43,6 +45,8 @@ Checks:
 - CodeRabbit has no blocking findings or any stall is reported with local proof.
 
 ### 2. Define The V1.0 Contract
+
+Status: complete in [V1 Contract And Fresh-Checkout Operator Path](plans/v1-contract-and-fresh-checkout-operator-path-2026-06-06.md)
 
 Goal:
 Create one release contract that names what v1.0 promises and what it explicitly does not promise.
@@ -61,6 +65,8 @@ Checks:
 - The contract is consistent with README, roadmap, data contracts, and safety model.
 
 ### 3. Fresh-Checkout Operator Path
+
+Status: complete in [V1 Contract And Fresh-Checkout Operator Path](plans/v1-contract-and-fresh-checkout-operator-path-2026-06-06.md)
 
 Goal:
 Make the first-run path boring and repeatable from a clean clone.
