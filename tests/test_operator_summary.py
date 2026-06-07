@@ -163,6 +163,11 @@ def test_operator_summary_surfaces_negative_safety_and_unsafe_abort(tmp_path):
     assert "run_log_unsafe:run_unsafe" in unsafe_ids
     assert "run_log_abort_unsafe:run_unsafe:0" in unsafe_ids
     assert "blocked:repair_needed:candidate_repair" in _ids(report.blocked_items)
+    assert any(
+        command.startswith("skill-agent explain ")
+        and command.endswith("run_unsafe.json")
+        for command in report.next_steps
+    )
 
 
 def test_operator_summary_reports_checkpoint_diffs_without_mutating(tmp_path):
@@ -190,6 +195,26 @@ def test_operator_summary_reports_checkpoint_diffs_without_mutating(tmp_path):
         "checkpoint_removed:removed.json",
         "checkpoint_added:added.json",
     ]
+    assert _snapshot_tree(runs_dir) == before
+
+
+def test_operator_summary_surfaces_unavailable_checkpoint_as_actionable(tmp_path):
+    runs_dir = tmp_path / "runs"
+    _write_text(runs_dir / "evidence_checkpoints.json", "{not-json}\n")
+    before = _snapshot_tree(runs_dir)
+
+    report = build_operator_summary_report(runs_dir=runs_dir)
+
+    assert report.checkpoint.status == "checkpoint_unavailable"
+    assert report.checkpoint.blockers
+    assert _ids(report.checkpoint_change_items) == ["checkpoint_unavailable"]
+    assert report.checkpoint_change_items[0].severity == "blocker"
+    assert any(
+        command.startswith("skill-agent evidence-checkpoint ")
+        and "--verify" in command
+        for command in report.next_steps
+    )
+    assert "No active operator action surfaced" not in report.next_steps
     assert _snapshot_tree(runs_dir) == before
 
 

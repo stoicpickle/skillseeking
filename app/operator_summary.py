@@ -274,6 +274,7 @@ def _unsafe_abort_items(runs_dir: Path) -> list[OperatorSummaryItem]:
                     source_path=str(path),
                     source_detail=run_id,
                     evidence_refs=[run_id],
+                    next_commands=[f"skill-agent explain {path}"],
                 )
             )
         for index, decision in enumerate(log.get("capability_decisions") or []):
@@ -291,6 +292,7 @@ def _unsafe_abort_items(runs_dir: Path) -> list[OperatorSummaryItem]:
                         source_path=str(path),
                         source_detail=run_id,
                         evidence_refs=[run_id],
+                        next_commands=[f"skill-agent explain {path}"],
                     )
                 )
     return items
@@ -310,7 +312,23 @@ def _checkpoint_summary(
                 blockers=[str(exc)],
                 warnings=[str(exc)],
             ),
-            [],
+            [
+                OperatorSummaryItem(
+                    section="checkpoint_change",
+                    severity="blocker",
+                    id="checkpoint_unavailable",
+                    title="Checkpoint unavailable",
+                    reason=str(exc),
+                    status="checkpoint_unavailable",
+                    source_type="checkpoint",
+                    source_path=str(runs_dir / "evidence_checkpoints.json"),
+                    source_detail="checkpoint_unavailable",
+                    blockers=[str(exc)],
+                    next_commands=[
+                        f"skill-agent evidence-checkpoint --runs-dir {runs_dir} --verify"
+                    ],
+                )
+            ],
             [f"checkpoint unavailable: {exc}"],
         )
 
@@ -414,9 +432,21 @@ def _next_steps(
         steps.append(f"skill-agent input-requests {runs_arg}")
     if promotion_ready_items:
         steps.append(f"skill-agent candidates {runs_arg}")
-    if unsafe_or_negative_items:
+    run_log_unsafe_items = [
+        item
+        for item in unsafe_or_negative_items
+        if item.source_type == "run_log" and item.source_path
+    ]
+    if any(item.source_type != "run_log" for item in unsafe_or_negative_items):
         steps.append(f"skill-agent negative-evidence {runs_arg}")
-    if checkpoint.status in {"no_checkpoint", "differs_from_latest", "checkpoint_blocked"}:
+    for item in run_log_unsafe_items:
+        steps.extend(item.next_commands)
+    if checkpoint.status in {
+        "no_checkpoint",
+        "differs_from_latest",
+        "checkpoint_blocked",
+        "checkpoint_unavailable",
+    }:
         steps.append(f"skill-agent evidence-checkpoint {runs_arg} --verify")
     if blocked_items or missing_evidence_items:
         steps.append("Resolve blockers or missing evidence, then rerun skill-agent operator-summary.")

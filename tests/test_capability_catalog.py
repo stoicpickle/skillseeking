@@ -84,6 +84,9 @@ def test_safety_classifier_precedence_and_demo_false_positive_guard():
     assert ask is not None
     assert ask.decision == "ASK_HUMAN"
     assert "file reads" in ask.matched_terms
+    assert classify_task_safety("Summarize this file for me.").decision == "ASK_HUMAN"
+    assert classify_task_safety("Summarize a local file.").decision == "ASK_HUMAN"
+    assert classify_task_safety("Remove this file.").decision == "ABORT_UNSAFE"
 
     assert classify_task_safety("Tokenize the secretariat report.") is None
     assert classify_task_safety("Extract claims from these two sources and identify contradictions.") is None

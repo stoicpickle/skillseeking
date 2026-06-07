@@ -75,9 +75,13 @@ from pathlib import Path
 data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
 durable_mutated = bool(data.get("durable_skills_mutated"))
 stable_routing = bool(data.get("stable_routing_enabled"))
-approval = data.get("human_approval_required")
 decision = data.get("decision", "unknown")
-human_review_required = bool(approval) or decision == "ask_human"
+approval_granted = bool(data.get("approval_granted"))
+install_authorized = bool(data.get("install_authorized"))
+stable_review_required = bool(
+    (data.get("stable_readiness") or {}).get("stable_review_approval_required")
+)
+human_review_required = decision == "ask_human" or stable_review_required
 print(f"Candidate decision: {decision}")
 print(f"Human review required: {'yes' if human_review_required else 'no'}")
 print(f"Durable skills mutated: {'yes' if durable_mutated else 'no'}")
@@ -88,6 +92,12 @@ if durable_mutated:
     raise SystemExit("launch demo must not mutate durable skills")
 if stable_routing:
     raise SystemExit("launch demo must not enable stable routing")
+if approval_granted:
+    raise SystemExit("launch demo must not grant approval")
+if install_authorized:
+    raise SystemExit("launch demo must not authorize installation")
+if not human_review_required:
+    raise SystemExit("launch demo must stop at human review")
 PY
 
 printf '\nLaunch demo complete. Temporary evidence was removed with %s\n' "${DEMO_ROOT}"
