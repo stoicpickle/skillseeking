@@ -66,6 +66,8 @@ bash scripts/v1_smoke.sh
 
 This smoke checks local operator readiness only, including the named `evals/v1_release.jsonl` gate, v1 release documentation, and `skill-agent v1-local-use` managed-prefix checklist. It does not publish releases, admit durable skills, or enable stable routing.
 
+Scripted skills are trusted-local only. Do not run untrusted scripted skills; `--scripted-skills` does not provide a sandbox.
+
 ## V1.0 Ability Breakdown
 
 V1.0 can:
@@ -221,6 +223,8 @@ Run the repair-request demo:
 Expected landmarks: `VALIDATION_FAILED`, `REQUESTING_REPAIR`, and `REPAIR_REQUESTED`. This demo is intentionally medium-risk because it asks for local code analysis; contradiction detection itself is safety-low, even if it is medium complexity.
 
 Run the M4 scripted-skill demo:
+
+Do not run untrusted scripted skills. `--scripted-skills` is trusted-local only and does not provide a sandbox.
 
 ```bash
 .venv/bin/skill-agent run "Count words in one two three." --scripted-skills --no-temporary-skills --skills-dir tests/fixtures/scripted-skills

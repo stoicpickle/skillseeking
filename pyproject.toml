@@ -1,7 +1,7 @@
 [project]
 name = "skillseeking"
 version = "1.0.0"
-description = "CLI-first static skill loader for a skill-seeking agent."
+description = "Local CLI for governed capability-gap detection, skill requests, and evidence-controlled skill review."
 requires-python = ">=3.11"
 dependencies = [
   "pydantic>=2,<3",

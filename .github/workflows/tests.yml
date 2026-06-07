@@ -26,6 +26,9 @@ jobs:
       - name: Install package
         run: python -m pip install -e '.[dev]'
 
+      - name: Check whitespace
+        run: git diff --check
+
       - name: Run tests
         run: python -m pytest -q
 
@@ -38,5 +41,11 @@ jobs:
       - name: Run agent diagnostic eval
         run: skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir runs/evals
 
+      - name: Run v1 release eval
+        run: skill-agent eval --suite evals/v1_release.jsonl --skills-dir skills --runs-dir runs/evals
+
       - name: Compile app
         run: python -m compileall -q app
+
+      - name: Run v1 smoke
+        run: bash scripts/v1_smoke.sh
