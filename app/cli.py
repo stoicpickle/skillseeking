@@ -198,6 +198,87 @@ NEW_AUTHORITY_READINESS_REPORT = {
 }
 
 
+FEEDBACK_SESSION_TEMPLATE_REPORT = {
+    "status": "template_only_read_only",
+    "template_name": "design_partner_session_entry",
+    "source_doc": "docs/design-partner-feedback-log.md",
+    "durable_record_target": "docs/design-partner-feedback-log.md",
+    "operator_action": "Manually copy a completed block into the feedback log after a real design-partner session.",
+    "template_only": True,
+    "feedback_log_appended": False,
+    "rollups_updated": False,
+    "authority_granted": False,
+    "heading": "## Session YYYY-MM-DD Partner Alias",
+    "fields": [
+        "Partner alias:",
+        "Date:",
+        "Workflow type:",
+        "Local environment:",
+        "Session source:",
+        "Launch-demo completed: yes/no",
+        "`operator-summary` inspected first: yes/no",
+        "Next `OPERATOR_DECISIONS` action identified unaided: yes/no",
+        "Candidate evidence confused with durable admission: yes/no",
+        "Stable-readiness confused with stable routing: yes/no",
+        "`ready_to_enable_new_authority=false` understood: yes/no",
+        "Setup friction:",
+        "Operator-summary decision clarity:",
+        "Evidence-surface confusion:",
+        "Candidate-decision confusion:",
+        "Safety-boundary confusion:",
+        "Stable-routing deferral confusion:",
+        "New-authority readiness confusion:",
+        "Most useful proof surface:",
+        "Least useful or most confusing proof surface:",
+        "Desired next action:",
+        "Captured issue/doc note:",
+        "Follow-up priority: none/docs/operator-summary/demo/readiness/other",
+    ],
+    "follow_up_priority_options": [
+        "none",
+        "docs",
+        "operator-summary",
+        "demo",
+        "readiness",
+        "other",
+    ],
+    "mutation_boundary": {
+        "feedback_log_appended": False,
+        "rollups_updated": False,
+        "run_logs_mutated": False,
+        "candidate_ledger_mutated": False,
+        "resolution_ledger_mutated": False,
+        "checkpoint_ledger_mutated": False,
+        "durable_skills_mutated": False,
+        "registry_mutated": False,
+        "durable_admission_granted": False,
+        "stable_routing_enabled": False,
+        "governor_steering_enabled": False,
+        "dependencies_installed": False,
+        "permissions_widened": False,
+        "hosted_behavior_enabled": False,
+        "marketplace_behavior_enabled": False,
+    },
+    "excluded_authority": [
+        "feedback-log append",
+        "summary rollup update",
+        "durable generated-skill admission into skills/",
+        "positive stable routing",
+        "active governor steering",
+        "dependency installation",
+        "permission widening",
+        "hosted service behavior",
+        "marketplace behavior",
+        "true sandboxing claims",
+    ],
+    "next_steps": [
+        "Run the design-partner review path before filling out the template.",
+        "Manually copy completed notes into docs/design-partner-feedback-log.md.",
+        "Update summary rollups manually only after real sessions are recorded.",
+    ],
+}
+
+
 @app.command("v1-local-use")
 def v1_local_use(
     json_output: Annotated[
@@ -233,6 +314,56 @@ def v1_local_use(
     typer.echo("")
     typer.echo("Excluded authority:")
     for item in V1_LOCAL_USE_REPORT["excluded_authority"]:
+        typer.echo(f"- {item}")
+
+
+@app.command("feedback-session-template")
+def feedback_session_template(
+    json_output: Annotated[
+        bool,
+        typer.Option(
+            "--json",
+            help="Print the design-partner feedback session template report as JSON.",
+        ),
+    ] = False,
+) -> None:
+    if json_output:
+        typer.echo(json.dumps(FEEDBACK_SESSION_TEMPLATE_REPORT, indent=2, sort_keys=True))
+        return
+
+    typer.echo("FEEDBACK_SESSION_TEMPLATE")
+    typer.echo(f"Status: {FEEDBACK_SESSION_TEMPLATE_REPORT['status']}")
+    typer.echo(f"Source doc: {FEEDBACK_SESSION_TEMPLATE_REPORT['source_doc']}")
+    typer.echo(
+        f"Durable record target: {FEEDBACK_SESSION_TEMPLATE_REPORT['durable_record_target']}"
+    )
+    typer.echo(
+        "Feedback log appended: "
+        f"{str(FEEDBACK_SESSION_TEMPLATE_REPORT['feedback_log_appended']).lower()}"
+    )
+    typer.echo(
+        "Rollups updated: "
+        f"{str(FEEDBACK_SESSION_TEMPLATE_REPORT['rollups_updated']).lower()}"
+    )
+    typer.echo("")
+    typer.echo("Markdown session block:")
+    typer.echo("")
+    typer.echo(FEEDBACK_SESSION_TEMPLATE_REPORT["heading"])
+    typer.echo("")
+    for field in FEEDBACK_SESSION_TEMPLATE_REPORT["fields"]:
+        typer.echo(f"- {field}")
+    typer.echo("")
+    typer.echo("Mutation boundary:")
+    for key, value in FEEDBACK_SESSION_TEMPLATE_REPORT["mutation_boundary"].items():
+        label = key.replace("_", " ").capitalize()
+        typer.echo(f"- {label}: {str(value).lower()}")
+    typer.echo("")
+    typer.echo("Excluded authority:")
+    for item in FEEDBACK_SESSION_TEMPLATE_REPORT["excluded_authority"]:
+        typer.echo(f"- {item}")
+    typer.echo("")
+    typer.echo("Next steps:")
+    for item in FEEDBACK_SESSION_TEMPLATE_REPORT["next_steps"]:
         typer.echo(f"- {item}")
 
 

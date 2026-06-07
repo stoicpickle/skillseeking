@@ -4,7 +4,11 @@ All notable release changes are tracked here. The authoritative package version 
 
 ## Unreleased
 
-No unreleased changes yet.
+### Added
+
+- `skill-agent feedback-session-template` prints the canonical design-partner
+  session block for manual feedback-log capture without appending to the log,
+  updating rollups, or enabling new authority.
 
 ## [1.0.0] - 2026-06-06
 

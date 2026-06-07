@@ -174,6 +174,7 @@ PY
 "${SKILL_AGENT_BIN}" --help >/dev/null
 "${SKILL_AGENT_BIN}" v1-local-use --help >/dev/null
 "${SKILL_AGENT_BIN}" new-authority-readiness --help >/dev/null
+"${SKILL_AGENT_BIN}" feedback-session-template --help >/dev/null
 "${SKILL_AGENT_BIN}" candidate-decision --help >/dev/null
 "${SKILL_AGENT_BIN}" v1-local-use --json >"${SMOKE_ROOT}/v1-local-use.json"
 "${PYTHON_BIN}" - "${SMOKE_ROOT}/v1-local-use.json" <<'PY'
@@ -212,6 +213,30 @@ if "positive stable routing" not in data.get("must_remain_disabled_until_separat
 if "active governor steering" not in data.get("must_remain_disabled_until_separate_slice", []):
     raise SystemExit("new-authority-readiness must keep governor steering disabled")
 print("new-authority-readiness ok")
+PY
+"${SKILL_AGENT_BIN}" feedback-session-template --json >"${SMOKE_ROOT}/feedback-session-template.json"
+"${PYTHON_BIN}" - "${SMOKE_ROOT}/feedback-session-template.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if data.get("status") != "template_only_read_only":
+    raise SystemExit("feedback-session-template must remain template-only")
+if data.get("feedback_log_appended") is not False:
+    raise SystemExit("feedback-session-template must not append to the feedback log")
+if data.get("rollups_updated") is not False:
+    raise SystemExit("feedback-session-template must not update rollups")
+if data.get("authority_granted") is not False:
+    raise SystemExit("feedback-session-template must not grant authority")
+boundary = data.get("mutation_boundary", {})
+if boundary.get("stable_routing_enabled") is not False:
+    raise SystemExit("feedback-session-template must keep stable routing disabled")
+if boundary.get("governor_steering_enabled") is not False:
+    raise SystemExit("feedback-session-template must keep governor steering disabled")
+if "Next `OPERATOR_DECISIONS` action identified unaided: yes/no" not in data.get("fields", []):
+    raise SystemExit("feedback-session-template must include operator decision field")
+print("feedback-session-template ok")
 PY
 printf 'skill-agent CLI ok\n'
 

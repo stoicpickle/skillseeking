@@ -274,6 +274,8 @@ Inspect Skill Candidate Ledger evidence after missing-skill or temporary-skill r
 .venv/bin/skill-agent candidate-usefulness candidate_<id> --runs-dir runs --skills-dir skills
 .venv/bin/skill-agent new-authority-readiness
 .venv/bin/skill-agent new-authority-readiness --json
+.venv/bin/skill-agent feedback-session-template
+.venv/bin/skill-agent feedback-session-template --json
 .venv/bin/skill-agent candidate-usefulness candidate_<id> --runs-dir runs --skills-dir skills --json
 .venv/bin/skill-agent candidate-usefulness candidate_<id> --runs-dir runs --skills-dir skills --baseline-run-id <run_id> --treatment-run-id <run_id>
 .venv/bin/skill-agent skill-receipt candidate_<id> --runs-dir runs --skills-dir skills --baseline-run-id <run_id> --treatment-run-id <run_id>
@@ -310,6 +312,8 @@ Candidate entries are evidence for human review only. Auto-promotion is disabled
 `operator-summary` is a read-only operator index over local evidence. It consolidates active input requests, candidate review queues, promotion-ready candidates, missing-evidence signals, unsafe or negative evidence, and changes since the latest evidence checkpoint. Its `OPERATOR_DECISIONS` section is the recommended first inspection surface for design partners because it groups the next operator decision before the raw evidence sections. It is advisory only: it does not approve, promote, install, route, append checkpoints, mutate ledgers, mutate durable skills, mutate registries, or steer the governor.
 
 `new-authority-readiness` is a read-only phase report for the next product boundary. It says the agent is ready for new-authority design review and planning, but not ready to enable new authority. The report names the smallest next authority candidate, the evidence still required before enablement, and the authorities that must remain disabled until a separate reviewed slice exists.
+
+`feedback-session-template` is a template-only helper for design-partner sessions. It prints the canonical session block for manual capture in `docs/design-partner-feedback-log.md`, and its JSON output reports that no feedback log append, rollup update, durable admission, stable routing, permission widening, dependency install, hosted behavior, marketplace behavior, or governor steering occurred.
 
 `evidence-checkpoint` creates or verifies a local hash-chain over core evidence files under `runs/`, excluding eval reports and the checkpoint ledger itself. Dry-run mode computes the next checkpoint without writing. `--no-dry-run` appends one record to `runs/evidence_checkpoints.json`; `--verify` checks the checkpoint chain and whether current evidence still matches the latest checkpoint. It is tamper-evidence only: it does not sign evidence, prove trust, approve durable admission, mutate run logs, mutate candidate or resolution ledgers, copy/install durable skills, or steer the governor.
 

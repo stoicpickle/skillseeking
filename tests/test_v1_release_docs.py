@@ -56,6 +56,7 @@ def test_readme_positions_v1_as_local_cli_with_boundaries(repo_root: Path):
     assert "docs/operator-summary-review-pack.md" in readme
     assert "new-authority-readiness" in readme
     assert "not ready to enable new authority" in readme
+    assert "feedback-session-template" in readme
     assert "docs/design-partner-feedback.md" in readme
     assert "docs/governance-monetization-principles.md" in readme
     assert "CHANGELOG.md" in readme
@@ -192,6 +193,9 @@ def test_public_preview_strategy_docs_match_source_and_scope(repo_root: Path):
     feedback_log = (repo_root / "docs" / "design-partner-feedback-log.md").read_text(
         encoding="utf-8"
     )
+    data_contracts = (repo_root / "docs" / "contracts" / "data-contracts.md").read_text(
+        encoding="utf-8"
+    )
     monetization = (
         repo_root / "docs" / "governance-monetization-principles.md"
     ).read_text(encoding="utf-8")
@@ -220,6 +224,10 @@ def test_public_preview_strategy_docs_match_source_and_scope(repo_root: Path):
     assert "local CLI public-dev-preview workbench" in contributing
     assert "not a hosted product" in contributing
     assert "durable generated-skill admission into `skills/`" in contributing
+    assert "skill-agent feedback-session-template" in contributing
+    assert "does not append to the log" in contributing
+    assert "update rollups" in contributing
+    assert "grant new authority" in contributing
 
     assert "operator-summary" in review_pack
     assert "OPERATOR_DECISIONS" in review_pack
@@ -235,11 +243,19 @@ def test_public_preview_strategy_docs_match_source_and_scope(repo_root: Path):
     assert "setup friction" in design_partners.lower()
     assert "candidate-decision confusion" in design_partners.lower()
     assert "stable-routing deferral confusion" in design_partners.lower()
+    assert "skill-agent feedback-session-template" in design_partners
+    assert "does not append to the log" in design_partners
+    assert "update rollups" in design_partners
+    assert "grant authority" in design_partners
     assert "Status: active public-dev-preview evidence log" in feedback_log
     assert "Completed partner sessions | 0" in feedback_log
     assert "Next `OPERATOR_DECISIONS` action identified unaided" in feedback_log
     assert "`ready_to_enable_new_authority=false` understood" in feedback_log
     assert "Do not add durable generated-skill admission" in feedback_log
+    assert "skill-agent feedback-session-template --json" in data_contracts
+    assert "template_only_read_only" in data_contracts
+    assert "does not append to the feedback log" in data_contracts
+    assert "Every `mutation_boundary` flag must remain `false`" in data_contracts
 
     assert "Do not lead with a public skill marketplace" in monetization
     assert "governance, evidence, approvals, auditability, and" in monetization

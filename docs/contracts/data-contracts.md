@@ -1262,6 +1262,7 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `skill-agent candidate-decision --json` emits the compact read-only operator decision report for one candidate, including `candidate_id`, `decision`, source-backed `why` items, nested stable-readiness evidence, and `next_command`.
 - `skill-agent operator-summary --json` emits the read-only operator summary report over local run evidence, candidate review queues, active input requests, negative evidence, unsafe aborts, and checkpoint deltas. It is advisory only and records unchanged mutation authority for run logs, ledgers, durable skills, registries, and governor steering.
 - `skill-agent new-authority-readiness --json` emits the read-only new-authority phase report. It may report `ready_for_authority_planning=true`, but `ready_to_enable_new_authority` must remain `false` until a separate reviewed authority slice exists.
+- `skill-agent feedback-session-template --json` emits the template-only design-partner session report. It does not append to the feedback log, update rollups, mutate evidence, or enable new authority.
 - `skill-agent negative-evidence --json` emits read-only unfavorable/limiting evidence from candidate and resolution ledgers.
 - `skill-agent evidence-checkpoint --json` emits the local evidence checkpoint create or verify report. `--no-dry-run` appends only to `runs/evidence_checkpoints.json`; `--verify` is read-only.
 - `skill-agent evidence-governor --json` emits the read-only advisory recommendation report for one candidate. It never grants approval or steers execution.
@@ -1315,6 +1316,39 @@ expiry, revoke behavior, run-log/explain visibility, and the local validation
 bundle. The report does not grant durable generated-skill admission, positive
 stable routing, active governor steering, dependency installation, permission
 widening, marketplace publication, hosted behavior, or true-sandbox claims.
+
+## Feedback Session Template
+
+`skill-agent feedback-session-template --json` emits a static template-only
+report for design-partner feedback capture. The current status is
+`template_only_read_only`: the command prints the canonical session block from
+[Design Partner Feedback Log](../design-partner-feedback-log.md), but it does
+not record a session.
+
+Required fields include:
+
+- `status`
+- `template_name`
+- `source_doc`
+- `durable_record_target`
+- `operator_action`
+- `template_only`
+- `feedback_log_appended`
+- `rollups_updated`
+- `authority_granted`
+- `heading`
+- `fields`
+- `follow_up_priority_options`
+- `mutation_boundary`
+- `excluded_authority`
+- `next_steps`
+
+`feedback_log_appended`, `rollups_updated`, and `authority_granted` must remain
+`false`. Every `mutation_boundary` flag must remain `false`, including run-log,
+candidate-ledger, resolution-ledger, checkpoint-ledger, durable-skill, registry,
+stable-routing, governor-steering, dependency-install, permission-widening,
+hosted-behavior, and marketplace-behavior flags. Completed notes are manually
+copied into `docs/design-partner-feedback-log.md` after real sessions.
 
 ## Eval Task
 

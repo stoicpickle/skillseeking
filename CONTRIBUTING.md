@@ -62,4 +62,8 @@ near the changed surface.
 If you are trying the local CLI on a real workflow, use
 [Design Partner Feedback](docs/design-partner-feedback.md) to capture setup
 friction, demo comprehension, evidence confusion, candidate-decision confusion,
-safety-boundary confusion, and stable-routing deferral confusion.
+safety-boundary confusion, and stable-routing deferral confusion. You can run
+`skill-agent feedback-session-template` to print the canonical session block,
+then manually copy completed notes into
+[Design Partner Feedback Log](docs/design-partner-feedback-log.md). The helper
+does not append to the log, update rollups, or grant new authority.

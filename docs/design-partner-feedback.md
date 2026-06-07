@@ -33,7 +33,11 @@ Use one short path for each partner:
    evidence, and `candidate-decision` as supporting proof.
 6. Inspect `new-authority-readiness` only as a phase statement: planning-ready,
    enablement-blocked.
-7. Record the session in [Design Partner Feedback Log](design-partner-feedback-log.md).
+7. Run `skill-agent feedback-session-template` if you want the canonical
+   session block, then manually record the completed session in
+   [Design Partner Feedback Log](design-partner-feedback-log.md). The command
+   only prints a template; it does not append to the log, update rollups, or
+   grant authority.
 8. Stop before durable generated-skill admission, stable routing, hosted
    deployment, marketplace behavior, or sandbox claims.
 
