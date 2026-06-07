@@ -176,6 +176,7 @@ PY
 "${SKILL_AGENT_BIN}" new-authority-readiness --help >/dev/null
 "${SKILL_AGENT_BIN}" feedback-session-template --help >/dev/null
 "${SKILL_AGENT_BIN}" feedback-session-append --help >/dev/null
+"${SKILL_AGENT_BIN}" feedback-log-summary --help >/dev/null
 "${SKILL_AGENT_BIN}" candidate-decision --help >/dev/null
 "${SKILL_AGENT_BIN}" v1-local-use --json >"${SMOKE_ROOT}/v1-local-use.json"
 "${PYTHON_BIN}" - "${SMOKE_ROOT}/v1-local-use.json" <<'PY'
@@ -280,6 +281,29 @@ if "| Completed partner sessions | 1 |" not in log_text:
 if "## Session 2026-06-07 smoke" not in log_text:
     raise SystemExit("feedback-session-append must append the smoke session")
 print("feedback-session-append ok")
+PY
+"${SKILL_AGENT_BIN}" feedback-log-summary \
+  --feedback-log "${SMOKE_ROOT}/design-partner-feedback-log.md" \
+  --json >"${SMOKE_ROOT}/feedback-log-summary.json"
+"${PYTHON_BIN}" - "${SMOKE_ROOT}/feedback-log-summary.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if data.get("status") != "more_sessions_needed":
+    raise SystemExit("feedback-log-summary must require more than one session")
+if data.get("completed_partner_sessions") != 1:
+    raise SystemExit("feedback-log-summary must count the appended smoke session")
+if data.get("sessions_needed_for_synthesis") != 2:
+    raise SystemExit("feedback-log-summary must report sessions still needed")
+if data.get("ready_for_manual_synthesis") is not False:
+    raise SystemExit("feedback-log-summary must not synthesize early")
+if data.get("ready_to_enable_new_authority") is not False:
+    raise SystemExit("feedback-log-summary must not enable new authority")
+if any(data.get("mutation_boundary", {}).values()):
+    raise SystemExit("feedback-log-summary must remain read-only")
+print("feedback-log-summary ok")
 PY
 printf 'skill-agent CLI ok\n'
 

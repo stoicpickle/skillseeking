@@ -12,6 +12,8 @@ All notable release changes are tracked here. The authoritative package version 
 - `skill-agent feedback-session-append` previews or records one design-partner
   session in the selected feedback log, updating only objective rollup counters
   and no new authority.
+- `skill-agent feedback-log-summary` reports design-partner feedback synthesis
+  readiness without mutating the feedback log or enabling new authority.
 
 ## [1.0.0] - 2026-06-06
 

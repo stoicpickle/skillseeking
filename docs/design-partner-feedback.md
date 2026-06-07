@@ -40,7 +40,10 @@ Use one short path for each partner:
    [Design Partner Feedback Log](design-partner-feedback-log.md). The append
    command updates only the selected feedback log and objective rollup counters;
    it does not update repeated-friction synthesis rows or grant authority.
-8. Stop before durable generated-skill admission, stable routing, hosted
+8. Run `skill-agent feedback-log-summary` to check whether 3 to 5 sessions are
+   ready for manual synthesis. The summary is read-only and does not enable new
+   authority.
+9. Stop before durable generated-skill admission, stable routing, hosted
    deployment, marketplace behavior, or sandbox claims.
 
 The goal is to learn where the governed capability-gap loop is clear or

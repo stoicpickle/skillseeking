@@ -60,6 +60,8 @@ def test_readme_positions_v1_as_local_cli_with_boundaries(repo_root: Path):
     assert "feedback-session-append" in readme
     assert "defaults to `--dry-run`" in readme
     assert "updates objective session/yes-no rollup counters" in readme
+    assert "feedback-log-summary" in readme
+    assert "never updates the feedback log or enables new authority" in readme
     assert "docs/design-partner-feedback.md" in readme
     assert "docs/governance-monetization-principles.md" in readme
     assert "CHANGELOG.md" in readme
@@ -254,6 +256,9 @@ def test_public_preview_strategy_docs_match_source_and_scope(repo_root: Path):
     assert "skill-agent feedback-session-template" in design_partners
     assert "skill-agent feedback-session-append --dry-run" in design_partners
     assert "feedback-session-append --no-dry-run" in design_partners
+    assert "skill-agent feedback-log-summary" in design_partners
+    assert "3 to 5 sessions" in design_partners
+    assert "ready for manual synthesis" in design_partners
     assert "updates only the selected feedback log" in design_partners
     assert "objective rollup counters" in design_partners
     assert "grant authority" in design_partners
@@ -265,6 +270,7 @@ def test_public_preview_strategy_docs_match_source_and_scope(repo_root: Path):
     assert "Do not add durable generated-skill admission" in feedback_log
     assert "skill-agent feedback-session-template --json" in data_contracts
     assert "skill-agent feedback-session-append --json" in data_contracts
+    assert "skill-agent feedback-log-summary --json" in data_contracts
     assert "template_only_read_only" in data_contracts
     assert "does not append to the feedback log" in data_contracts
     assert "Every `mutation_boundary` flag must remain `false`" in data_contracts
@@ -273,6 +279,8 @@ def test_public_preview_strategy_docs_match_source_and_scope(repo_root: Path):
         data_contracts.split()
     )
     assert "repeated_friction_rollups_updated` remains `false`" in data_contracts
+    assert "ready_for_manual_synthesis" in data_contracts
+    assert "ready_to_enable_new_authority` must remain `false`" in data_contracts
 
     assert "Do not lead with a public skill marketplace" in monetization
     assert "governance, evidence, approvals, auditability, and" in monetization

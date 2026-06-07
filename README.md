@@ -277,6 +277,7 @@ Inspect Skill Candidate Ledger evidence after missing-skill or temporary-skill r
 .venv/bin/skill-agent feedback-session-template
 .venv/bin/skill-agent feedback-session-template --json
 .venv/bin/skill-agent feedback-session-append --feedback-log docs/design-partner-feedback-log.md --partner-alias <alias> --date <YYYY-MM-DD> --dry-run
+.venv/bin/skill-agent feedback-log-summary --feedback-log docs/design-partner-feedback-log.md
 .venv/bin/skill-agent candidate-usefulness candidate_<id> --runs-dir runs --skills-dir skills --json
 .venv/bin/skill-agent candidate-usefulness candidate_<id> --runs-dir runs --skills-dir skills --baseline-run-id <run_id> --treatment-run-id <run_id>
 .venv/bin/skill-agent skill-receipt candidate_<id> --runs-dir runs --skills-dir skills --baseline-run-id <run_id> --treatment-run-id <run_id>
@@ -317,6 +318,8 @@ Candidate entries are evidence for human review only. Auto-promotion is disabled
 `feedback-session-template` is a template-only helper for design-partner sessions. It prints the canonical session block for manual capture in `docs/design-partner-feedback-log.md`, and its JSON output reports that no feedback log append, rollup update, durable admission, stable routing, permission widening, dependency install, hosted behavior, marketplace behavior, or governor steering occurred.
 
 `feedback-session-append` previews or records one completed design-partner session in a feedback log. It defaults to `--dry-run`; `--no-dry-run` appends only to the selected feedback log and updates objective session/yes-no rollup counters. It does not update repeated-friction synthesis rows, mutate run logs or ledgers, admit durable skills, enable stable routing, widen permissions, install dependencies, enable hosted or marketplace behavior, or steer the governor.
+
+`feedback-log-summary` is a read-only synthesis readiness report for the design-partner feedback log. It reports completed sessions, session-heading consistency, whether 3 to 5 sessions are ready for manual synthesis, and the next evidence action. It never updates the feedback log or enables new authority.
 
 `evidence-checkpoint` creates or verifies a local hash-chain over core evidence files under `runs/`, excluding eval reports and the checkpoint ledger itself. Dry-run mode computes the next checkpoint without writing. `--no-dry-run` appends one record to `runs/evidence_checkpoints.json`; `--verify` checks the checkpoint chain and whether current evidence still matches the latest checkpoint. It is tamper-evidence only: it does not sign evidence, prove trust, approve durable admission, mutate run logs, mutate candidate or resolution ledgers, copy/install durable skills, or steer the governor.
 

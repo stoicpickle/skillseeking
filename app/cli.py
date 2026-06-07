@@ -444,6 +444,89 @@ def _append_feedback_session_to_log(
     feedback_log.write_text(text.rstrip() + "\n", encoding="utf-8")
 
 
+def _feedback_rollup_counts(text: str) -> dict[str, int]:
+    counts: dict[str, int] = {}
+    for metric in FEEDBACK_SESSION_ROLLUP_METRICS.values():
+        pattern = re.compile(rf"\| {re.escape(metric)} \| (\d+) \|")
+        match = pattern.search(text)
+        if not match:
+            raise typer.BadParameter(f"feedback log is missing rollup metric: {metric}")
+        counts[metric] = int(match.group(1))
+    for metric in [
+        "Repeated setup friction items",
+        "Repeated evidence-surface confusion items",
+    ]:
+        pattern = re.compile(rf"\| {re.escape(metric)} \| (\d+) \|")
+        match = pattern.search(text)
+        if match:
+            counts[metric] = int(match.group(1))
+    return counts
+
+
+def _feedback_session_headings(text: str) -> list[str]:
+    current_sessions_marker = "## Current Sessions"
+    synthesis_marker = "## Synthesis Checklist"
+    if current_sessions_marker not in text:
+        raise typer.BadParameter("feedback log is missing '## Current Sessions'")
+    current_sessions = text.split(current_sessions_marker, 1)[1]
+    if synthesis_marker in current_sessions:
+        current_sessions = current_sessions.split(synthesis_marker, 1)[0]
+    return re.findall(r"^## Session .+$", current_sessions, flags=re.MULTILINE)
+
+
+def _build_feedback_log_summary(feedback_log: Path) -> dict[str, object]:
+    if not feedback_log.exists():
+        raise typer.BadParameter(f"feedback log does not exist: {feedback_log}")
+    text = feedback_log.read_text(encoding="utf-8")
+    rollup_counts = _feedback_rollup_counts(text)
+    session_headings = _feedback_session_headings(text)
+    completed_sessions = rollup_counts[FEEDBACK_SESSION_ROLLUP_METRICS["completed_partner_sessions"]]
+    minimum_sessions = 3
+    target_sessions = 5
+    sessions_needed = max(0, minimum_sessions - completed_sessions)
+    ready_for_synthesis = completed_sessions >= minimum_sessions
+    if completed_sessions == 0:
+        recommended_next_action = "Record the first design-partner session with feedback-session-append."
+        status = "no_sessions_recorded"
+    elif ready_for_synthesis:
+        recommended_next_action = "Manually synthesize repeated friction before planning any new authority."
+        status = "ready_for_manual_synthesis"
+    else:
+        recommended_next_action = (
+            f"Record {sessions_needed} more design-partner session(s) before synthesis."
+        )
+        status = "more_sessions_needed"
+    return {
+        "status": status,
+        "feedback_log_path": feedback_log.as_posix(),
+        "completed_partner_sessions": completed_sessions,
+        "session_headings": session_headings,
+        "session_heading_count": len(session_headings),
+        "minimum_sessions_for_synthesis": minimum_sessions,
+        "target_sessions_for_synthesis": target_sessions,
+        "sessions_needed_for_synthesis": sessions_needed,
+        "ready_for_manual_synthesis": ready_for_synthesis,
+        "ready_to_enable_new_authority": False,
+        "rollup_counts": rollup_counts,
+        "summary_warnings": [
+            "Rollup counts and session headings differ; inspect the feedback log manually."
+        ]
+        if len(session_headings) != completed_sessions
+        else [],
+        "recommended_next_action": recommended_next_action,
+        "mutation_boundary": _feedback_session_mutation_boundary(
+            appended=False,
+            rollups_updated=False,
+        ),
+        "excluded_authority": FEEDBACK_SESSION_APPEND_EXCLUDED_AUTHORITY,
+        "next_steps": [
+            "Keep recording contained design-partner sessions until 3 to 5 sessions exist.",
+            "Synthesize repeated setup and evidence-surface friction manually from recorded sessions.",
+            "Do not treat feedback summary as approval to enable new authority.",
+        ],
+    }
+
+
 @app.command("v1-local-use")
 def v1_local_use(
     json_output: Annotated[
@@ -707,6 +790,58 @@ def feedback_session_append(
     typer.echo("Rollup increments:")
     for metric, increment in rollup_increments.items():
         typer.echo(f"- {metric}: {increment}")
+    typer.echo("")
+    typer.echo("Mutation boundary:")
+    for key, value in report["mutation_boundary"].items():
+        label = key.replace("_", " ").capitalize()
+        typer.echo(f"- {label}: {str(value).lower()}")
+    typer.echo("")
+    typer.echo("Excluded authority:")
+    for item in report["excluded_authority"]:
+        typer.echo(f"- {item}")
+    typer.echo("")
+    typer.echo("Next steps:")
+    for item in report["next_steps"]:
+        typer.echo(f"- {item}")
+
+
+@app.command("feedback-log-summary")
+def feedback_log_summary(
+    feedback_log: Annotated[
+        Path,
+        typer.Option(help="Design-partner feedback log to summarize."),
+    ] = Path("docs/design-partner-feedback-log.md"),
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the feedback-log summary as JSON."),
+    ] = False,
+) -> None:
+    report = _build_feedback_log_summary(feedback_log)
+    if json_output:
+        typer.echo(json.dumps(report, indent=2, sort_keys=True))
+        return
+
+    typer.echo("FEEDBACK_LOG_SUMMARY")
+    typer.echo(f"Status: {report['status']}")
+    typer.echo(f"Feedback log: {report['feedback_log_path']}")
+    typer.echo(f"Completed partner sessions: {report['completed_partner_sessions']}")
+    typer.echo(f"Session heading count: {report['session_heading_count']}")
+    typer.echo(
+        f"Ready for manual synthesis: {str(report['ready_for_manual_synthesis']).lower()}"
+    )
+    typer.echo(
+        f"Ready to enable new authority: {str(report['ready_to_enable_new_authority']).lower()}"
+    )
+    typer.echo(f"Recommended next action: {report['recommended_next_action']}")
+    typer.echo("")
+    typer.echo("Rollup counts:")
+    for metric, count in report["rollup_counts"].items():
+        typer.echo(f"- {metric}: {count}")
+    if report["summary_warnings"]:
+        typer.echo("")
+        typer.echo("Warnings:")
+        for warning in report["summary_warnings"]:
+            typer.echo(f"- {warning}")
     typer.echo("")
     typer.echo("Mutation boundary:")
     for key, value in report["mutation_boundary"].items():

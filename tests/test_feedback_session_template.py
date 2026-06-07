@@ -281,6 +281,120 @@ def test_feedback_session_append_rejects_invalid_yes_no(tmp_path: Path):
     assert "must be blank, 'yes', or 'no'" in result.output
 
 
+def test_feedback_log_summary_reports_no_sessions_without_mutation(tmp_path: Path):
+    feedback_log = tmp_path / "feedback-log.md"
+    feedback_log.write_text(_feedback_log_text(), encoding="utf-8")
+    before = feedback_log.read_text(encoding="utf-8")
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        [
+            "feedback-log-summary",
+            "--feedback-log",
+            str(feedback_log),
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    assert feedback_log.read_text(encoding="utf-8") == before
+    data = json.loads(result.stdout)
+    assert data["status"] == "no_sessions_recorded"
+    assert data["completed_partner_sessions"] == 0
+    assert data["session_heading_count"] == 0
+    assert data["sessions_needed_for_synthesis"] == 3
+    assert data["ready_for_manual_synthesis"] is False
+    assert data["ready_to_enable_new_authority"] is False
+    assert data["recommended_next_action"].startswith("Record the first")
+    assert all(value is False for value in data["mutation_boundary"].values())
+    assert "positive stable routing" in data["excluded_authority"]
+
+
+def test_feedback_log_summary_reports_ready_for_manual_synthesis(tmp_path: Path):
+    feedback_log = tmp_path / "feedback-log.md"
+    text = _feedback_log_text()
+    text = text.replace("| Completed partner sessions | 0 |", "| Completed partner sessions | 3 |")
+    text = text.replace(
+        "| Partners who identified the next `operator-summary` decision unaided | 0 |",
+        "| Partners who identified the next `operator-summary` decision unaided | 2 |",
+    )
+    text = text.replace(
+        "No design-partner sessions have been recorded yet.",
+        "\n".join(
+            [
+                "## Session 2026-06-07 alpha",
+                "",
+                "- Partner alias: alpha",
+                "",
+                "## Session 2026-06-08 beta",
+                "",
+                "- Partner alias: beta",
+                "",
+                "## Session 2026-06-09 gamma",
+                "",
+                "- Partner alias: gamma",
+            ]
+        ),
+    )
+    feedback_log.write_text(text, encoding="utf-8")
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        [
+            "feedback-log-summary",
+            "--feedback-log",
+            str(feedback_log),
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)
+    assert data["status"] == "ready_for_manual_synthesis"
+    assert data["completed_partner_sessions"] == 3
+    assert data["session_heading_count"] == 3
+    assert data["sessions_needed_for_synthesis"] == 0
+    assert data["ready_for_manual_synthesis"] is True
+    assert data["ready_to_enable_new_authority"] is False
+    assert data["summary_warnings"] == []
+    assert data["rollup_counts"][
+        "Partners who identified the next `operator-summary` decision unaided"
+    ] == 2
+    assert data["recommended_next_action"] == (
+        "Manually synthesize repeated friction before planning any new authority."
+    )
+
+
+def test_feedback_log_summary_warns_when_rollup_and_headings_disagree(tmp_path: Path):
+    feedback_log = tmp_path / "feedback-log.md"
+    text = _feedback_log_text().replace(
+        "No design-partner sessions have been recorded yet.",
+        "## Session 2026-06-07 alpha\n\n- Partner alias: alpha",
+    )
+    feedback_log.write_text(text, encoding="utf-8")
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        [
+            "feedback-log-summary",
+            "--feedback-log",
+            str(feedback_log),
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)
+    assert data["completed_partner_sessions"] == 0
+    assert data["session_heading_count"] == 1
+    assert data["summary_warnings"] == [
+        "Rollup counts and session headings differ; inspect the feedback log manually."
+    ]
+
+
 def _feedback_log_text() -> str:
     return """# Design Partner Feedback Log
 
@@ -297,6 +411,12 @@ Status: active public-dev-preview evidence log
 | Partners who understood `ready_to_enable_new_authority=false` | 0 |
 | Repeated setup friction items | 0 |
 | Repeated evidence-surface confusion items | 0 |
+
+## Session Entry Template
+
+```md
+## Session YYYY-MM-DD Partner Alias
+```
 
 ## Current Sessions
 

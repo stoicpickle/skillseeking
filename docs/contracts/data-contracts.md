@@ -1264,6 +1264,7 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `skill-agent new-authority-readiness --json` emits the read-only new-authority phase report. It may report `ready_for_authority_planning=true`, but `ready_to_enable_new_authority` must remain `false` until a separate reviewed authority slice exists.
 - `skill-agent feedback-session-template --json` emits the template-only design-partner session report. It does not append to the feedback log, update rollups, mutate evidence, or enable new authority.
 - `skill-agent feedback-session-append --json` emits the design-partner feedback append report. By default it is a dry-run preview; with `--no-dry-run`, it may append only to the selected feedback log and update objective rollup counters.
+- `skill-agent feedback-log-summary --json` emits the read-only feedback-log synthesis readiness report. It does not append feedback, update rollups, synthesize repeated friction, or enable new authority.
 - `skill-agent negative-evidence --json` emits read-only unfavorable/limiting evidence from candidate and resolution ledgers.
 - `skill-agent evidence-checkpoint --json` emits the local evidence checkpoint create or verify report. `--no-dry-run` appends only to `runs/evidence_checkpoints.json`; `--verify` is read-only.
 - `skill-agent evidence-governor --json` emits the read-only advisory recommendation report for one candidate. It never grants approval or steers execution.
@@ -1385,6 +1386,39 @@ multiple sessions. The command never mutates run logs, candidate ledgers,
 resolution ledgers, checkpoint ledgers, durable skills, registry state, stable
 routing, governor steering, dependencies, permissions, hosted behavior, or
 marketplace behavior, and it never grants new authority.
+
+## Feedback Log Summary
+
+`skill-agent feedback-log-summary --json` emits a read-only synthesis readiness
+report over the design-partner feedback log. It parses objective rollup counts
+and recorded session headings, then reports whether at least 3 sessions exist
+for manual synthesis.
+
+Required report fields include:
+
+- `status`
+- `feedback_log_path`
+- `completed_partner_sessions`
+- `session_headings`
+- `session_heading_count`
+- `minimum_sessions_for_synthesis`
+- `target_sessions_for_synthesis`
+- `sessions_needed_for_synthesis`
+- `ready_for_manual_synthesis`
+- `ready_to_enable_new_authority`
+- `rollup_counts`
+- `summary_warnings`
+- `recommended_next_action`
+- `mutation_boundary`
+- `excluded_authority`
+- `next_steps`
+
+Every `mutation_boundary` flag must remain `false`. `ready_to_enable_new_authority`
+must remain `false` even when `ready_for_manual_synthesis` becomes `true`;
+recorded feedback can guide setup, demo, wording, and evidence-surface work, but
+it is not approval for durable admission, positive stable routing, active
+governor steering, dependency installation, permission widening, hosted
+behavior, marketplace behavior, or true-sandbox claims.
 
 ## Eval Task
 
