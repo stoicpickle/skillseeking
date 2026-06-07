@@ -175,6 +175,7 @@ PY
 "${SKILL_AGENT_BIN}" v1-local-use --help >/dev/null
 "${SKILL_AGENT_BIN}" new-authority-readiness --help >/dev/null
 "${SKILL_AGENT_BIN}" feedback-session-template --help >/dev/null
+"${SKILL_AGENT_BIN}" feedback-session-append --help >/dev/null
 "${SKILL_AGENT_BIN}" candidate-decision --help >/dev/null
 "${SKILL_AGENT_BIN}" v1-local-use --json >"${SMOKE_ROOT}/v1-local-use.json"
 "${PYTHON_BIN}" - "${SMOKE_ROOT}/v1-local-use.json" <<'PY'
@@ -237,6 +238,48 @@ if boundary.get("governor_steering_enabled") is not False:
 if "Next `OPERATOR_DECISIONS` action identified unaided: yes/no" not in data.get("fields", []):
     raise SystemExit("feedback-session-template must include operator decision field")
 print("feedback-session-template ok")
+PY
+cp docs/design-partner-feedback-log.md "${SMOKE_ROOT}/design-partner-feedback-log.md"
+"${SKILL_AGENT_BIN}" feedback-session-append \
+  --feedback-log "${SMOKE_ROOT}/design-partner-feedback-log.md" \
+  --partner-alias smoke \
+  --date 2026-06-07 \
+  --workflow-type "v1 smoke" \
+  --launch-demo-completed yes \
+  --operator-summary-inspected-first yes \
+  --operator-decision-identified-unaided yes \
+  --ready-to-enable-new-authority-false-understood yes \
+  --no-dry-run \
+  --json >"${SMOKE_ROOT}/feedback-session-append.json"
+"${PYTHON_BIN}" - "${SMOKE_ROOT}/feedback-session-append.json" "${SMOKE_ROOT}/design-partner-feedback-log.md" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+log_text = Path(sys.argv[2]).read_text(encoding="utf-8")
+if data.get("status") != "feedback_session_appended":
+    raise SystemExit("feedback-session-append must report appended status")
+if data.get("feedback_log_appended") is not True:
+    raise SystemExit("feedback-session-append must append only the selected feedback log")
+if data.get("rollups_updated") is not True:
+    raise SystemExit("feedback-session-append must update objective rollup counters")
+if data.get("authority_granted") is not False:
+    raise SystemExit("feedback-session-append must not grant authority")
+boundary = data.get("mutation_boundary", {})
+if boundary.get("feedback_log_appended") is not True:
+    raise SystemExit("feedback-session-append mutation boundary must record feedback append")
+if boundary.get("durable_skills_mutated") is not False:
+    raise SystemExit("feedback-session-append must not mutate durable skills")
+if boundary.get("stable_routing_enabled") is not False:
+    raise SystemExit("feedback-session-append must keep stable routing disabled")
+if data.get("repeated_friction_rollups_updated") is not False:
+    raise SystemExit("feedback-session-append must keep repeated-friction synthesis manual")
+if "| Completed partner sessions | 1 |" not in log_text:
+    raise SystemExit("feedback-session-append must update completed session count")
+if "## Session 2026-06-07 smoke" not in log_text:
+    raise SystemExit("feedback-session-append must append the smoke session")
+print("feedback-session-append ok")
 PY
 printf 'skill-agent CLI ok\n'
 

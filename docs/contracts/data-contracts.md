@@ -1263,6 +1263,7 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `skill-agent operator-summary --json` emits the read-only operator summary report over local run evidence, candidate review queues, active input requests, negative evidence, unsafe aborts, and checkpoint deltas. It is advisory only and records unchanged mutation authority for run logs, ledgers, durable skills, registries, and governor steering.
 - `skill-agent new-authority-readiness --json` emits the read-only new-authority phase report. It may report `ready_for_authority_planning=true`, but `ready_to_enable_new_authority` must remain `false` until a separate reviewed authority slice exists.
 - `skill-agent feedback-session-template --json` emits the template-only design-partner session report. It does not append to the feedback log, update rollups, mutate evidence, or enable new authority.
+- `skill-agent feedback-session-append --json` emits the design-partner feedback append report. By default it is a dry-run preview; with `--no-dry-run`, it may append only to the selected feedback log and update objective rollup counters.
 - `skill-agent negative-evidence --json` emits read-only unfavorable/limiting evidence from candidate and resolution ledgers.
 - `skill-agent evidence-checkpoint --json` emits the local evidence checkpoint create or verify report. `--no-dry-run` appends only to `runs/evidence_checkpoints.json`; `--verify` is read-only.
 - `skill-agent evidence-governor --json` emits the read-only advisory recommendation report for one candidate. It never grants approval or steers execution.
@@ -1349,6 +1350,41 @@ candidate-ledger, resolution-ledger, checkpoint-ledger, durable-skill, registry,
 stable-routing, governor-steering, dependency-install, permission-widening,
 hosted-behavior, and marketplace-behavior flags. Completed notes are manually
 copied into `docs/design-partner-feedback-log.md` after real sessions.
+
+## Feedback Session Append
+
+`skill-agent feedback-session-append --json` emits a report for previewing or
+recording one design-partner session. The command defaults to dry-run preview.
+With `--no-dry-run`, it may append one Markdown session entry to the selected
+feedback log and update objective rollup counters for completed sessions and
+yes/no comprehension fields.
+
+Required report fields include:
+
+- `status`
+- `dry_run`
+- `feedback_log_path`
+- `session_heading`
+- `session_entry`
+- `rollup_increments`
+- `repeated_friction_rollups_updated`
+- `feedback_log_appended`
+- `rollups_updated`
+- `authority_granted`
+- `allowed_mutation`
+- `mutation_boundary`
+- `excluded_authority`
+- `next_steps`
+
+In dry-run output, `feedback_log_appended`, `rollups_updated`, and every
+`mutation_boundary` flag must remain `false`. In `--no-dry-run` output, only
+`mutation_boundary.feedback_log_appended` and `mutation_boundary.rollups_updated`
+may become `true`. `repeated_friction_rollups_updated` remains `false` because
+repeated setup and evidence-surface friction require manual synthesis after
+multiple sessions. The command never mutates run logs, candidate ledgers,
+resolution ledgers, checkpoint ledgers, durable skills, registry state, stable
+routing, governor steering, dependencies, permissions, hosted behavior, or
+marketplace behavior, and it never grants new authority.
 
 ## Eval Task
 

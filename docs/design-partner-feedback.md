@@ -34,10 +34,12 @@ Use one short path for each partner:
 6. Inspect `new-authority-readiness` only as a phase statement: planning-ready,
    enablement-blocked.
 7. Run `skill-agent feedback-session-template` if you want the canonical
-   session block, then manually record the completed session in
-   [Design Partner Feedback Log](design-partner-feedback-log.md). The command
-   only prints a template; it does not append to the log, update rollups, or
-   grant authority.
+   session block, or run `skill-agent feedback-session-append --dry-run` to
+   preview a completed entry. Use `feedback-session-append --no-dry-run` only
+   when the session is ready to record in
+   [Design Partner Feedback Log](design-partner-feedback-log.md). The append
+   command updates only the selected feedback log and objective rollup counters;
+   it does not update repeated-friction synthesis rows or grant authority.
 8. Stop before durable generated-skill admission, stable routing, hosted
    deployment, marketplace behavior, or sandbox claims.
 

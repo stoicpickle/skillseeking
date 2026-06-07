@@ -9,6 +9,9 @@ All notable release changes are tracked here. The authoritative package version 
 - `skill-agent feedback-session-template` prints the canonical design-partner
   session block for manual feedback-log capture without appending to the log,
   updating rollups, or enabling new authority.
+- `skill-agent feedback-session-append` previews or records one design-partner
+  session in the selected feedback log, updating only objective rollup counters
+  and no new authority.
 
 ## [1.0.0] - 2026-06-06
 

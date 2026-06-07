@@ -3,6 +3,7 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Annotated
 import json
+import re
 
 import typer
 
@@ -279,6 +280,170 @@ FEEDBACK_SESSION_TEMPLATE_REPORT = {
 }
 
 
+FEEDBACK_SESSION_YES_NO_FIELDS = {
+    "launch_demo_completed": "Launch-demo completed",
+    "operator_summary_inspected_first": "`operator-summary` inspected first",
+    "operator_decision_identified_unaided": "Next `OPERATOR_DECISIONS` action identified unaided",
+    "candidate_evidence_confused_with_durable_admission": "Candidate evidence confused with durable admission",
+    "stable_readiness_confused_with_stable_routing": "Stable-readiness confused with stable routing",
+    "ready_to_enable_new_authority_false_understood": "`ready_to_enable_new_authority=false` understood",
+}
+
+FEEDBACK_SESSION_TEXT_FIELDS = {
+    "partner_alias": "Partner alias",
+    "session_date": "Date",
+    "workflow_type": "Workflow type",
+    "local_environment": "Local environment",
+    "session_source": "Session source",
+    "setup_friction": "Setup friction",
+    "operator_summary_decision_clarity": "Operator-summary decision clarity",
+    "evidence_surface_confusion": "Evidence-surface confusion",
+    "candidate_decision_confusion": "Candidate-decision confusion",
+    "safety_boundary_confusion": "Safety-boundary confusion",
+    "stable_routing_deferral_confusion": "Stable-routing deferral confusion",
+    "new_authority_readiness_confusion": "New-authority readiness confusion",
+    "most_useful_proof_surface": "Most useful proof surface",
+    "least_useful_or_most_confusing_proof_surface": "Least useful or most confusing proof surface",
+    "desired_next_action": "Desired next action",
+    "captured_issue_doc_note": "Captured issue/doc note",
+    "follow_up_priority": "Follow-up priority",
+}
+
+FEEDBACK_SESSION_ROLLUP_METRICS = {
+    "completed_partner_sessions": "Completed partner sessions",
+    "operator_decision_identified_unaided": "Partners who identified the next `operator-summary` decision unaided",
+    "candidate_evidence_confused_with_durable_admission": "Partners who confused candidate evidence with durable admission",
+    "stable_readiness_confused_with_stable_routing": "Partners who confused stable-readiness with stable routing",
+    "ready_to_enable_new_authority_false_understood": "Partners who understood `ready_to_enable_new_authority=false`",
+}
+
+FEEDBACK_SESSION_APPEND_EXCLUDED_AUTHORITY = [
+    "durable generated-skill admission into skills/",
+    "positive stable routing",
+    "active governor steering",
+    "dependency installation",
+    "permission widening",
+    "hosted service behavior",
+    "marketplace behavior",
+    "true sandboxing claims",
+]
+
+
+def _single_line(value: str) -> str:
+    return " ".join(value.strip().split())
+
+
+def _normalize_feedback_yes_no(value: str, *, field_name: str) -> str:
+    normalized = _single_line(value).lower()
+    if normalized not in {"", "yes", "no"}:
+        raise typer.BadParameter(
+            f"{field_name} must be blank, 'yes', or 'no'; got {value!r}."
+        )
+    return normalized
+
+
+def _feedback_session_mutation_boundary(*, appended: bool, rollups_updated: bool) -> dict[str, bool]:
+    return {
+        "feedback_log_appended": appended,
+        "rollups_updated": rollups_updated,
+        "run_logs_mutated": False,
+        "candidate_ledger_mutated": False,
+        "resolution_ledger_mutated": False,
+        "checkpoint_ledger_mutated": False,
+        "durable_skills_mutated": False,
+        "registry_mutated": False,
+        "durable_admission_granted": False,
+        "stable_routing_enabled": False,
+        "governor_steering_enabled": False,
+        "dependencies_installed": False,
+        "permissions_widened": False,
+        "hosted_behavior_enabled": False,
+        "marketplace_behavior_enabled": False,
+    }
+
+
+def _build_feedback_session_entry(
+    *,
+    text_values: dict[str, str],
+    yes_no_values: dict[str, str],
+) -> tuple[str, str]:
+    session_date = text_values["session_date"] or "YYYY-MM-DD"
+    partner_alias = text_values["partner_alias"] or "Partner Alias"
+    heading = f"## Session {session_date} {partner_alias}"
+    lines = [
+        heading,
+        "",
+        f"- Partner alias: {text_values['partner_alias']}",
+        f"- Date: {text_values['session_date']}",
+        f"- Workflow type: {text_values['workflow_type']}",
+        f"- Local environment: {text_values['local_environment']}",
+        f"- Session source: {text_values['session_source']}",
+    ]
+    for key, label in FEEDBACK_SESSION_YES_NO_FIELDS.items():
+        lines.append(f"- {label}: {yes_no_values[key]}")
+    for key in [
+        "setup_friction",
+        "operator_summary_decision_clarity",
+        "evidence_surface_confusion",
+        "candidate_decision_confusion",
+        "safety_boundary_confusion",
+        "stable_routing_deferral_confusion",
+        "new_authority_readiness_confusion",
+        "most_useful_proof_surface",
+        "least_useful_or_most_confusing_proof_surface",
+        "desired_next_action",
+        "captured_issue_doc_note",
+        "follow_up_priority",
+    ]:
+        lines.append(f"- {FEEDBACK_SESSION_TEXT_FIELDS[key]}: {text_values[key]}")
+    return heading, "\n".join(lines).rstrip() + "\n"
+
+
+def _feedback_rollup_increments(yes_no_values: dict[str, str]) -> dict[str, int]:
+    increments = {FEEDBACK_SESSION_ROLLUP_METRICS["completed_partner_sessions"]: 1}
+    for key, metric in FEEDBACK_SESSION_ROLLUP_METRICS.items():
+        if key == "completed_partner_sessions":
+            continue
+        increments[metric] = 1 if yes_no_values[key] == "yes" else 0
+    return increments
+
+
+def _increment_feedback_rollup(text: str, *, metric: str, increment: int) -> str:
+    if increment == 0:
+        return text
+    pattern = re.compile(rf"(\| {re.escape(metric)} \| )(\d+)( \|)")
+    match = pattern.search(text)
+    if not match:
+        raise typer.BadParameter(f"feedback log is missing rollup metric: {metric}")
+    value = int(match.group(2)) + increment
+    return pattern.sub(rf"\g<1>{value}\g<3>", text, count=1)
+
+
+def _append_feedback_session_to_log(
+    *,
+    feedback_log: Path,
+    session_entry: str,
+    rollup_increments: dict[str, int],
+) -> None:
+    if not feedback_log.exists():
+        raise typer.BadParameter(f"feedback log does not exist: {feedback_log}")
+    text = feedback_log.read_text(encoding="utf-8")
+    for metric, increment in rollup_increments.items():
+        text = _increment_feedback_rollup(text, metric=metric, increment=increment)
+    marker = "## Current Sessions"
+    if marker not in text:
+        raise typer.BadParameter("feedback log is missing '## Current Sessions'")
+    no_sessions = "No design-partner sessions have been recorded yet."
+    if no_sessions in text:
+        text = text.replace(no_sessions, session_entry.rstrip(), 1)
+    else:
+        synthesis_marker = "\n## Synthesis Checklist"
+        if synthesis_marker not in text:
+            raise typer.BadParameter("feedback log is missing '## Synthesis Checklist'")
+        text = text.replace(synthesis_marker, f"\n{session_entry.rstrip()}\n{synthesis_marker}", 1)
+    feedback_log.write_text(text.rstrip() + "\n", encoding="utf-8")
+
+
 @app.command("v1-local-use")
 def v1_local_use(
     json_output: Annotated[
@@ -364,6 +529,196 @@ def feedback_session_template(
     typer.echo("")
     typer.echo("Next steps:")
     for item in FEEDBACK_SESSION_TEMPLATE_REPORT["next_steps"]:
+        typer.echo(f"- {item}")
+
+
+@app.command("feedback-session-append")
+def feedback_session_append(
+    feedback_log: Annotated[
+        Path,
+        typer.Option(help="Design-partner feedback log to preview or update."),
+    ] = Path("docs/design-partner-feedback-log.md"),
+    partner_alias: Annotated[str, typer.Option(help="Design partner alias.")] = "",
+    session_date: Annotated[str, typer.Option("--date", help="Session date, usually YYYY-MM-DD.")] = "",
+    workflow_type: Annotated[str, typer.Option(help="Contained workflow type reviewed.")] = "",
+    local_environment: Annotated[str, typer.Option(help="Local environment summary.")] = "",
+    session_source: Annotated[str, typer.Option(help="Session source, issue, thread, or call note.")] = "",
+    launch_demo_completed: Annotated[str, typer.Option(help="yes/no/blank.")] = "",
+    operator_summary_inspected_first: Annotated[str, typer.Option(help="yes/no/blank.")] = "",
+    operator_decision_identified_unaided: Annotated[str, typer.Option(help="yes/no/blank.")] = "",
+    candidate_evidence_confused_with_durable_admission: Annotated[
+        str,
+        typer.Option(help="yes/no/blank."),
+    ] = "",
+    stable_readiness_confused_with_stable_routing: Annotated[
+        str,
+        typer.Option(help="yes/no/blank."),
+    ] = "",
+    ready_to_enable_new_authority_false_understood: Annotated[
+        str,
+        typer.Option(help="yes/no/blank."),
+    ] = "",
+    setup_friction: Annotated[str, typer.Option(help="Setup friction notes.")] = "",
+    operator_summary_decision_clarity: Annotated[
+        str,
+        typer.Option(help="Operator-summary decision clarity notes."),
+    ] = "",
+    evidence_surface_confusion: Annotated[str, typer.Option(help="Evidence-surface confusion notes.")] = "",
+    candidate_decision_confusion: Annotated[str, typer.Option(help="Candidate-decision confusion notes.")] = "",
+    safety_boundary_confusion: Annotated[str, typer.Option(help="Safety-boundary confusion notes.")] = "",
+    stable_routing_deferral_confusion: Annotated[
+        str,
+        typer.Option(help="Stable-routing deferral confusion notes."),
+    ] = "",
+    new_authority_readiness_confusion: Annotated[
+        str,
+        typer.Option(help="New-authority readiness confusion notes."),
+    ] = "",
+    most_useful_proof_surface: Annotated[str, typer.Option(help="Most useful proof surface.")] = "",
+    least_useful_or_most_confusing_proof_surface: Annotated[
+        str,
+        typer.Option(help="Least useful or most confusing proof surface."),
+    ] = "",
+    desired_next_action: Annotated[str, typer.Option(help="Design partner's desired next action.")] = "",
+    captured_issue_doc_note: Annotated[str, typer.Option(help="Captured issue or docs note.")] = "",
+    follow_up_priority: Annotated[
+        str,
+        typer.Option(help="none/docs/operator-summary/demo/readiness/other."),
+    ] = "none",
+    dry_run: Annotated[
+        bool,
+        typer.Option(
+            "--dry-run/--no-dry-run",
+            help="Preview the session entry unless --no-dry-run is supplied.",
+        ),
+    ] = True,
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the feedback-session append report as JSON."),
+    ] = False,
+) -> None:
+    text_values = {
+        "partner_alias": _single_line(partner_alias),
+        "session_date": _single_line(session_date),
+        "workflow_type": _single_line(workflow_type),
+        "local_environment": _single_line(local_environment),
+        "session_source": _single_line(session_source),
+        "setup_friction": _single_line(setup_friction),
+        "operator_summary_decision_clarity": _single_line(operator_summary_decision_clarity),
+        "evidence_surface_confusion": _single_line(evidence_surface_confusion),
+        "candidate_decision_confusion": _single_line(candidate_decision_confusion),
+        "safety_boundary_confusion": _single_line(safety_boundary_confusion),
+        "stable_routing_deferral_confusion": _single_line(stable_routing_deferral_confusion),
+        "new_authority_readiness_confusion": _single_line(new_authority_readiness_confusion),
+        "most_useful_proof_surface": _single_line(most_useful_proof_surface),
+        "least_useful_or_most_confusing_proof_surface": _single_line(
+            least_useful_or_most_confusing_proof_surface
+        ),
+        "desired_next_action": _single_line(desired_next_action),
+        "captured_issue_doc_note": _single_line(captured_issue_doc_note),
+        "follow_up_priority": _single_line(follow_up_priority).lower(),
+    }
+    if text_values["follow_up_priority"] not in FEEDBACK_SESSION_TEMPLATE_REPORT[
+        "follow_up_priority_options"
+    ]:
+        raise typer.BadParameter(
+            "follow-up priority must be one of: "
+            + ", ".join(FEEDBACK_SESSION_TEMPLATE_REPORT["follow_up_priority_options"])
+        )
+    if not dry_run and (not text_values["partner_alias"] or not text_values["session_date"]):
+        raise typer.BadParameter("--partner-alias and --date are required with --no-dry-run")
+
+    yes_no_values = {
+        key: _normalize_feedback_yes_no(value, field_name=key.replace("_", "-"))
+        for key, value in {
+            "launch_demo_completed": launch_demo_completed,
+            "operator_summary_inspected_first": operator_summary_inspected_first,
+            "operator_decision_identified_unaided": operator_decision_identified_unaided,
+            "candidate_evidence_confused_with_durable_admission": candidate_evidence_confused_with_durable_admission,
+            "stable_readiness_confused_with_stable_routing": stable_readiness_confused_with_stable_routing,
+            "ready_to_enable_new_authority_false_understood": ready_to_enable_new_authority_false_understood,
+        }.items()
+    }
+    heading, session_entry = _build_feedback_session_entry(
+        text_values=text_values,
+        yes_no_values=yes_no_values,
+    )
+    rollup_increments = _feedback_rollup_increments(yes_no_values)
+    appended = False
+    rollups_updated = False
+    if not dry_run:
+        _append_feedback_session_to_log(
+            feedback_log=feedback_log,
+            session_entry=session_entry,
+            rollup_increments=rollup_increments,
+        )
+        appended = True
+        rollups_updated = any(value > 0 for value in rollup_increments.values())
+
+    report = {
+        "status": "dry_run_preview" if dry_run else "feedback_session_appended",
+        "dry_run": dry_run,
+        "feedback_log_path": feedback_log.as_posix(),
+        "session_heading": heading,
+        "session_entry": session_entry,
+        "rollup_increments": rollup_increments,
+        "repeated_friction_rollups_updated": False,
+        "feedback_log_appended": appended,
+        "rollups_updated": rollups_updated,
+        "authority_granted": False,
+        "allowed_mutation": [
+            "feedback log append",
+            "summary rollup counter update",
+        ]
+        if not dry_run
+        else [],
+        "mutation_boundary": _feedback_session_mutation_boundary(
+            appended=appended,
+            rollups_updated=rollups_updated,
+        ),
+        "excluded_authority": FEEDBACK_SESSION_APPEND_EXCLUDED_AUTHORITY,
+        "next_steps": [
+            "Review the appended session with the design-partner feedback log.",
+            "Leave repeated setup or evidence-surface friction rollups manual until 3 to 5 sessions exist.",
+            "Do not treat feedback capture as approval to enable new authority.",
+        ]
+        if not dry_run
+        else [
+            "Review the previewed session block.",
+            "Rerun with --no-dry-run only when the session is ready to record.",
+            "Do not treat feedback capture as approval to enable new authority.",
+        ],
+    }
+    if json_output:
+        typer.echo(json.dumps(report, indent=2, sort_keys=True))
+        return
+
+    typer.echo("FEEDBACK_SESSION_APPEND")
+    typer.echo(f"Status: {report['status']}")
+    typer.echo(f"Dry run: {str(dry_run).lower()}")
+    typer.echo(f"Feedback log: {feedback_log.as_posix()}")
+    typer.echo(f"Feedback log appended: {str(appended).lower()}")
+    typer.echo(f"Rollups updated: {str(rollups_updated).lower()}")
+    typer.echo("")
+    typer.echo("Session entry:")
+    typer.echo("")
+    typer.echo(session_entry.rstrip())
+    typer.echo("")
+    typer.echo("Rollup increments:")
+    for metric, increment in rollup_increments.items():
+        typer.echo(f"- {metric}: {increment}")
+    typer.echo("")
+    typer.echo("Mutation boundary:")
+    for key, value in report["mutation_boundary"].items():
+        label = key.replace("_", " ").capitalize()
+        typer.echo(f"- {label}: {str(value).lower()}")
+    typer.echo("")
+    typer.echo("Excluded authority:")
+    for item in report["excluded_authority"]:
+        typer.echo(f"- {item}")
+    typer.echo("")
+    typer.echo("Next steps:")
+    for item in report["next_steps"]:
         typer.echo(f"- {item}")
 
 

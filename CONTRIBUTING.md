@@ -67,3 +67,9 @@ safety-boundary confusion, and stable-routing deferral confusion. You can run
 then manually copy completed notes into
 [Design Partner Feedback Log](docs/design-partner-feedback-log.md). The helper
 does not append to the log, update rollups, or grant new authority.
+
+For completed sessions, run `skill-agent feedback-session-append --dry-run`
+first. Use `--no-dry-run` only when the entry is ready to record; that command
+updates only the selected feedback log and objective rollup counters. Repeated
+setup or evidence-surface friction rollups remain manual synthesis after
+multiple sessions, and feedback capture is not approval to enable new authority.
