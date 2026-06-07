@@ -50,6 +50,28 @@ Sandbox provided: no
 Proves:
 The local CLI can demonstrate the governed capability-gap loop in one short path without mutating durable `skills/`, using a hosted service, claiming sandboxing, admitting generated skills, or enabling stable routing. See [Launch demo transcript](launch-demo-transcript.md) for the cold-user walkthrough.
 
+Follow-up operator index:
+
+```bash
+.venv/bin/skill-agent operator-summary --runs-dir "$RUNS_DIR"
+```
+
+Expected sections:
+
+```text
+OPERATOR_SUMMARY
+BLOCKED_ITEMS
+HUMAN_INPUT
+PROMOTION_READY_CANDIDATES
+MISSING_EVIDENCE
+UNSAFE_OR_NEGATIVE
+CHECKPOINT_CHANGES
+MUTATION_BOUNDARY
+```
+
+Proves:
+The existing evidence surfaces can be compressed into one advisory operator summary without approving, promoting, routing, appending checkpoint evidence, mutating ledgers, mutating durable skills, mutating registries, or steering the governor.
+
 ## 1. Existing Skill
 
 Command:

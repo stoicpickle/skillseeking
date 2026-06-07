@@ -265,6 +265,8 @@ Inspect Skill Candidate Ledger evidence after missing-skill or temporary-skill r
 .venv/bin/skill-agent candidate-usefulness candidate_<id> --runs-dir runs --skills-dir skills --json
 .venv/bin/skill-agent candidate-usefulness candidate_<id> --runs-dir runs --skills-dir skills --baseline-run-id <run_id> --treatment-run-id <run_id>
 .venv/bin/skill-agent skill-receipt candidate_<id> --runs-dir runs --skills-dir skills --baseline-run-id <run_id> --treatment-run-id <run_id>
+.venv/bin/skill-agent operator-summary --runs-dir runs
+.venv/bin/skill-agent operator-summary --runs-dir runs --json
 .venv/bin/skill-agent negative-evidence --runs-dir runs
 .venv/bin/skill-agent negative-evidence --runs-dir runs --candidate-id candidate_<id>
 .venv/bin/skill-agent evidence-checkpoint --runs-dir runs
@@ -292,6 +294,8 @@ Candidate entries are evidence for human review only. Auto-promotion is disabled
 `skill-receipt` is a read-only proof bundle for one candidate. It aggregates candidate usefulness and durable admission preview evidence into origin, utility, containment, compatibility, approval, and reversibility proof categories. It is an audit surface only: blocked or partial categories show what is still missing before durable admission can even be considered, and no durable copy/install write mode exists yet.
 
 `negative-evidence` is a read-only report over preserved unfavorable or limiting evidence. It surfaces rejected, deferred, blocked, and repair-class input request resolutions plus blocked, quarantined, duplicate, or repair-required candidate ledger evidence. It does not rewrite history; it exists so failed or denied evidence stays visible instead of becoming survivor bias.
+
+`operator-summary` is a read-only operator index over local evidence. It consolidates active input requests, candidate review queues, promotion-ready candidates, missing-evidence signals, unsafe or negative evidence, and changes since the latest evidence checkpoint. It is advisory only: it does not approve, promote, install, route, append checkpoints, mutate ledgers, mutate durable skills, mutate registries, or steer the governor.
 
 `evidence-checkpoint` creates or verifies a local hash-chain over core evidence files under `runs/`, excluding eval reports and the checkpoint ledger itself. Dry-run mode computes the next checkpoint without writing. `--no-dry-run` appends one record to `runs/evidence_checkpoints.json`; `--verify` checks the checkpoint chain and whether current evidence still matches the latest checkpoint. It is tamper-evidence only: it does not sign evidence, prove trust, approve durable admission, mutate run logs, mutate candidate or resolution ledgers, copy/install durable skills, or steer the governor.
 

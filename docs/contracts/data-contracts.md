@@ -1260,6 +1260,7 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `skill-agent skill-receipt --json` emits the read-only proof bundle for one candidate, including nested candidate usefulness and durable admission preview evidence.
 - `skill-agent stable-readiness --json` emits the read-only advisory candidate-to-stable review report. It does not authorize stable promotion or enable stable routing.
 - `skill-agent candidate-decision --json` emits the compact read-only operator decision report for one candidate, including `candidate_id`, `decision`, source-backed `why` items, nested stable-readiness evidence, and `next_command`.
+- `skill-agent operator-summary --json` emits the read-only operator summary report over local run evidence, candidate review queues, active input requests, negative evidence, unsafe aborts, and checkpoint deltas. It is advisory only and records unchanged mutation authority for run logs, ledgers, durable skills, registries, and governor steering.
 - `skill-agent negative-evidence --json` emits read-only unfavorable/limiting evidence from candidate and resolution ledgers.
 - `skill-agent evidence-checkpoint --json` emits the local evidence checkpoint create or verify report. `--no-dry-run` appends only to `runs/evidence_checkpoints.json`; `--verify` is read-only.
 - `skill-agent evidence-governor --json` emits the read-only advisory recommendation report for one candidate. It never grants approval or steers execution.
@@ -1270,6 +1271,20 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `skill-agent v1-local-use --json` emits the read-only v1 managed-prefix local-use checklist. It names `shadow-managed-write` as the primary command, reports `stable_routing_policy: "deferred_for_v1"`, lists required digest/checkpoint/write-approval inputs, and records unchanged authority for durable skills, registries, ledgers, run logs, stable routing, and governor steering.
 - `skill-agent eval --json` emits the eval suite path, timestamp, per-task run-log paths, task pass/fail status, routing decisions, skill requests, input requests, request-quality scores, diagnostic dimensions, and aggregate counts.
 - `skill-agent explain <run-log.json>` reads an existing run log and prints a human-readable trace summary. It does not mutate the run log.
+
+## Operator Summary
+
+`skill-agent operator-summary --json` emits `OperatorSummaryReport`, an additive post-v1 read-only report that compresses existing proof surfaces into one operator index. The report includes:
+
+- `blocked_items`: blocked input requests, blocked/quarantined candidates, repair-needed candidates, duplicate merge blockers, and block-class negative evidence.
+- `human_input_items`: unresolved input requests from run logs and candidate-ledger review requirements.
+- `promotion_ready_candidates`: candidate review queue items ready for human promotion review.
+- `missing_evidence_items`: missing-evidence input requests and repeated requested gaps.
+- `unsafe_or_negative_items`: safety approval requests, safety-flagged candidates, negative evidence, and unsafe aborted run logs.
+- `checkpoint`: latest checkpoint status, checkpoint hash, current evidence counts, and added/changed/removed evidence file paths since the latest checkpoint.
+- `checkpoint_change_items`: per-file checkpoint change records for added, changed, or removed evidence.
+
+The report is advisory only. `dry_run` and `advisory_only` remain true, and the mutation flags for run logs, candidate ledgers, resolution ledgers, checkpoint ledgers, durable skills, registry state, and governor steering remain false. It does not replace the deeper reports; its `next_steps` point back to commands such as `input-requests`, `candidates`, `negative-evidence`, and `evidence-checkpoint --verify`.
 
 ## Eval Task
 

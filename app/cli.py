@@ -25,6 +25,8 @@ from app.cli_output import (
     emit_evidence_governor_output,
     emit_negative_evidence_json,
     emit_negative_evidence_output,
+    emit_operator_summary_json,
+    emit_operator_summary_output,
     emit_run_json,
     emit_registry_json,
     emit_run_output,
@@ -67,6 +69,7 @@ from app.input_focus import (
 from app.input_resolution import InputResolutionError, resolve_input_request as resolve_input_request_report
 from app.librarian import analyze_library
 from app.negative_evidence import build_negative_evidence_report
+from app.operator_summary import build_operator_summary_report
 from app.shadow_activation import (
     ShadowActivationPlanError,
     build_shadow_activation_acceptance_report,
@@ -642,6 +645,24 @@ def negative_evidence(
         emit_negative_evidence_json(report)
     else:
         emit_negative_evidence_output(report)
+
+
+@app.command("operator-summary")
+def operator_summary(
+    runs_dir: Annotated[
+        Path,
+        typer.Option(help="Run directory containing local operator evidence."),
+    ] = Path("runs"),
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the operator summary as JSON."),
+    ] = False,
+) -> None:
+    report = build_operator_summary_report(runs_dir=runs_dir)
+    if json_output:
+        emit_operator_summary_json(report)
+    else:
+        emit_operator_summary_output(report)
 
 
 @app.command("evidence-checkpoint")

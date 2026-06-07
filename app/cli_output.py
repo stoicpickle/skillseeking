@@ -17,6 +17,8 @@ from app.models import (
     InputRequest,
     LoadedSkillLog,
     NegativeEvidenceReport,
+    OperatorSummaryItem,
+    OperatorSummaryReport,
     ScriptExecutionLog,
     ShadowActivationAcceptanceReport,
     ShadowActivationPlanReport,
@@ -500,6 +502,97 @@ def emit_negative_evidence_output(report: NegativeEvidenceReport) -> None:
     typer.echo(
         f"Governor steering: {'enabled' if report.governor_steering_enabled else 'disabled'}"
     )
+
+
+def emit_operator_summary_json(report: OperatorSummaryReport) -> None:
+    typer.echo(json.dumps(report.model_dump(mode="json"), indent=2, sort_keys=True))
+
+
+def emit_operator_summary_output(report: OperatorSummaryReport) -> None:
+    typer.echo("OPERATOR_SUMMARY")
+    typer.echo(f"Runs dir: {report.runs_dir}")
+    typer.echo(f"Advisory only: {str(report.advisory_only).lower()}")
+    typer.echo(f"Input requests: {report.input_request_count}")
+    typer.echo(f"Candidate entries: {report.candidate_count}")
+    typer.echo(f"Negative evidence: {report.negative_evidence_count}")
+    typer.echo(f"Blocked items: {len(report.blocked_items)}")
+    typer.echo(f"Human input items: {len(report.human_input_items)}")
+    typer.echo(f"Promotion-ready candidates: {len(report.promotion_ready_candidates)}")
+    typer.echo(f"Missing evidence items: {len(report.missing_evidence_items)}")
+    typer.echo(f"Unsafe/negative items: {len(report.unsafe_or_negative_items)}")
+    typer.echo(f"Checkpoint status: {report.checkpoint.status}")
+    typer.echo(
+        "Checkpoint changes: "
+        f"added={report.checkpoint.added_count} "
+        f"changed={report.checkpoint.changed_count} "
+        f"removed={report.checkpoint.removed_count}"
+    )
+    typer.echo("")
+
+    _emit_operator_summary_items("BLOCKED_ITEMS", report.blocked_items)
+    _emit_operator_summary_items("HUMAN_INPUT", report.human_input_items)
+    _emit_operator_summary_items(
+        "PROMOTION_READY_CANDIDATES", report.promotion_ready_candidates
+    )
+    _emit_operator_summary_items("MISSING_EVIDENCE", report.missing_evidence_items)
+    _emit_operator_summary_items("UNSAFE_OR_NEGATIVE", report.unsafe_or_negative_items)
+    _emit_operator_summary_items("CHECKPOINT_CHANGES", report.checkpoint_change_items)
+
+    typer.echo("CHECKPOINT")
+    typer.echo(f"Latest checkpoint: {report.checkpoint.latest_checkpoint_hash or '-'}")
+    typer.echo(
+        "Current evidence matches latest: "
+        f"{str(report.checkpoint.current_evidence_matches_latest).lower()}"
+    )
+    typer.echo(f"Blockers: {_format_list(report.checkpoint.blockers)}")
+    typer.echo(f"Warnings: {_format_list(report.checkpoint.warnings)}")
+    typer.echo("")
+
+    typer.echo("SOURCE_WARNINGS")
+    _emit_string_items(report.warnings)
+    typer.echo("")
+
+    typer.echo("MUTATION_BOUNDARY")
+    typer.echo(f"Run logs mutated: {str(report.run_logs_mutated).lower()}")
+    typer.echo(f"Candidate ledger mutated: {str(report.candidate_ledger_mutated).lower()}")
+    typer.echo(
+        f"Resolution ledger mutated: {str(report.resolution_ledger_mutated).lower()}"
+    )
+    typer.echo(
+        f"Checkpoint ledger mutated: {str(report.checkpoint_ledger_mutated).lower()}"
+    )
+    typer.echo(f"Durable skills mutated: {str(report.durable_skills_mutated).lower()}")
+    typer.echo(f"Registry mutated: {str(report.registry_mutated).lower()}")
+    typer.echo(
+        f"Governor steering enabled: {str(report.governor_steering_enabled).lower()}"
+    )
+    typer.echo("")
+
+    typer.echo("NEXT_STEPS")
+    _emit_string_items(report.next_steps)
+
+
+def _emit_operator_summary_items(
+    title: str,
+    items: list[OperatorSummaryItem],
+) -> None:
+    typer.echo(title)
+    if not items:
+        typer.echo("none")
+        typer.echo("")
+        return
+    for item in items:
+        typer.echo(f"- {item.id}")
+        typer.echo(f"  Severity: {item.severity}")
+        typer.echo(f"  Title: {item.title}")
+        typer.echo(f"  Reason: {item.reason}")
+        typer.echo(f"  Status: {item.status or '-'}")
+        typer.echo(f"  Candidate: {item.candidate_id or '-'}")
+        source = [item.source_type, item.source_path or "", item.source_detail or ""]
+        typer.echo(f"  Source: {_format_list(source)}")
+        typer.echo(f"  Evidence refs: {_format_list(item.evidence_refs)}")
+        typer.echo(f"  Next commands: {_format_list(item.next_commands)}")
+    typer.echo("")
 
 
 def emit_evidence_checkpoint_json(report: EvidenceCheckpointReport) -> None:

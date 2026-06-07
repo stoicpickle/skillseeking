@@ -116,6 +116,29 @@ ScriptFailureCategory = Literal[
     "output_schema_mismatch",
     "output_too_large",
 ]
+OperatorSummarySection = Literal[
+    "blocked",
+    "human_input",
+    "promotion_ready",
+    "missing_evidence",
+    "unsafe_or_negative",
+    "checkpoint_change",
+]
+OperatorSummarySeverity = Literal["info", "warning", "blocker"]
+OperatorSummarySourceType = Literal[
+    "input_request",
+    "candidate_queue",
+    "negative_evidence",
+    "checkpoint",
+    "run_log",
+]
+OperatorCheckpointStatus = Literal[
+    "no_checkpoint",
+    "matches_latest",
+    "differs_from_latest",
+    "checkpoint_blocked",
+    "checkpoint_unavailable",
+]
 
 
 SCHEMA_VERSION = 3
@@ -1027,6 +1050,82 @@ class EvidenceCheckpointReport(BaseModel):
     run_logs_mutated: bool = False
     candidate_ledger_mutated: bool = False
     resolution_ledger_mutated: bool = False
+    durable_skills_mutated: bool = False
+    registry_mutated: bool = False
+    governor_steering_enabled: bool = False
+
+
+class OperatorSummaryItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    section: OperatorSummarySection
+    severity: OperatorSummarySeverity
+    id: str
+    title: str
+    reason: str
+    status: str | None = None
+    source_type: OperatorSummarySourceType
+    source_path: str | None = None
+    source_detail: str | None = None
+    candidate_id: str | None = None
+    skill_name: str | None = None
+    input_request_id: str | None = None
+    evidence_refs: list[str] = Field(default_factory=list)
+    next_commands: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    created_at: datetime | None = None
+
+
+class OperatorCheckpointSummary(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    status: OperatorCheckpointStatus
+    latest_checkpoint_present: bool = False
+    latest_checkpoint_id: str | None = None
+    latest_checkpoint_hash: str | None = None
+    checkpoint_count: int = 0
+    chain_valid: bool = False
+    current_evidence_matches_latest: bool = False
+    current_evidence_file_count: int = 0
+    checkpoint_evidence_file_count: int = 0
+    added_count: int = 0
+    changed_count: int = 0
+    removed_count: int = 0
+    added_files: list[str] = Field(default_factory=list)
+    changed_files: list[str] = Field(default_factory=list)
+    removed_files: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class OperatorSummaryReport(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    runs_dir: str
+    generated_at: datetime = Field(default_factory=datetime.now)
+    dry_run: bool = True
+    advisory_only: bool = True
+    input_request_count: int = 0
+    input_request_kind_counts: dict[str, int] = Field(default_factory=dict)
+    candidate_count: int = 0
+    candidate_status_counts: dict[str, int] = Field(default_factory=dict)
+    candidate_review_queue_counts: dict[str, int] = Field(default_factory=dict)
+    negative_evidence_count: int = 0
+    negative_evidence_counts_by_type: dict[str, int] = Field(default_factory=dict)
+    blocked_items: list[OperatorSummaryItem] = Field(default_factory=list)
+    human_input_items: list[OperatorSummaryItem] = Field(default_factory=list)
+    promotion_ready_candidates: list[OperatorSummaryItem] = Field(default_factory=list)
+    missing_evidence_items: list[OperatorSummaryItem] = Field(default_factory=list)
+    unsafe_or_negative_items: list[OperatorSummaryItem] = Field(default_factory=list)
+    checkpoint_change_items: list[OperatorSummaryItem] = Field(default_factory=list)
+    checkpoint: OperatorCheckpointSummary
+    warnings: list[str] = Field(default_factory=list)
+    next_steps: list[str] = Field(default_factory=list)
+    run_logs_mutated: bool = False
+    candidate_ledger_mutated: bool = False
+    resolution_ledger_mutated: bool = False
+    checkpoint_ledger_mutated: bool = False
     durable_skills_mutated: bool = False
     registry_mutated: bool = False
     governor_steering_enabled: bool = False
