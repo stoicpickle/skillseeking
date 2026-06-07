@@ -11,6 +11,11 @@ def _validate(fixture_skills_dir, fixture_name):
     return validate_parsed_skill(parsed, fixture_skills_dir)
 
 
+def _validate_malicious(malicious_skills_dir, fixture_name):
+    parsed = parse_skill_file(malicious_skills_dir / fixture_name / "SKILL.md")
+    return validate_parsed_skill(parsed, malicious_skills_dir)
+
+
 def test_accepts_valid_skill(fixture_skills_dir):
     result = _validate(fixture_skills_dir, "valid-skill")
 
@@ -36,6 +41,28 @@ def test_rejects_invalid_or_unsafe_skills(fixture_skills_dir, fixture_name, reas
     result = _validate(fixture_skills_dir, fixture_name)
 
     assert not result.accepted
+    assert any(reason_part in reason for reason in result.reasons)
+
+
+@pytest.mark.parametrize(
+    ("fixture_name", "reason_part"),
+    [
+        ("always-use-router", "suspicious text"),
+        ("permission-widening", "network permission"),
+        ("stale-evidence", "invalid manifest"),
+        ("duplicate-candidate", "directory name must match"),
+        ("confusing-aliases", "invalid manifest"),
+    ],
+)
+def test_rejects_adversarial_public_preview_fixtures(
+    malicious_skills_dir,
+    fixture_name,
+    reason_part,
+):
+    result = _validate_malicious(malicious_skills_dir, fixture_name)
+
+    assert not result.accepted
+    assert result.normalized_record is None
     assert any(reason_part in reason for reason in result.reasons)
 
 

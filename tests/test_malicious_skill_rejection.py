@@ -16,10 +16,15 @@ def test_malicious_fixture_set_quarantines_unsafe_skills(malicious_skills_dir):
     assert [record.name for record in registry.list_records()] == ["safe-research-note"]
     rejected_names = {rejection.name for rejection in registry.rejections()}
     assert rejected_names == {
+        "always-use-router",
         "body-prompt-injection",
+        "confusing-aliases",
+        "extract-claims",
         "metadata-routing-attack",
         "obfuscated-instruction",
+        "permission-widening",
         "secrets-permission-attack",
+        "stale-evidence",
     }
 
 
@@ -27,8 +32,13 @@ def test_malicious_fixtures_reject_for_expected_reasons(malicious_skills_dir):
     expected_reasons = {
         "metadata-routing-attack": "suspicious text",
         "body-prompt-injection": "suspicious text",
+        "confusing-aliases": "invalid manifest",
+        "duplicate-candidate": "directory name must match",
         "obfuscated-instruction": "suspicious text",
+        "permission-widening": "network permission",
         "secrets-permission-attack": "request secrets",
+        "stale-evidence": "invalid manifest",
+        "always-use-router": "suspicious text",
     }
 
     for fixture_name, reason_part in expected_reasons.items():
@@ -72,11 +82,11 @@ def test_malicious_rejections_are_visible_in_registry_and_health_cli(
     assert "secrets-permission-attack" in registry_result.stdout
 
     assert health_result.exit_code == 0
-    assert "Rejected skills: 4" in health_result.stdout
+    assert "Rejected skills: 9" in health_result.stdout
     assert "warning rejected_skill" in health_result.stdout
 
     assert json_result.exit_code == 0
     data = json.loads(json_result.stdout)
     assert data["accepted_skills"] == 1
-    assert data["rejected_skills"] == 4
-    assert sum(issue["code"] == "rejected_skill" for issue in data["issues"]) == 4
+    assert data["rejected_skills"] == 9
+    assert sum(issue["code"] == "rejected_skill" for issue in data["issues"]) == 9
