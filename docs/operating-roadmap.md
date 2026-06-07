@@ -38,7 +38,9 @@ The v0 surface is implemented and proven through the completed milestones in the
 - Stable readiness reports through `skill-agent stable-readiness`, composing candidate ledger, skill receipt, negative evidence, and durable registry evidence to advise candidate-to-stable review without authorizing stable promotion or routing.
 - Candidate decision summaries through `skill-agent candidate-decision`, compressing stable-readiness, receipt, usefulness, admission, and negative evidence into one advisory next decision without granting approval, install, promotion, routing, permission, or governor authority.
 - Operator summary decision compression through `skill-agent operator-summary`, presenting prioritized `OPERATOR_DECISIONS` before raw evidence while remaining read-only.
+- New-authority readiness reporting through `skill-agent new-authority-readiness`, stating that the agent is ready for authority design review but not ready to enable new authority.
 - Design-partner operator review path through [Operator Summary Review Pack](operator-summary-review-pack.md).
+- Design-partner feedback capture through [Design Partner Feedback Log](design-partner-feedback-log.md), currently empty until review sessions are recorded.
 - Candidate-to-stable and durable admission preflight RFC through [Candidate-To-Stable And Durable Admission RFC](plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md), design-only and not a write path.
 - Active governor preflight through [Active Governor Preflight Design](plans/active-governor-preflight-design-2026-06-07.md), design-only and not active steering.
 - Advisory lifecycle review queues for promotion-ready, repair-needed, blocked/quarantined, duplicate-merge-needed, and repeated-requested-gap candidate records.
@@ -192,6 +194,8 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-06: Added v1 release-candidate documentation in `CHANGELOG.md` and `docs/v1-release-notes.md`; README now frames the repo as a local v1 CLI release candidate while keeping the final `1.0.0` gate pending.
 - 2026-06-06: Stamped the v1.0 local CLI release state: `pyproject.toml` version `1.0.0`, planned private Git tag `v1.0.0`, final v1 release docs, and v1 smoke as the release verifier. Stable routing remains deferred for v1.
 - 2026-06-07: Added `operator-summary` decision compression, the design-partner review pack, candidate-to-stable/durable admission RFC refresh, and active-governor preflight design. These compress review evidence and define future gates without adding durable admission, stable routing, dependency installation, permission widening, or governor steering.
+- 2026-06-07: Added `skill-agent new-authority-readiness` as the explicit phase statement for the post-v1 boundary: ready for new-authority design review and planning, not ready to enable new authority.
+- 2026-06-07: Added `docs/design-partner-feedback-log.md` so public-dev-preview sessions can be compared before adding any new authority.
 
 - 2026-06-01: Consolidated near-term roadmap into this document before runtime Skill Candidate Ledger work.
 - 2026-06-01: Named **Skill Candidate Ledger** as the next runtime milestone.

@@ -1261,6 +1261,7 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `skill-agent stable-readiness --json` emits the read-only advisory candidate-to-stable review report. It does not authorize stable promotion or enable stable routing.
 - `skill-agent candidate-decision --json` emits the compact read-only operator decision report for one candidate, including `candidate_id`, `decision`, source-backed `why` items, nested stable-readiness evidence, and `next_command`.
 - `skill-agent operator-summary --json` emits the read-only operator summary report over local run evidence, candidate review queues, active input requests, negative evidence, unsafe aborts, and checkpoint deltas. It is advisory only and records unchanged mutation authority for run logs, ledgers, durable skills, registries, and governor steering.
+- `skill-agent new-authority-readiness --json` emits the read-only new-authority phase report. It may report `ready_for_authority_planning=true`, but `ready_to_enable_new_authority` must remain `false` until a separate reviewed authority slice exists.
 - `skill-agent negative-evidence --json` emits read-only unfavorable/limiting evidence from candidate and resolution ledgers.
 - `skill-agent evidence-checkpoint --json` emits the local evidence checkpoint create or verify report. `--no-dry-run` appends only to `runs/evidence_checkpoints.json`; `--verify` is read-only.
 - `skill-agent evidence-governor --json` emits the read-only advisory recommendation report for one candidate. It never grants approval or steers execution.
@@ -1286,6 +1287,34 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `operator_decisions`: additive decision-compression items ordered by priority. Each item names the operator decision, severity, primary command, supporting commands, source item IDs, blockers, and warnings. Decisions are advisory summaries over the raw evidence items; they do not approve, promote, install, route, append checkpoints, or mutate evidence.
 
 The report is advisory only. `dry_run` and `advisory_only` remain true, and the mutation flags for run logs, candidate ledgers, resolution ledgers, checkpoint ledgers, durable skills, registry state, and governor steering remain false. It does not replace the deeper reports; `operator_decisions` and `next_steps` point back to commands such as `input-requests`, `candidates`, `candidate-decision`, `negative-evidence`, `explain`, and `evidence-checkpoint --verify`.
+
+## New Authority Readiness
+
+`skill-agent new-authority-readiness --json` emits a static read-only phase
+report for the post-v1 boundary. The current status is
+`ready_for_new_authority_design_review`: the product is ready to plan and review
+one tightly scoped authority slice, but it is not ready to enable any new
+authority.
+
+Required fields include:
+
+- `phase`
+- `status`
+- `ready_for_authority_planning`
+- `ready_to_enable_new_authority`
+- `next_authority_candidate`
+- `why_not_enable_yet`
+- `required_before_enablement`
+- `must_remain_disabled_until_separate_slice`
+- `proof_commands`
+- `reference_docs`
+
+`ready_to_enable_new_authority` must remain `false` until a separate
+implementation slice proves allowed and blocked paths, digest-bound approvals,
+expiry, revoke behavior, run-log/explain visibility, and the local validation
+bundle. The report does not grant durable generated-skill admission, positive
+stable routing, active governor steering, dependency installation, permission
+widening, marketplace publication, hosted behavior, or true-sandbox claims.
 
 ## Eval Task
 

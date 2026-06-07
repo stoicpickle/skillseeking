@@ -173,6 +173,7 @@ print("app imports ok")
 PY
 "${SKILL_AGENT_BIN}" --help >/dev/null
 "${SKILL_AGENT_BIN}" v1-local-use --help >/dev/null
+"${SKILL_AGENT_BIN}" new-authority-readiness --help >/dev/null
 "${SKILL_AGENT_BIN}" candidate-decision --help >/dev/null
 "${SKILL_AGENT_BIN}" v1-local-use --json >"${SMOKE_ROOT}/v1-local-use.json"
 "${PYTHON_BIN}" - "${SMOKE_ROOT}/v1-local-use.json" <<'PY'
@@ -192,6 +193,25 @@ if "stable routing" not in data.get("unchanged_authority", []):
 if "durable skills admission" not in data.get("excluded_authority", []):
     raise SystemExit("v1-local-use must exclude durable skills admission")
 print("v1-local-use ok")
+PY
+"${SKILL_AGENT_BIN}" new-authority-readiness --json >"${SMOKE_ROOT}/new-authority-readiness.json"
+"${PYTHON_BIN}" - "${SMOKE_ROOT}/new-authority-readiness.json" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+data = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))
+if data.get("status") != "ready_for_new_authority_design_review":
+    raise SystemExit("new-authority-readiness must expose the design-review phase")
+if data.get("ready_for_authority_planning") is not True:
+    raise SystemExit("new-authority-readiness must be ready for authority planning")
+if data.get("ready_to_enable_new_authority") is not False:
+    raise SystemExit("new-authority-readiness must not enable new authority")
+if "positive stable routing" not in data.get("must_remain_disabled_until_separate_slice", []):
+    raise SystemExit("new-authority-readiness must keep stable routing disabled")
+if "active governor steering" not in data.get("must_remain_disabled_until_separate_slice", []):
+    raise SystemExit("new-authority-readiness must keep governor steering disabled")
+print("new-authority-readiness ok")
 PY
 printf 'skill-agent CLI ok\n'
 

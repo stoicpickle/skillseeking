@@ -16,6 +16,7 @@ def test_v1_release_docs_exist_and_are_non_empty(repo_root: Path):
         repo_root / "docs" / "launch-demo-transcript.md",
         repo_root / "CONTRIBUTING.md",
         repo_root / "docs" / "operator-summary-review-pack.md",
+        repo_root / "docs" / "design-partner-feedback-log.md",
         repo_root
         / "docs"
         / "plans"
@@ -53,6 +54,8 @@ def test_readme_positions_v1_as_local_cli_with_boundaries(repo_root: Path):
     assert "docs/launch-demo-transcript.md" in readme
     assert "CONTRIBUTING.md" in readme
     assert "docs/operator-summary-review-pack.md" in readme
+    assert "new-authority-readiness" in readme
+    assert "not ready to enable new authority" in readme
     assert "docs/design-partner-feedback.md" in readme
     assert "docs/governance-monetization-principles.md" in readme
     assert "CHANGELOG.md" in readme
@@ -186,6 +189,9 @@ def test_public_preview_strategy_docs_match_source_and_scope(repo_root: Path):
     design_partners = (repo_root / "docs" / "design-partner-feedback.md").read_text(
         encoding="utf-8"
     )
+    feedback_log = (repo_root / "docs" / "design-partner-feedback-log.md").read_text(
+        encoding="utf-8"
+    )
     monetization = (
         repo_root / "docs" / "governance-monetization-principles.md"
     ).read_text(encoding="utf-8")
@@ -223,10 +229,17 @@ def test_public_preview_strategy_docs_match_source_and_scope(repo_root: Path):
 
     assert "3 to 5 design partners" in design_partners
     assert "Operator Summary Review Pack" in design_partners
+    assert "Design Partner Feedback Log" in design_partners
     assert "Operator-summary decision clarity" in design_partners
+    assert "New-authority readiness confusion" in design_partners
     assert "setup friction" in design_partners.lower()
     assert "candidate-decision confusion" in design_partners.lower()
     assert "stable-routing deferral confusion" in design_partners.lower()
+    assert "Status: active public-dev-preview evidence log" in feedback_log
+    assert "Completed partner sessions | 0" in feedback_log
+    assert "Next `OPERATOR_DECISIONS` action identified unaided" in feedback_log
+    assert "`ready_to_enable_new_authority=false` understood" in feedback_log
+    assert "Do not add durable generated-skill admission" in feedback_log
 
     assert "Do not lead with a public skill marketplace" in monetization
     assert "governance, evidence, approvals, auditability, and" in monetization
@@ -237,8 +250,11 @@ def test_public_preview_strategy_docs_match_source_and_scope(repo_root: Path):
     assert "Go-To-Market Boundary" in product_brief
     assert "Public Preview Strategy Boundary" in product_manager
     assert "Operator Summary Review Pack" in product_manager
+    assert "Design Partner Feedback Log" in product_manager
     assert "Candidate-To-Stable And Durable Admission RFC" in product_manager
     assert "Active Governor Preflight Design" in product_manager
+    assert "skill-agent new-authority-readiness" in product_manager
+    assert "ready_to_enable_new_authority=false" in product_manager
     assert "Status: design only" in candidate_stable_rfc
     assert "No positive stable routing." in candidate_stable_rfc
     assert "No active governor steering." in candidate_stable_rfc
@@ -251,6 +267,7 @@ def test_public_docs_do_not_add_positive_authority_claims(repo_root: Path):
         repo_root / "README.md",
         repo_root / "CONTRIBUTING.md",
         repo_root / "docs" / "operator-summary-review-pack.md",
+        repo_root / "docs" / "contracts" / "data-contracts.md",
         repo_root
         / "docs"
         / "plans"

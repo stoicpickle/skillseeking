@@ -31,7 +31,10 @@ Use one short path for each partner:
    is not enough.
 5. Inspect `operator-summary` first, then use the run log, `explain`, candidate
    evidence, and `candidate-decision` as supporting proof.
-6. Stop before durable generated-skill admission, stable routing, hosted
+6. Inspect `new-authority-readiness` only as a phase statement: planning-ready,
+   enablement-blocked.
+7. Record the session in [Design Partner Feedback Log](design-partner-feedback-log.md).
+8. Stop before durable generated-skill admission, stable routing, hosted
    deployment, marketplace behavior, or sandbox claims.
 
 The goal is to learn where the governed capability-gap loop is clear or
@@ -55,6 +58,7 @@ Use this template for each partner:
 - Candidate-decision confusion:
 - Safety-boundary confusion:
 - Stable-routing deferral confusion:
+- New-authority readiness confusion:
 - Most useful proof surface:
 - Least useful or most confusing proof surface:
 - Desired next action:

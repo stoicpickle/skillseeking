@@ -57,3 +57,42 @@ def test_v1_local_use_json_names_read_only_boundaries():
     assert "durable skills admission" in data["excluded_authority"]
     assert "positive stable routing" in data["excluded_authority"]
     assert "true sandboxing claims" in data["excluded_authority"]
+
+
+def test_new_authority_readiness_states_planning_ready_but_enablement_blocked():
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["new-authority-readiness"])
+
+    assert result.exit_code == 0
+    assert "NEW_AUTHORITY_READINESS" in result.stdout
+    assert "Phase: v1.0 local CLI / design-partner validation" in result.stdout
+    assert "Ready for authority planning: true" in result.stdout
+    assert "Ready to enable new authority: false" in result.stdout
+    assert "checkpoint-gated active blocker" in result.stdout
+    assert "Design-partner feedback has not been collected" in result.stdout
+    assert "positive stable routing" in result.stdout
+    assert "active governor steering" in result.stdout
+    assert "durable generated-skill admission" in result.stdout
+    assert "bash scripts/v1_smoke.sh" in result.stdout
+
+
+def test_new_authority_readiness_json_preserves_no_authority_boundary():
+    runner = CliRunner()
+
+    result = runner.invoke(app, ["new-authority-readiness", "--json"])
+
+    assert result.exit_code == 0
+    data = json.loads(result.stdout)
+    assert data["status"] == "ready_for_new_authority_design_review"
+    assert data["ready_for_authority_planning"] is True
+    assert data["ready_to_enable_new_authority"] is False
+    assert "checkpoint-gated active blocker" in data["next_authority_candidate"]
+    assert any("Design-partner feedback" in item for item in data["why_not_enable_yet"])
+    assert any("eval rows" in item for item in data["required_before_enablement"])
+    assert any("approval expiry" in item for item in data["required_before_enablement"])
+    assert "positive stable routing" in data["must_remain_disabled_until_separate_slice"]
+    assert "active governor steering" in data["must_remain_disabled_until_separate_slice"]
+    assert "docs/plans/active-governor-preflight-design-2026-06-07.md" in data[
+        "reference_docs"
+    ]

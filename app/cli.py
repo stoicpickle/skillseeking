@@ -149,6 +149,55 @@ V1_LOCAL_USE_REPORT = {
 }
 
 
+NEW_AUTHORITY_READINESS_REPORT = {
+    "phase": "v1.0 local CLI / design-partner validation",
+    "status": "ready_for_new_authority_design_review",
+    "ready_for_authority_planning": True,
+    "ready_to_enable_new_authority": False,
+    "next_authority_candidate": "checkpoint-gated active blocker before any positive stable-routing attempt",
+    "why_not_enable_yet": [
+        "Design-partner feedback has not been collected against the operator-summary review path.",
+        "No positive stable-routing, durable-admission, or active-governor implementation slice has been reviewed.",
+        "No new-authority eval rows have proven allowed and blocked paths for the proposed authority.",
+        "No digest-bound human override and revoke ledger exists for the proposed authority.",
+    ],
+    "required_before_enablement": [
+        "Collect design-partner evidence that operator-summary decisions are understandable.",
+        "Choose exactly one smallest reversible authority candidate.",
+        "Write a design plan that separates advisory, blocking, and authorizing behavior.",
+        "Add eval rows for allowed, blocked, overblocked, stale-evidence, expired-approval, and revoke cases.",
+        "Keep run logs and explain output visibly reporting the authority decision.",
+        "Require exact checkpoint, plan digest, approval ID, and approval expiry evidence.",
+        "Preserve no-mutation guarantees for durable skills, registry, ledgers, permissions, dependencies, and routing unless the slice explicitly owns that authority.",
+        "Pass the full local validation bundle and external/manual review before enabling the authority.",
+    ],
+    "must_remain_disabled_until_separate_slice": [
+        "durable generated-skill admission into skills/",
+        "positive stable routing",
+        "active governor steering",
+        "dependency installation",
+        "permission widening without exact approval",
+        "marketplace publication",
+        "hosted service behavior",
+        "true sandboxing claims",
+    ],
+    "proof_commands": [
+        "skill-agent operator-summary --runs-dir <runs-dir>",
+        "skill-agent evidence-checkpoint --runs-dir <runs-dir> --verify",
+        "skill-agent stable-readiness <candidate-id> --runs-dir <runs-dir> --skills-dir <skills-dir>",
+        "skill-agent evidence-governor <candidate-id> --runs-dir <runs-dir> --skills-dir <skills-dir>",
+        "bash scripts/v1_smoke.sh",
+    ],
+    "reference_docs": [
+        "docs/operator-summary-review-pack.md",
+        "docs/plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md",
+        "docs/plans/active-governor-preflight-design-2026-06-07.md",
+        "docs/product-manager.md",
+        "docs/operating-roadmap.md",
+    ],
+}
+
+
 @app.command("v1-local-use")
 def v1_local_use(
     json_output: Annotated[
@@ -184,6 +233,53 @@ def v1_local_use(
     typer.echo("")
     typer.echo("Excluded authority:")
     for item in V1_LOCAL_USE_REPORT["excluded_authority"]:
+        typer.echo(f"- {item}")
+
+
+@app.command("new-authority-readiness")
+def new_authority_readiness(
+    json_output: Annotated[
+        bool,
+        typer.Option("--json", help="Print the new-authority readiness report as JSON."),
+    ] = False,
+) -> None:
+    if json_output:
+        typer.echo(json.dumps(NEW_AUTHORITY_READINESS_REPORT, indent=2, sort_keys=True))
+        return
+
+    typer.echo("NEW_AUTHORITY_READINESS")
+    typer.echo(f"Phase: {NEW_AUTHORITY_READINESS_REPORT['phase']}")
+    typer.echo(f"Status: {NEW_AUTHORITY_READINESS_REPORT['status']}")
+    typer.echo(
+        "Ready for authority planning: "
+        f"{str(NEW_AUTHORITY_READINESS_REPORT['ready_for_authority_planning']).lower()}"
+    )
+    typer.echo(
+        "Ready to enable new authority: "
+        f"{str(NEW_AUTHORITY_READINESS_REPORT['ready_to_enable_new_authority']).lower()}"
+    )
+    typer.echo(
+        f"Next authority candidate: {NEW_AUTHORITY_READINESS_REPORT['next_authority_candidate']}"
+    )
+    typer.echo("")
+    typer.echo("Why not enable yet:")
+    for item in NEW_AUTHORITY_READINESS_REPORT["why_not_enable_yet"]:
+        typer.echo(f"- {item}")
+    typer.echo("")
+    typer.echo("Required before enablement:")
+    for item in NEW_AUTHORITY_READINESS_REPORT["required_before_enablement"]:
+        typer.echo(f"- {item}")
+    typer.echo("")
+    typer.echo("Must remain disabled until a separate slice:")
+    for item in NEW_AUTHORITY_READINESS_REPORT["must_remain_disabled_until_separate_slice"]:
+        typer.echo(f"- {item}")
+    typer.echo("")
+    typer.echo("Proof commands:")
+    for item in NEW_AUTHORITY_READINESS_REPORT["proof_commands"]:
+        typer.echo(f"- {item}")
+    typer.echo("")
+    typer.echo("Reference docs:")
+    for item in NEW_AUTHORITY_READINESS_REPORT["reference_docs"]:
         typer.echo(f"- {item}")
 
 
