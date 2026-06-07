@@ -13,6 +13,7 @@ def test_v1_release_docs_exist_and_are_non_empty(repo_root: Path):
         repo_root / "docs" / "v1-release-contract.md",
         repo_root / "docs" / "v1-release-tasking.md",
         repo_root / "docs" / "launch-proof-2026-06-07.md",
+        repo_root / "docs" / "launch-demo-transcript.md",
     ]
 
     for path in required_paths:
@@ -37,6 +38,7 @@ def test_readme_positions_v1_as_local_cli_with_boundaries(repo_root: Path):
     assert "`--scripted-skills` is trusted-local only" in readme
     assert "does not provide a sandbox" in readme
     assert "docs/v1-release-notes.md" in readme
+    assert "docs/launch-demo-transcript.md" in readme
     assert "CHANGELOG.md" in readme
 
 
@@ -140,3 +142,52 @@ def test_ci_workflow_runs_visible_v1_launch_gate(repo_root: Path):
     assert "python -m compileall -q app" in workflow
     assert "bash scripts/v1_smoke.sh" in workflow
     assert "REQUIRE_V1_TAG=1" not in workflow
+
+
+def test_launch_demo_transcript_preserves_public_boundaries(repo_root: Path):
+    transcript = (repo_root / "docs" / "launch-demo-transcript.md").read_text(
+        encoding="utf-8"
+    )
+    lower = transcript.lower()
+
+    assert "local public-dev-preview demo" in lower
+    assert "human review remains in the path" in lower
+    assert "durable `skills/` admission remains disabled" in lower
+    assert "stable routing remains disabled" in lower
+    assert "not a hosted service" in lower
+    assert "not production-safe" in lower
+    assert "not a sandbox" in lower
+    assert "does not provide a sandbox" in lower
+    assert "does not autonomously promote candidates" in lower
+    assert "does not enable positive stable routing" in lower
+
+
+def test_public_docs_do_not_add_positive_authority_claims(repo_root: Path):
+    docs = [
+        repo_root / "README.md",
+        repo_root / "docs" / "v1-release-notes.md",
+        repo_root / "docs" / "v1-release-contract.md",
+        repo_root / "docs" / "demo-suite.md",
+        repo_root / "docs" / "launch-demo-transcript.md",
+    ]
+    forbidden = [
+        "production-ready self-improving agent framework",
+        "production-grade public agent framework",
+        "is a production-safe framework",
+        "production-safe hosted framework",
+        "hosted platform launch",
+        "hosted service launch",
+        "provides a true sandbox",
+        "is a true sandbox",
+        "stable routing enabled: yes",
+        "stable routing is enabled",
+        "automatically promotes",
+        "autonomously promotes",
+        "external skill marketplace support is included",
+        "durable generated-skill admission is enabled",
+    ]
+
+    for path in docs:
+        text = path.read_text(encoding="utf-8").lower()
+        for phrase in forbidden:
+            assert phrase not in text, f"{path} contains positive authority claim: {phrase}"

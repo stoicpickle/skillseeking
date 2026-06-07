@@ -13,6 +13,43 @@ RUNS_DIR="$DEMO_DIR/runs"
 
 For another pass through the suite, create a new `DEMO_DIR`.
 
+## Launch Demo
+
+Command:
+
+```bash
+bash scripts/run_launch_demo.sh
+```
+
+Expected status: `0`
+
+Expected sections:
+
+```text
+LAUNCH DEMO
+Capability gap run
+Candidate decision
+Boundary check
+```
+
+Expected landmarks:
+
+```text
+BLOCKED_MISSING_SKILL
+REQUESTING_SKILL
+DRAFTING_TEMP_SKILL
+VALIDATION_PASSED
+LOADING_TEMP_SKILL
+ROUTE_COMPLETE
+Durable skills mutated: no
+Stable routing enabled: no
+Hosted service used: no
+Sandbox provided: no
+```
+
+Proves:
+The local CLI can demonstrate the governed capability-gap loop in one short path without mutating durable `skills/`, using a hosted service, claiming sandboxing, admitting generated skills, or enabling stable routing. See [Launch demo transcript](launch-demo-transcript.md) for the cold-user walkthrough.
+
 ## 1. Existing Skill
 
 Command:

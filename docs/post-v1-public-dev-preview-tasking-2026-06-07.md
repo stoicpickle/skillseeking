@@ -344,3 +344,4 @@ That makes the repo easier to understand without changing the underlying capabil
 ## Implementation Progress
 
 - [x] Slice 1: CI launch gate, release-proof artifact, package metadata alignment, and trusted-local script warning. Implemented visible CI steps for whitespace, v1 release eval, and v1 smoke; added `docs/launch-proof-2026-06-07.md`; aligned `pyproject.toml` description with the governed capability-gap wedge; moved the `--scripted-skills` warning closer to first use; and added release-doc regression coverage.
+- [x] Slice 2: Launch demo script/transcript and public claims guard expansion. Added `scripts/run_launch_demo.sh`, `docs/launch-demo-transcript.md`, README/demo-suite pointers, a launch-demo no-mutation test, and public-doc guardrails against positive hosted, sandbox, marketplace, autonomous-promotion, durable-admission, and stable-routing claims.

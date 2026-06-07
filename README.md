@@ -47,6 +47,16 @@ To verify the gauntlet as an acceptance test:
 
 See [Core demo suite](docs/demo-suite.md) for the smaller demos behind each behavior.
 
+## Five-Minute Launch Demo
+
+For the shortest public-dev-preview path through the product wedge, run:
+
+```bash
+bash scripts/run_launch_demo.sh
+```
+
+This uses an isolated temporary copy of `skills/` to show the agent detecting a missing capability, requesting and validating a temporary Markdown skill, loading it for one run, then surfacing `candidate-decision` while durable skill admission and stable routing remain disabled. See [Launch demo transcript](docs/launch-demo-transcript.md) for the expected landmarks.
+
 ## V1.0 Local CLI Release
 
 V1.0 is a stable **local CLI** product for governed skill acquisition. It is not a hosted service, marketplace, production-safe framework, or true sandbox.
