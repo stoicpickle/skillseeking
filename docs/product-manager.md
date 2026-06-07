@@ -48,6 +48,12 @@ Primary use case:
 - Do not treat generated skill self-tests as sufficient promotion evidence.
 - Do not route work into broad planner, router, marketplace, UI, or sandbox rewrites unless the current roadmap and eval evidence justify that slice.
 
+## Public Preview Strategy Boundary
+
+The repo's current source boundary is MIT-licensed open source for the local CLI dev-preview. That does not grant product scope for hosted service behavior, production safety, true sandboxing, marketplace support, autonomous promotion, durable generated-skill admission, or positive stable routing.
+
+Public-preview learning should come from 3 to 5 design partners running contained local workflows and reporting setup, demo, evidence, candidate-decision, safety-boundary, and stable-routing deferral friction. Future monetization exploration should stay around governance, evidence, approvals, auditability, policy control, private registries, and hosted control-plane ideas over local agents. These strategy docs are not implementation approval for those future surfaces.
+
 ## Next-Slice Rules
 
 For behavior changes, require:

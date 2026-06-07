@@ -40,6 +40,12 @@ The sharper wedge is not an agent marketplace. It is the control layer that turn
 
 Every metaphor for smarter agents should become a concrete control primitive: a knob, ledger entry, test assertion, or state transition. See `docs/homeostatic-governor.md` for the planned governor addition.
 
+## Go-To-Market Boundary
+
+The first public motion is local CLI credibility plus design-partner learning, not a hosted product launch or marketplace. The repo is MIT-licensed open source for the local CLI dev-preview, while future commercial exploration should center on governance: evidence dashboards, approval workflows, audit trails, policy-controlled skill admission, private registries, eval management, and compliance proof packets.
+
+Do not lead with a public skill marketplace. Do not treat this strategy boundary as approval to add hosted service behavior, production-safety claims, true sandboxing claims, autonomous promotion, durable generated-skill admission, or positive stable routing.
+
 ## Core Loop
 
 ```text

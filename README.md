@@ -18,6 +18,12 @@ Use this repo as a local CLI workbench for governed capability acquisition and s
 
 The public proof is the CLI demo suite and v1 smoke gate, not a polished hosted product surface. Scripted skills are opt-in trusted-local subprocesses with guardrails; they are **not** a true sandbox.
 
+## Source, Contributions, And Design Partners
+
+This repo is open source under the [MIT License](LICENSE). Contributions are welcome inside the local CLI/dev-preview boundary described in [Contributing](CONTRIBUTING.md).
+
+The current public-preview learning loop is design-partner feedback on local governed capability acquisition, not hosted product onboarding or marketplace launch. See [Design Partner Feedback](docs/design-partner-feedback.md) and [Governance Monetization Principles](docs/governance-monetization-principles.md) for the strategy boundary.
+
 ## Start Here: Skill Gauntlet
 
 The quickest way to see the prototype's behavior is the Skill Gauntlet demo:
@@ -110,6 +116,8 @@ V1.0 still does not provide hosted operation, a marketplace, true sandboxing, de
 - [Evaluation plan](docs/evaluation-plan.md)
 - [Safety model](docs/safety-model.md)
 - [Roadmap](docs/roadmap.md)
+- [Design partner feedback](docs/design-partner-feedback.md)
+- [Governance monetization principles](docs/governance-monetization-principles.md)
 - [V1.0 release tasking](docs/v1-release-tasking.md)
 - [V1.0 release contract](docs/v1-release-contract.md)
 - [V1.0 release notes](docs/v1-release-notes.md)

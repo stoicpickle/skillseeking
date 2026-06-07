@@ -4,6 +4,8 @@
 
 This repo should be framed publicly as an early research/prototype repo, not a production agent framework. Known next steps are roadmap items, not surprise defects: richer skill-guided execution, stronger sandboxing, broader SkillOps, and eventual UI/API surfaces.
 
+The current repo source boundary is resolved as MIT-licensed open source for the local CLI dev-preview. That license does not imply hosted service availability, production safety, marketplace support, true sandboxing, or support commitments. Contribution expectations live in [Contributing](../CONTRIBUTING.md).
+
 ## Phase 1: Static Skill Loader
 
 Goal: the agent can choose from existing skills.
@@ -101,7 +103,6 @@ High-failure skill -> repair request -> validator -> candidate replacement
 
 - Should skills be shareable across users or local-only?
 - Should external skills require signatures?
-- Should a skill marketplace exist, or is that too much surface area too soon?
+- A public skill marketplace remains deferred; monetization exploration should stay around governance, policy, evidence, approval, and audit surfaces.
 - Should Skillsmith use templates per domain?
 - Should the first UI be web, CLI, or both?
-

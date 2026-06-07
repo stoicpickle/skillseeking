@@ -14,6 +14,9 @@ def test_v1_release_docs_exist_and_are_non_empty(repo_root: Path):
         repo_root / "docs" / "v1-release-tasking.md",
         repo_root / "docs" / "launch-proof-2026-06-07.md",
         repo_root / "docs" / "launch-demo-transcript.md",
+        repo_root / "CONTRIBUTING.md",
+        repo_root / "docs" / "design-partner-feedback.md",
+        repo_root / "docs" / "governance-monetization-principles.md",
     ]
 
     for path in required_paths:
@@ -39,6 +42,9 @@ def test_readme_positions_v1_as_local_cli_with_boundaries(repo_root: Path):
     assert "does not provide a sandbox" in readme
     assert "docs/v1-release-notes.md" in readme
     assert "docs/launch-demo-transcript.md" in readme
+    assert "CONTRIBUTING.md" in readme
+    assert "docs/design-partner-feedback.md" in readme
+    assert "docs/governance-monetization-principles.md" in readme
     assert "CHANGELOG.md" in readme
 
 
@@ -162,13 +168,55 @@ def test_launch_demo_transcript_preserves_public_boundaries(repo_root: Path):
     assert "does not enable positive stable routing" in lower
 
 
+def test_public_preview_strategy_docs_match_source_and_scope(repo_root: Path):
+    contributing = (repo_root / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    design_partners = (repo_root / "docs" / "design-partner-feedback.md").read_text(
+        encoding="utf-8"
+    )
+    monetization = (
+        repo_root / "docs" / "governance-monetization-principles.md"
+    ).read_text(encoding="utf-8")
+    roadmap = (repo_root / "docs" / "roadmap.md").read_text(encoding="utf-8")
+    product_brief = (repo_root / "docs" / "product-brief.md").read_text(
+        encoding="utf-8"
+    )
+    product_manager = (repo_root / "docs" / "product-manager.md").read_text(
+        encoding="utf-8"
+    )
+
+    assert "MIT License" in (repo_root / "LICENSE").read_text(encoding="utf-8")
+    assert "open source under the MIT License" in contributing
+    assert "local CLI public-dev-preview workbench" in contributing
+    assert "not a hosted product" in contributing
+    assert "durable generated-skill admission into `skills/`" in contributing
+
+    assert "3 to 5 design partners" in design_partners
+    assert "setup friction" in design_partners.lower()
+    assert "candidate-decision confusion" in design_partners.lower()
+    assert "stable-routing deferral confusion" in design_partners.lower()
+
+    assert "Do not lead with a public skill marketplace" in monetization
+    assert "governance, evidence, approvals, auditability, and" in monetization
+    assert "not current release claims" in monetization
+
+    assert "MIT-licensed open source for the local CLI dev-preview" in roadmap
+    assert "marketplace remains deferred" in roadmap.lower()
+    assert "Go-To-Market Boundary" in product_brief
+    assert "Public Preview Strategy Boundary" in product_manager
+
+
 def test_public_docs_do_not_add_positive_authority_claims(repo_root: Path):
     docs = [
         repo_root / "README.md",
+        repo_root / "CONTRIBUTING.md",
         repo_root / "docs" / "v1-release-notes.md",
         repo_root / "docs" / "v1-release-contract.md",
         repo_root / "docs" / "demo-suite.md",
         repo_root / "docs" / "launch-demo-transcript.md",
+        repo_root / "docs" / "design-partner-feedback.md",
+        repo_root / "docs" / "governance-monetization-principles.md",
+        repo_root / "docs" / "product-brief.md",
+        repo_root / "docs" / "product-manager.md",
     ]
     forbidden = [
         "production-ready self-improving agent framework",
