@@ -23,8 +23,83 @@ cleanup() {
 }
 trap cleanup EXIT
 
+DURABLE_NO_MUTATION_TARGETS=(
+  "skills"
+  "docs/stable-routing-policy.md"
+  "docs/plans/v1-stable-routing-policy-deferred-2026-06-06.md"
+)
+
 step() {
   printf '\n==> %s\n' "$1"
+}
+
+write_durable_snapshot() {
+  local snapshot_path="$1"
+  "${PYTHON_BIN}" - "${snapshot_path}" "${DURABLE_NO_MUTATION_TARGETS[@]}" <<'PY'
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+repo_root = Path.cwd().resolve()
+snapshot_path = Path(sys.argv[1])
+targets = list(sys.argv[2:])
+files: dict[str, str] = {}
+missing: list[str] = []
+
+for target in targets:
+    target_path = Path(target)
+    if not target_path.exists():
+        missing.append(target)
+        continue
+    if target_path.is_file():
+        paths = [target_path]
+    else:
+        paths = sorted(path for path in target_path.rglob("*") if path.is_file())
+    for path in paths:
+        relative_path = path.resolve().relative_to(repo_root).as_posix()
+        digest = hashlib.sha256(path.read_bytes()).hexdigest()
+        files[relative_path] = f"sha256:{digest}"
+
+if missing:
+    raise SystemExit(f"missing durable no-mutation target(s): {', '.join(missing)}")
+
+with snapshot_path.open("w", encoding="utf-8") as handle:
+    json.dump({"targets": targets, "files": files}, handle, indent=2, sort_keys=True)
+    handle.write("\n")
+
+print(f"snapshot recorded {len(files)} durable file(s)")
+PY
+}
+
+assert_durable_no_mutation() {
+  local before_path="$1"
+  local after_path="$2"
+  "${PYTHON_BIN}" - "${before_path}" "${after_path}" <<'PY'
+import json
+import sys
+from pathlib import Path
+
+before = json.loads(Path(sys.argv[1]).read_text(encoding="utf-8"))["files"]
+after = json.loads(Path(sys.argv[2]).read_text(encoding="utf-8"))["files"]
+
+before_paths = set(before)
+after_paths = set(after)
+added = sorted(after_paths - before_paths)
+removed = sorted(before_paths - after_paths)
+changed = sorted(path for path in before_paths & after_paths if before[path] != after[path])
+
+if added or removed or changed:
+    print("Durable mutation detected during v1 smoke:", file=sys.stderr)
+    for label, paths in (("added", added), ("removed", removed), ("changed", changed)):
+        if paths:
+            print(f"  {label}:", file=sys.stderr)
+            for path in paths:
+                print(f"    {path}", file=sys.stderr)
+    raise SystemExit(1)
+
+print("durable skills and stable-routing policy unchanged")
+PY
 }
 
 step "Repo root"
@@ -32,6 +107,9 @@ printf '%s\n' "${REPO_ROOT}"
 
 step "Python version"
 "${PYTHON_BIN}" --version
+
+step "Durable no-mutation baseline"
+write_durable_snapshot "${SMOKE_ROOT}/durable-before.json"
 
 step "Required files"
 for path in \
@@ -196,5 +274,11 @@ PY
 
 step "Compile app"
 "${PYTHON_BIN}" -m compileall -q app
+
+step "Durable no-mutation check"
+write_durable_snapshot "${SMOKE_ROOT}/durable-after.json"
+assert_durable_no_mutation \
+  "${SMOKE_ROOT}/durable-before.json" \
+  "${SMOKE_ROOT}/durable-after.json"
 
 printf '\nV1 smoke passed. Evidence directory was temporary: %s\n' "${SMOKE_ROOT}"
