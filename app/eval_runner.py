@@ -792,6 +792,11 @@ def _diagnostic_dimension_metrics(tasks: list[dict[str, Any]]) -> dict[str, Any]
         and task["stable_readiness_expectation_passed"]
     )
     failure_categories = _category_counts(tasks)
+    dominant_failure_category = (
+        max(failure_categories.items(), key=lambda item: item[1])[0]
+        if failure_categories
+        else None
+    )
 
     return {
         "total": total,
@@ -818,7 +823,9 @@ def _diagnostic_dimension_metrics(tasks: list[dict[str, Any]]) -> dict[str, Any]
         if stable_readiness_expected
         else None,
         "failure_categories": failure_categories,
-        "suggested_next_action": _suggested_next_action(list(failure_categories)),
+        "suggested_next_action": _suggested_next_action(
+            [dominant_failure_category] if dominant_failure_category else []
+        ),
     }
 
 

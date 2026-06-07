@@ -49,7 +49,9 @@ def load_candidate_ledger(runs_dir: Path) -> SkillCandidateLedger:
         return SkillCandidateLedger()
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-        return SkillCandidateLedger.model_validate(data)
+        ledger = SkillCandidateLedger.model_validate(data)
+        _migrate_legacy_candidate_ids(ledger)
+        return ledger
     except OSError as exc:
         raise SkillCandidateLedgerError(f"could not read skill candidate ledger: {path}") from exc
     except (json.JSONDecodeError, ValueError) as exc:
@@ -58,6 +60,7 @@ def load_candidate_ledger(runs_dir: Path) -> SkillCandidateLedger:
 
 def write_candidate_ledger(ledger: SkillCandidateLedger, runs_dir: Path) -> Path:
     runs_dir.mkdir(parents=True, exist_ok=True)
+    _migrate_legacy_candidate_ids(ledger)
     ledger.entries = sorted(ledger.entries, key=lambda entry: entry.candidate_id)
     path = ledger_path(runs_dir)
     tmp_path = path.with_name(f".{path.name}.{os.getpid()}.{uuid.uuid4().hex}.tmp")
@@ -228,7 +231,7 @@ def _repair_queue_reason(entry: SkillCandidateLedgerEntry) -> str:
 
 
 def update_candidate_ledger_from_run(ledger: SkillCandidateLedger, run_log: RunLog) -> bool:
-    changed = False
+    changed = _migrate_legacy_candidate_ids(ledger)
     now = run_log.created_at
     entries_by_id = {entry.candidate_id: entry for entry in ledger.entries}
     ledger_entry_ids = {entry.candidate_id for entry in ledger.entries}
@@ -354,8 +357,41 @@ def update_candidate_ledger_from_run(ledger: SkillCandidateLedger, run_log: RunL
 
 def candidate_id_for(skill_name: str, capability: str) -> str:
     normalized = f"{_normalize_key(skill_name)}:{_normalize_key(capability)}"
+    digest = hashlib.sha256(normalized.encode("utf-8")).hexdigest()[:24]
+    return f"candidate_{digest}"
+
+
+def _legacy_candidate_id_for(skill_name: str, capability: str) -> str:
+    normalized = f"{_normalize_key(skill_name)}:{_normalize_key(capability)}"
     digest = hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:12]
     return f"candidate_{digest}"
+
+
+def _migrate_legacy_candidate_ids(ledger: SkillCandidateLedger) -> bool:
+    existing_ids = {entry.candidate_id for entry in ledger.entries}
+    remap: dict[str, str] = {}
+    changed = False
+    for entry in ledger.entries:
+        legacy_id = _legacy_candidate_id_for(entry.skill_name, entry.capability)
+        new_id = candidate_id_for(entry.skill_name, entry.capability)
+        if entry.candidate_id != legacy_id or entry.candidate_id == new_id:
+            continue
+        if new_id in existing_ids:
+            continue
+        remap[entry.candidate_id] = new_id
+        existing_ids.remove(entry.candidate_id)
+        existing_ids.add(new_id)
+        entry.candidate_id = new_id
+        changed = True
+
+    for entry in ledger.entries:
+        if entry.duplicate_of in remap:
+            entry.duplicate_of = remap[entry.duplicate_of]
+            changed = True
+
+    if changed:
+        ledger.updated_at = datetime.now()
+    return changed
 
 
 def _entry_for(

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import hashlib
 from datetime import datetime
 
 import pytest
@@ -91,6 +92,16 @@ def _request(
     return request
 
 
+def _legacy_candidate_id(skill_name: str, capability: str) -> str:
+    normalized = f"{_normalize_candidate_key(skill_name)}:{_normalize_candidate_key(capability)}"
+    digest = hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:12]
+    return f"candidate_{digest}"
+
+
+def _normalize_candidate_key(value: str) -> str:
+    return " ".join(value.strip().lower().split()) or "unknown"
+
+
 def test_missing_skill_requests_increment_one_persistent_ledger_entry(tmp_path):
     runs_dir = tmp_path / "runs"
     request = _request()
@@ -113,6 +124,75 @@ def test_missing_skill_requests_increment_one_persistent_ledger_entry(tmp_path):
     assert entry.last_seen_run_id == "run_b"
     assert entry.human_approval_required
     assert "Human approval is recorded before durable promotion" in entry.promotion_requirements
+
+
+def test_candidate_id_for_uses_sha256_sized_identifier():
+    candidate_id = candidate_id_for("detect-contradictions", "detect contradictions")
+
+    assert candidate_id.startswith("candidate_")
+    assert len(candidate_id.removeprefix("candidate_")) == 24
+
+
+def test_legacy_candidate_ids_and_duplicate_refs_migrate_on_load_and_write(tmp_path):
+    runs_dir = tmp_path / "runs"
+    runs_dir.mkdir()
+    old_original = _legacy_candidate_id("summarize-source", "summarize source")
+    old_duplicate = _legacy_candidate_id("source-summary", "source summary")
+    custom_id = "candidate_manual_review"
+    path = ledger_path(runs_dir)
+    path.write_text(
+        json.dumps(
+            {
+                "schema_version": 1,
+                "updated_at": "2026-06-01T12:00:00",
+                "entries": [
+                    {
+                        "candidate_id": old_original,
+                        "skill_name": "summarize-source",
+                        "capability": "summarize source",
+                        "status": "requested",
+                        "created_at": "2026-06-01T12:00:00",
+                        "updated_at": "2026-06-01T12:00:00",
+                    },
+                    {
+                        "candidate_id": old_duplicate,
+                        "skill_name": "source-summary",
+                        "capability": "source summary",
+                        "status": "requested",
+                        "duplicate_of": old_original,
+                        "created_at": "2026-06-01T12:00:00",
+                        "updated_at": "2026-06-01T12:00:00",
+                    },
+                    {
+                        "candidate_id": custom_id,
+                        "skill_name": "manual-review",
+                        "capability": "manual review",
+                        "status": "requested",
+                        "created_at": "2026-06-01T12:00:00",
+                        "updated_at": "2026-06-01T12:00:00",
+                    },
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    ledger = load_candidate_ledger(runs_dir)
+    original = next(entry for entry in ledger.entries if entry.skill_name == "summarize-source")
+    duplicate = next(entry for entry in ledger.entries if entry.skill_name == "source-summary")
+    custom = next(entry for entry in ledger.entries if entry.skill_name == "manual-review")
+
+    assert original.candidate_id == candidate_id_for("summarize-source", "summarize source")
+    assert duplicate.candidate_id == candidate_id_for("source-summary", "source summary")
+    assert duplicate.duplicate_of == original.candidate_id
+    assert custom.candidate_id == custom_id
+
+    write_candidate_ledger(ledger, runs_dir)
+    persisted = json.loads(path.read_text(encoding="utf-8"))
+    persisted_ids = {entry["candidate_id"] for entry in persisted["entries"]}
+    assert old_original not in persisted_ids
+    assert old_duplicate not in persisted_ids
+    assert custom_id in persisted_ids
 
 
 def test_replaying_existing_run_does_not_regress_latest_evidence(tmp_path):

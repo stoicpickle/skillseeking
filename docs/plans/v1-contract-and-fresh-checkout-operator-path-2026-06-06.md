@@ -10,7 +10,7 @@ Current branch context:
 
 - Branch: `codex/capgap-eval-private` tracking `private/codex/capgap-eval-private`.
 - Baseline: `candidate-decision` is committed and pushed as `2397dae feat: add candidate decision summary`.
-- `pyproject.toml` currently declares `version = "0.1.0"`.
+- At the time of this slice, `pyproject.toml` declared `version = "0.1.0"`. The final release gate later stamped `version = "1.0.0"`.
 
 ## Product Question
 
@@ -49,7 +49,7 @@ Create the v1 release contract and a fresh-checkout smoke path that prove the lo
 
 ## Boundaries
 
-- Do not change `pyproject.toml` to `1.0.0` in this slice.
+- Do not change `pyproject.toml` to `1.0.0` in this slice; that is reserved for the later final release gate.
 - Do not introduce durable `skills/` admission.
 - Do not enable stable routing.
 - Do not add active governor steering.

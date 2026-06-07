@@ -10,6 +10,7 @@ from typer.testing import CliRunner
 from app.cli import app
 from app.eval_runner import (
     EvalSuiteError,
+    _diagnostic_dimension_metrics,
     _input_request_expectation_issues,
     _stable_readiness_expectation_issues,
     load_eval_suite,
@@ -41,6 +42,49 @@ def test_load_eval_suite_reports_invalid_jsonl(tmp_path):
 
     with pytest.raises(EvalSuiteError, match="invalid JSONL"):
         load_eval_suite(suite)
+
+
+def test_diagnostic_dimension_suggests_dominant_failure_category():
+    metrics = _diagnostic_dimension_metrics(
+        [
+            {
+                "passed": False,
+                "failure_categories": ["wrong_route"],
+                "trace_complete": True,
+                "request_quality": [],
+                "expected": {},
+                "governor_expectation_passed": True,
+                "lifecycle_expectation_passed": True,
+                "stable_readiness_expectation_passed": True,
+            },
+            {
+                "passed": False,
+                "failure_categories": ["wrong_route"],
+                "trace_complete": True,
+                "request_quality": [],
+                "expected": {},
+                "governor_expectation_passed": True,
+                "lifecycle_expectation_passed": True,
+                "stable_readiness_expectation_passed": True,
+            },
+            {
+                "passed": False,
+                "failure_categories": ["approval_not_requested"],
+                "trace_complete": True,
+                "request_quality": [],
+                "expected": {},
+                "governor_expectation_passed": True,
+                "lifecycle_expectation_passed": True,
+                "stable_readiness_expectation_passed": True,
+            },
+        ]
+    )
+
+    assert metrics["failure_categories"] == {
+        "approval_not_requested": 1,
+        "wrong_route": 2,
+    }
+    assert metrics["suggested_next_action"].startswith("Improve route scoring")
 
 
 def test_run_eval_suite_writes_reports(copied_seed_skills, tmp_path):

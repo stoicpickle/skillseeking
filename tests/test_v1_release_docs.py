@@ -46,6 +46,7 @@ def test_release_notes_are_honest_about_current_v1_state(repo_root: Path):
     assert "status: v1.0 local cli release" in lower
     assert "package version: `1.0.0`" in lower
     assert "git release tag: `v1.0.0`" in lower
+    assert "released for local cli use" in lower
     assert "governed capability acquisition" in lower
     assert "stable routing is deferred for v1" in lower
     assert "not a true sandbox" in lower
@@ -53,6 +54,7 @@ def test_release_notes_are_honest_about_current_v1_state(repo_root: Path):
     assert "not provide an external skill marketplace" in lower
     assert "not stamped or tagged as `1.0.0` yet" not in lower
     assert "no `1.0.0` version stamp, tag, or published release" not in lower
+    assert "release gate passed on the commit tagged `v1.0.0`" in lower
 
 
 def test_changelog_and_version_are_stamped_for_1_0_0(repo_root: Path):

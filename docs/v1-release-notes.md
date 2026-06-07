@@ -8,7 +8,7 @@ Git release tag: `v1.0.0`
 
 Release date: 2026-06-06
 
-These notes describe the v1.0 local CLI release state. This is a local CLI release, not a hosted service, marketplace launch, package publish, production-safety claim, or true-sandbox claim.
+These notes describe the v1.0 local CLI release state: the code is version-stamped, tagged, and considered released for local CLI use. This is not a hosted service, marketplace launch, package publish, production-safety claim, or true-sandbox claim.
 
 ## Positioning
 
@@ -66,4 +66,4 @@ Release-relevant changes should also receive one scoped CodeRabbit review or a c
 
 ## Release Gate Result
 
-The release gate must pass on the commit tagged `v1.0.0`. Stable routing remains deferred for v1, so the conditional positive stable-routing eval expansion remains out of scope. The named v1 release eval row `v1_release_stable_routing_policy_deferred_even_when_ready` is the intended release proof for that boundary.
+The release gate passed on the commit tagged `v1.0.0`. Stable routing remains deferred for v1, so the conditional positive stable-routing eval expansion remains out of scope. The named v1 release eval row `v1_release_stable_routing_policy_deferred_even_when_ready` is the intended release proof for that boundary.
