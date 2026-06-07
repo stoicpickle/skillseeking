@@ -480,6 +480,10 @@ Slices:
 | Human-approved managed-prefix write mode | complete | `skill-agent shadow-managed-write` materializes only the proven shadow managed-prefix store/generation/pointer/receipt write after exact digest/hash/checkpoint matches and a separate `managed_write_plan_digest` approval |
 | Stable readiness report | complete | `skill-agent stable-readiness` composes candidate ledger, skill receipt, negative evidence, and durable registry evidence to advise candidate-to-stable review without stable promotion or routing authority |
 | Candidate decision summary | complete | `skill-agent candidate-decision` compresses stable-readiness, receipt, usefulness, admission, and negative evidence into one advisory `ask_human`, `test_more`, `deny`, or `defer` answer without granting approval or mutating evidence |
+| Operator summary decision compression | complete | `operator-summary` exposes prioritized `OPERATOR_DECISIONS` before raw evidence sections while remaining read-only |
+| Design-partner operator review pack | complete | `docs/operator-summary-review-pack.md` makes `operator-summary` the first inspection command and preserves no-admission/no-routing/no-governor-authority boundaries |
+| Candidate-to-stable durable admission RFC refresh | complete | `docs/plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md` names required proof and adversarial failure cases before any future authority |
+| Active governor preflight design | complete | `docs/plans/active-governor-preflight-design-2026-06-07.md` defines advisory, blocking, and authorizing boundaries without implementing active steering |
 | Roadmap checkpoint docs | complete | README and operating roadmap distinguish local testing readiness from production readiness |
 
 ## Next Slice Goal: Candidate-to-Stable Review Rehearsal
@@ -496,7 +500,10 @@ Slices:
 | Stable-readiness evidence compression | complete | Report names missing/blocking evidence and preserves `stable_promotion_authorized=false` plus `stable_routing_enabled=false` |
 | Stable-readiness eval dimension | complete | Eval expectations cover ready-for-review, duplicate-blocked, and negative-evidence-blocked stable-readiness states while stable routing remains disabled |
 | Candidate decision summary | complete | `candidate-decision` cites source reports for every reason and keeps approval/install/promotion/routing/mutation flags false |
-| Operator decision-load guardrails | working | Tests/docs preserve advisory-only semantics and avoid adding unrelated proof surfaces |
+| Operator decision-load guardrails | complete | Tests/docs preserve advisory-only semantics and avoid adding unrelated proof surfaces |
+| Design-partner review pack | complete | `operator-summary` is documented as the front door and `OPERATOR_DECISIONS` is locked by docs tests |
+| Candidate-to-stable/durable admission RFC | complete | Design-only RFC separates candidate evidence, promotion approval, durable admission review, managed-prefix local use, and stable routing |
+| Active governor preflight | complete | Design-only preflight names future eval gates while keeping governor behavior advisory |
 
 Boundaries:
 
@@ -504,3 +511,4 @@ Boundaries:
 - No durable candidate copy/install workflow is introduced.
 - `ready_for_durable_review` remains review evidence, not admission to `skills/`.
 - Stable routing, active governor steering, registry/ledger mutation, permission widening, and true sandboxing remain future work.
+- Candidate-to-stable/durable admission and active-governor docs added in this slice are preflight contracts only; they do not add runtime authority.

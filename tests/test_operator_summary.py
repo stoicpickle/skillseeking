@@ -31,6 +31,10 @@ def test_operator_summary_empty_runs_is_read_only(tmp_path):
     assert report.promotion_ready_candidates == []
     assert report.missing_evidence_items == []
     assert report.unsafe_or_negative_items == []
+    assert [item.decision for item in report.operator_decisions] == [
+        "verify_or_checkpoint_evidence"
+    ]
+    assert report.operator_decisions[0].severity == "info"
     assert report.run_logs_mutated is False
     assert report.candidate_ledger_mutated is False
     assert report.resolution_ledger_mutated is False
@@ -117,6 +121,13 @@ def test_operator_summary_consolidates_candidate_queues_and_human_input(tmp_path
     assert "missing_evidence:repeated_requested_gap:candidate_repeated" in _ids(
         report.missing_evidence_items
     )
+    assert [item.decision for item in report.operator_decisions[:3]] == [
+        "resolve_blockers",
+        "recover_missing_evidence",
+        "review_candidate_promotion_evidence",
+    ]
+    assert report.operator_decisions[0].severity == "blocker"
+    assert report.operator_decisions[1].priority < report.operator_decisions[2].priority
     assert _snapshot_tree(runs_dir) == before
 
 
@@ -168,6 +179,13 @@ def test_operator_summary_surfaces_negative_safety_and_unsafe_abort(tmp_path):
         and command.endswith("run_unsafe.json")
         for command in report.next_steps
     )
+    assert report.operator_decisions[0].decision == "resolve_blockers"
+    assert report.operator_decisions[0].primary_command
+    assert report.operator_decisions[0].primary_command.startswith("skill-agent explain ")
+    assert any(
+        item.decision == "review_negative_evidence"
+        for item in report.operator_decisions
+    )
 
 
 def test_operator_summary_reports_checkpoint_diffs_without_mutating(tmp_path):
@@ -214,7 +232,27 @@ def test_operator_summary_surfaces_unavailable_checkpoint_as_actionable(tmp_path
         and "--verify" in command
         for command in report.next_steps
     )
+    assert report.operator_decisions[0].decision == "resolve_blockers"
+    assert report.operator_decisions[0].severity == "blocker"
+    assert report.operator_decisions[0].primary_command
+    assert "evidence-checkpoint" in report.operator_decisions[0].primary_command
     assert "No active operator action surfaced" not in report.next_steps
+    assert _snapshot_tree(runs_dir) == before
+
+
+def test_operator_summary_clean_checkpoint_reports_no_active_decision(tmp_path):
+    runs_dir = tmp_path / "runs"
+    _write_text(runs_dir / "run_clean.json", '{"run_id": "run_clean"}\n')
+    build_evidence_checkpoint_report(runs_dir=runs_dir, dry_run=False)
+    before = _snapshot_tree(runs_dir)
+
+    report = build_operator_summary_report(runs_dir=runs_dir)
+
+    assert report.checkpoint.status == "matches_latest"
+    assert [item.decision for item in report.operator_decisions] == [
+        "no_active_operator_action"
+    ]
+    assert report.operator_decisions[0].primary_command is None
     assert _snapshot_tree(runs_dir) == before
 
 
@@ -241,11 +279,14 @@ def test_operator_summary_cli_json_and_text(tmp_path):
     report = OperatorSummaryReport.model_validate(data)
     assert report.advisory_only is True
     assert report.unsafe_or_negative_items
+    assert report.operator_decisions[0].decision == "resolve_blockers"
     assert report.durable_skills_mutated is False
     assert report.governor_steering_enabled is False
 
     assert text_result.exit_code == 0
     assert "OPERATOR_SUMMARY" in text_result.stdout
+    assert "OPERATOR_DECISIONS" in text_result.stdout
+    assert "resolve_blockers" in text_result.stdout
     assert "UNSAFE_OR_NEGATIVE" in text_result.stdout
     assert "MUTATION_BOUNDARY" in text_result.stdout
     assert "Governor steering enabled: false" in text_result.stdout

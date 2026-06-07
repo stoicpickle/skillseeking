@@ -78,6 +78,10 @@ Later governor work can add active control signals after the trace-only slice is
 
 The proof-carrying capability roadmap now includes a separate non-steering evidence governor. That report can recommend `ask`, `test_more`, `deny`, or `defer` from existing candidate proof surfaces, but it is not an active control loop and must not grant approval, install skills, promote candidates, widen permissions, route work, or steer execution.
 
+The current active-governor preflight is
+[Active Governor Preflight Design](plans/active-governor-preflight-design-2026-06-07.md).
+It defines advisory, blocking, and authorizing boundaries but does not implement active steering.
+
 ## Decision Rules
 
 The first implementation should be deterministic and boring.

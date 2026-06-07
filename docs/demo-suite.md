@@ -60,6 +60,7 @@ Expected sections:
 
 ```text
 OPERATOR_SUMMARY
+OPERATOR_DECISIONS
 BLOCKED_ITEMS
 HUMAN_INPUT
 PROMOTION_READY_CANDIDATES
@@ -70,7 +71,7 @@ MUTATION_BOUNDARY
 ```
 
 Proves:
-The existing evidence surfaces can be compressed into one advisory operator summary without approving, promoting, routing, appending checkpoint evidence, mutating ledgers, mutating durable skills, mutating registries, or steering the governor.
+The existing evidence surfaces can be compressed into one advisory operator summary with a prioritized `OPERATOR_DECISIONS` front door, without approving, promoting, routing, appending checkpoint evidence, mutating ledgers, mutating durable skills, mutating registries, or steering the governor.
 
 ## 1. Existing Skill
 

@@ -22,7 +22,7 @@ The public proof is the CLI demo suite and v1 smoke gate, not a polished hosted 
 
 This repo is open source under the [MIT License](LICENSE). Contributions are welcome inside the local CLI/dev-preview boundary described in [Contributing](CONTRIBUTING.md).
 
-The current public-preview learning loop is design-partner feedback on local governed capability acquisition, not hosted product onboarding or marketplace launch. See [Design Partner Feedback](docs/design-partner-feedback.md) and [Governance Monetization Principles](docs/governance-monetization-principles.md) for the strategy boundary.
+The current public-preview learning loop is design-partner feedback on local governed capability acquisition, not hosted product onboarding or marketplace launch. Start with the [Operator Summary Review Pack](docs/operator-summary-review-pack.md), then use [Design Partner Feedback](docs/design-partner-feedback.md) and [Governance Monetization Principles](docs/governance-monetization-principles.md) for the strategy boundary.
 
 ## Start Here: Skill Gauntlet
 
@@ -116,6 +116,7 @@ V1.0 still does not provide hosted operation, a marketplace, true sandboxing, de
 - [Evaluation plan](docs/evaluation-plan.md)
 - [Safety model](docs/safety-model.md)
 - [Roadmap](docs/roadmap.md)
+- [Operator summary review pack](docs/operator-summary-review-pack.md)
 - [Design partner feedback](docs/design-partner-feedback.md)
 - [Governance monetization principles](docs/governance-monetization-principles.md)
 - [V1.0 release tasking](docs/v1-release-tasking.md)
@@ -303,7 +304,7 @@ Candidate entries are evidence for human review only. Auto-promotion is disabled
 
 `negative-evidence` is a read-only report over preserved unfavorable or limiting evidence. It surfaces rejected, deferred, blocked, and repair-class input request resolutions plus blocked, quarantined, duplicate, or repair-required candidate ledger evidence. It does not rewrite history; it exists so failed or denied evidence stays visible instead of becoming survivor bias.
 
-`operator-summary` is a read-only operator index over local evidence. It consolidates active input requests, candidate review queues, promotion-ready candidates, missing-evidence signals, unsafe or negative evidence, and changes since the latest evidence checkpoint. It is advisory only: it does not approve, promote, install, route, append checkpoints, mutate ledgers, mutate durable skills, mutate registries, or steer the governor.
+`operator-summary` is a read-only operator index over local evidence. It consolidates active input requests, candidate review queues, promotion-ready candidates, missing-evidence signals, unsafe or negative evidence, and changes since the latest evidence checkpoint. Its `OPERATOR_DECISIONS` section is the recommended first inspection surface for design partners because it groups the next operator decision before the raw evidence sections. It is advisory only: it does not approve, promote, install, route, append checkpoints, mutate ledgers, mutate durable skills, mutate registries, or steer the governor.
 
 `evidence-checkpoint` creates or verifies a local hash-chain over core evidence files under `runs/`, excluding eval reports and the checkpoint ledger itself. Dry-run mode computes the next checkpoint without writing. `--no-dry-run` appends one record to `runs/evidence_checkpoints.json`; `--verify` checks the checkpoint chain and whether current evidence still matches the latest checkpoint. It is tamper-evidence only: it does not sign evidence, prove trust, approve durable admission, mutate run logs, mutate candidate or resolution ledgers, copy/install durable skills, or steer the governor.
 

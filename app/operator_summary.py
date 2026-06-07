@@ -21,6 +21,7 @@ from app.models import (
     InputRequestQueueItem,
     NegativeEvidenceItem,
     OperatorCheckpointSummary,
+    OperatorDecisionItem,
     OperatorSummarySection,
     OperatorSummarySeverity,
     OperatorSummaryItem,
@@ -142,6 +143,16 @@ def build_operator_summary_report(*, runs_dir: Path) -> OperatorSummaryReport:
     missing_evidence_items = _sort_items(missing_evidence_items)
     unsafe_or_negative_items = _sort_items(unsafe_or_negative_items)
     checkpoint_items = _sort_items(checkpoint_items)
+    operator_decisions = _operator_decisions(
+        runs_dir=runs_dir,
+        blocked_items=blocked_items,
+        human_input_items=human_input_items,
+        promotion_ready_items=promotion_ready_items,
+        missing_evidence_items=missing_evidence_items,
+        unsafe_or_negative_items=unsafe_or_negative_items,
+        checkpoint_items=checkpoint_items,
+        checkpoint=checkpoint,
+    )
 
     return OperatorSummaryReport(
         runs_dir=str(runs_dir),
@@ -159,6 +170,7 @@ def build_operator_summary_report(*, runs_dir: Path) -> OperatorSummaryReport:
         unsafe_or_negative_items=unsafe_or_negative_items,
         checkpoint_change_items=checkpoint_items,
         checkpoint=checkpoint,
+        operator_decisions=operator_decisions,
         warnings=sorted(set(warnings)),
         next_steps=_next_steps(
             runs_dir=runs_dir,
@@ -414,6 +426,169 @@ def _checkpoint_file_items(change_type: str, paths: list[str]) -> list[OperatorS
         )
         for path in paths
     ]
+
+
+def _operator_decisions(
+    *,
+    runs_dir: Path,
+    blocked_items: list[OperatorSummaryItem],
+    human_input_items: list[OperatorSummaryItem],
+    promotion_ready_items: list[OperatorSummaryItem],
+    missing_evidence_items: list[OperatorSummaryItem],
+    unsafe_or_negative_items: list[OperatorSummaryItem],
+    checkpoint_items: list[OperatorSummaryItem],
+    checkpoint: OperatorCheckpointSummary,
+) -> list[OperatorDecisionItem]:
+    runs_arg = f"--runs-dir {runs_dir}"
+    decisions: list[OperatorDecisionItem] = []
+
+    blocker_items = [
+        item for item in blocked_items + unsafe_or_negative_items if item.severity == "blocker"
+    ]
+    checkpoint_unavailable_items = [
+        item for item in checkpoint_items if item.status == "checkpoint_unavailable"
+    ]
+    if blocker_items or checkpoint.status == "checkpoint_unavailable":
+        support_commands = [
+            *(command for item in blocker_items for command in item.next_commands),
+            *(command for item in checkpoint_unavailable_items for command in item.next_commands),
+        ]
+        if human_input_items:
+            support_commands.append(f"skill-agent input-requests {runs_arg}")
+        if checkpoint.status == "checkpoint_unavailable":
+            support_commands.append(
+                f"skill-agent evidence-checkpoint {runs_arg} --verify"
+            )
+        primary_command = _first_command(
+            [
+                *(item.next_commands for item in blocker_items if item.source_type == "run_log"),
+                *(item.next_commands for item in checkpoint_unavailable_items),
+                *(item.next_commands for item in blocker_items if item.source_type != "run_log"),
+                [f"skill-agent input-requests {runs_arg}"] if human_input_items else [],
+                [f"skill-agent evidence-checkpoint {runs_arg} --verify"]
+                if checkpoint.status == "checkpoint_unavailable"
+                else [],
+            ]
+        )
+        decisions.append(
+            OperatorDecisionItem(
+                priority=10,
+                severity="blocker",
+                decision="resolve_blockers",
+                title="Resolve unsafe or blocked evidence",
+                reason="Unsafe, blocked, or unavailable evidence must be resolved before promotion or stable-use review.",
+                primary_command=primary_command,
+                supporting_commands=_unique(support_commands),
+                source_item_ids=[item.id for item in blocker_items + checkpoint_unavailable_items],
+                blockers=_unique(
+                    [
+                        *(blocker for item in blocker_items for blocker in item.blockers),
+                        *(blocker for item in checkpoint_unavailable_items for blocker in item.blockers),
+                    ]
+                ),
+            )
+        )
+
+    if missing_evidence_items:
+        decisions.append(
+            OperatorDecisionItem(
+                priority=20,
+                severity="warning",
+                decision="recover_missing_evidence",
+                title="Recover missing evidence",
+                reason="One or more requests or candidates need evidence before review can progress.",
+                primary_command=f"skill-agent input-requests {runs_arg}",
+                supporting_commands=_unique(
+                    [command for item in missing_evidence_items for command in item.next_commands]
+                ),
+                source_item_ids=[item.id for item in missing_evidence_items],
+                blockers=_unique(
+                    [blocker for item in missing_evidence_items for blocker in item.blockers]
+                ),
+            )
+        )
+
+    if promotion_ready_items:
+        decisions.append(
+            OperatorDecisionItem(
+                priority=30,
+                severity="warning",
+                decision="review_candidate_promotion_evidence",
+                title="Review candidate promotion evidence",
+                reason="Promotion-ready candidates still require human review; candidate evidence is not durable admission.",
+                primary_command=f"skill-agent candidates {runs_arg}",
+                supporting_commands=_unique(
+                    [command for item in promotion_ready_items for command in item.next_commands]
+                ),
+                source_item_ids=[item.id for item in promotion_ready_items],
+            )
+        )
+
+    non_run_negative_items = [
+        item for item in unsafe_or_negative_items if item.source_type != "run_log"
+    ]
+    if non_run_negative_items:
+        decisions.append(
+            OperatorDecisionItem(
+                priority=40,
+                severity="warning",
+                decision="review_negative_evidence",
+                title="Review negative or safety evidence",
+                reason="Negative, safety, repair, or unfavorable evidence should be reviewed before any promotion decision.",
+                primary_command=f"skill-agent negative-evidence {runs_arg}",
+                supporting_commands=_unique(
+                    [command for item in non_run_negative_items for command in item.next_commands]
+                ),
+                source_item_ids=[item.id for item in non_run_negative_items],
+                blockers=_unique(
+                    [blocker for item in non_run_negative_items for blocker in item.blockers]
+                ),
+                warnings=_unique(
+                    [warning for item in non_run_negative_items for warning in item.warnings]
+                ),
+            )
+        )
+
+    if checkpoint.status in {"no_checkpoint", "differs_from_latest", "checkpoint_blocked"}:
+        severity: OperatorSummarySeverity = "info"
+        if checkpoint.status == "checkpoint_blocked":
+            severity = "blocker"
+        elif checkpoint.status == "differs_from_latest":
+            severity = "warning"
+        decisions.append(
+            OperatorDecisionItem(
+                priority=50,
+                severity=severity,
+                decision="verify_or_checkpoint_evidence",
+                title="Verify or checkpoint evidence",
+                reason=f"Evidence checkpoint status is {checkpoint.status}.",
+                primary_command=f"skill-agent evidence-checkpoint {runs_arg} --verify",
+                source_item_ids=[item.id for item in checkpoint_items],
+                blockers=list(checkpoint.blockers),
+                warnings=list(checkpoint.warnings),
+            )
+        )
+
+    if not decisions:
+        decisions.append(
+            OperatorDecisionItem(
+                priority=90,
+                severity="info",
+                decision="no_active_operator_action",
+                title="No active operator action",
+                reason="No blockers, missing evidence, unsafe evidence, promotion-ready candidates, or checkpoint changes are surfaced by current local evidence.",
+            )
+        )
+
+    return sorted(decisions, key=lambda item: (item.priority, _SEVERITY_RANK[item.severity]))
+
+
+def _first_command(command_groups: list[list[str]]) -> str | None:
+    for commands in command_groups:
+        for command in commands:
+            if command:
+                return command
+    return None
 
 
 def _next_steps(

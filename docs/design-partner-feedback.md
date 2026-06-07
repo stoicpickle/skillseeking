@@ -25,11 +25,13 @@ hosted deployment, marketplace distribution, or irreversible writes.
 Use one short path for each partner:
 
 1. Install the repo locally.
-2. Run `bash scripts/run_launch_demo.sh`.
-3. Run one contained missing-skill task through `skill-agent`.
-4. Inspect the run log, candidate evidence, `candidate-decision`, and
-   `operator-summary`.
-5. Stop before durable generated-skill admission, stable routing, hosted
+2. Read [Operator Summary Review Pack](operator-summary-review-pack.md).
+3. Run `bash scripts/run_launch_demo.sh`.
+4. Run one contained missing-skill task through `skill-agent` if the launch demo
+   is not enough.
+5. Inspect `operator-summary` first, then use the run log, `explain`, candidate
+   evidence, and `candidate-decision` as supporting proof.
+6. Stop before durable generated-skill admission, stable routing, hosted
    deployment, marketplace behavior, or sandbox claims.
 
 The goal is to learn where the governed capability-gap loop is clear or
@@ -48,6 +50,7 @@ Use this template for each partner:
 - Local environment:
 - Setup friction:
 - Launch-demo comprehension:
+- Operator-summary decision clarity:
 - Evidence-surface confusion:
 - Candidate-decision confusion:
 - Safety-boundary confusion:

@@ -172,3 +172,102 @@ def test_no_write_dependency_contract_docs_preserve_boundaries(repo_root: Path):
     assert "stable routing, dependency installation, registry mutation, ledger mutation" in docs[
         "skill_lifecycle"
     ]
+
+
+def test_candidate_to_stable_rfc_preserves_design_only_boundary(repo_root: Path):
+    rfc_path = (
+        repo_root
+        / "docs"
+        / "plans"
+        / "candidate-to-stable-and-durable-admission-rfc-2026-06-07.md"
+    )
+    rfc = rfc_path.read_text(encoding="utf-8")
+    docs = {
+        "build_map": (repo_root / "docs" / "build-map.md").read_text(encoding="utf-8"),
+        "operating_roadmap": (repo_root / "docs" / "operating-roadmap.md").read_text(
+            encoding="utf-8"
+        ),
+        "skill_lifecycle": (repo_root / "docs" / "skill-lifecycle.md").read_text(
+            encoding="utf-8"
+        ),
+        "stable_routing": (repo_root / "docs" / "stable-routing-policy.md").read_text(
+            encoding="utf-8"
+        ),
+    }
+
+    required_rfc_phrases = [
+        "Status: design only",
+        "Candidate evidence",
+        "Promotion approval",
+        "Durable admission review",
+        "Managed-prefix local use",
+        "Stable routing",
+        "Source hash",
+        "Exact plan digest",
+        "Latest evidence checkpoint hash",
+        "Human approval ID",
+        "Approval expiry",
+        "Permission diff",
+        "Dependency diff",
+        "Rollback or deactivation evidence",
+        "Stale source hash",
+        "Expired approval",
+        "Digest mismatch",
+        "Permission widening",
+        "Duplicate candidate",
+        "Negative evidence present",
+        "Missing checkpoint",
+        "Symlink or path escape",
+        "No durable generated-skill admission into `skills/`.",
+        "No positive stable routing.",
+        "No active governor steering.",
+    ]
+    for phrase in required_rfc_phrases:
+        assert phrase in rfc
+
+    for text in docs.values():
+        assert "candidate-to-stable-and-durable-admission-rfc-2026-06-07.md" in text
+    assert "It does not enable stable routing." in docs["stable_routing"]
+    assert "not a write path" in docs["operating_roadmap"]
+
+
+def test_active_governor_preflight_preserves_non_steering_boundary(repo_root: Path):
+    design_path = (
+        repo_root
+        / "docs"
+        / "plans"
+        / "active-governor-preflight-design-2026-06-07.md"
+    )
+    design = design_path.read_text(encoding="utf-8")
+    docs = {
+        "build_map": (repo_root / "docs" / "build-map.md").read_text(encoding="utf-8"),
+        "operating_roadmap": (repo_root / "docs" / "operating-roadmap.md").read_text(
+            encoding="utf-8"
+        ),
+        "homeostatic_governor": (repo_root / "docs" / "homeostatic-governor.md").read_text(
+            encoding="utf-8"
+        ),
+    }
+
+    required_design_phrases = [
+        "Status: design only",
+        "Advisory",
+        "Blocking",
+        "Authorizing",
+        "Current governor surfaces are advisory or trace-only",
+        "must not steer routing",
+        "Smallest Reversible Future Behavior",
+        "checkpoint verification fails",
+        "disabled by default",
+        "governor_blocker_missing",
+        "governor_authorized_without_approval",
+        "override_digest_mismatch",
+        "No code path starts consulting the governor for new authority.",
+        "No routing, promotion, durable admission, permission, dependency, marketplace",
+    ]
+    for phrase in required_design_phrases:
+        assert phrase in design
+
+    for text in docs.values():
+        assert "active-governor-preflight-design-2026-06-07.md" in text
+    assert "does not implement active steering" in docs["homeostatic_governor"]

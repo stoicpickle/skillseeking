@@ -37,13 +37,17 @@ The v0 surface is implemented and proven through the completed milestones in the
 - V1 stable routing policy through [Stable Routing Policy](stable-routing-policy.md), explicitly deferring positive stable routing while preserving not-routed eval proof.
 - Stable readiness reports through `skill-agent stable-readiness`, composing candidate ledger, skill receipt, negative evidence, and durable registry evidence to advise candidate-to-stable review without authorizing stable promotion or routing.
 - Candidate decision summaries through `skill-agent candidate-decision`, compressing stable-readiness, receipt, usefulness, admission, and negative evidence into one advisory next decision without granting approval, install, promotion, routing, permission, or governor authority.
+- Operator summary decision compression through `skill-agent operator-summary`, presenting prioritized `OPERATOR_DECISIONS` before raw evidence while remaining read-only.
+- Design-partner operator review path through [Operator Summary Review Pack](operator-summary-review-pack.md).
+- Candidate-to-stable and durable admission preflight RFC through [Candidate-To-Stable And Durable Admission RFC](plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md), design-only and not a write path.
+- Active governor preflight through [Active Governor Preflight Design](plans/active-governor-preflight-design-2026-06-07.md), design-only and not active steering.
 - Advisory lifecycle review queues for promotion-ready, repair-needed, blocked/quarantined, duplicate-merge-needed, and repeated-requested-gap candidate records.
 - Durable admission dry-run reports through `skill-agent admission-plan`, without copying, installing, or promoting skills.
 - Remote progress input focus through `InputRequest`, `skill-agent input-requests`, `INPUT_NEEDED`, `INPUT_FOCUS`, append-only input request resolutions, and resolution-ledger eval assertions.
 
 The current product proof is a CLI-first prototype, not a production agent framework. The public phase framing remains in [Roadmap](roadmap.md): static skill loader -> skill request mode -> Markdown-only Skillsmith -> scripted skills -> SkillOps.
 
-The next product risk is proof-surface sprawl: many reports now expose useful evidence, but the operator still needs a smaller answer about what decision to make next. Near-term work should compress existing evidence into clearer advisory decisions before adding durable admission, stable routing, dependency installation, UI, marketplace, or active governor authority.
+The next product risk is proof-surface sprawl: many reports now expose useful evidence, but the operator still needs a smaller answer about what decision to make next. Near-term work should keep `operator-summary` as the front door and pressure-test evidence gates before adding durable admission, stable routing, dependency installation, UI, marketplace, or active governor authority.
 
 The current v1 planning source is [V1.0 Release Tasking](v1-release-tasking.md), and the local v1 promise is drafted in [V1.0 Release Contract](v1-release-contract.md). The active slice is [V1 Contract And Fresh-Checkout Operator Path](plans/v1-contract-and-fresh-checkout-operator-path-2026-06-06.md).
 
@@ -95,6 +99,7 @@ Promotion remains human-governed:
    - Operator sequence for `shadow-managed-write`: prepare durable admission proof, prepare acceptance evidence, verify `shadow-write-gate`, dry-run `shadow-managed-write` to capture `managed_write_plan_digest`, record a separate non-expired write approval with that digest, checkpoint and verify evidence, then execute `shadow-managed-write --no-dry-run` with every expected digest/hash plus the latest checkpoint hash and `--write-approval-id`.
    - Next coverage: candidate-to-stable review rehearsal through `stable-readiness`, stable-readiness eval assertions, promotion review queues, durable `skills/` admission, and stable routing only after stable-readiness evidence, the managed-prefix boundary, and no-write dependency evidence boundary remain proven. `stable-readiness` is advisory only: it is not stable promotion, durable `skills/` admission, stable routing, registry mutation, ledger mutation, permission widening, or governor steering. Dependency evidence is not dependency installation, candidate-to-stable promotion, durable `skills/` admission, registry mutation, ledger mutation, stable routing, or governor steering.
    - Current decision compression: `candidate-decision` uses existing proof reports to return `ask_human`, `test_more`, `deny`, or `defer` plus source-backed reasons and the next `stable-readiness` command, without creating new persistence or authority.
+   - Current review front door: `operator-summary` exposes prioritized `OPERATOR_DECISIONS`; [Candidate-To-Stable And Durable Admission RFC](plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md) names the proof gates before any future authority.
    - Keep permission widening human-gated and evidence-backed.
 
 3. **Lifecycle review queues and health expansion**
@@ -186,6 +191,7 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-06: Froze representative v1 JSON/data-contract fixtures for run logs, candidate ledgers, input resolutions, checkpoints, candidate decisions, and eval reports. The freeze is a compatibility sentinel, not exhaustive JSON Schema generation.
 - 2026-06-06: Added v1 release-candidate documentation in `CHANGELOG.md` and `docs/v1-release-notes.md`; README now frames the repo as a local v1 CLI release candidate while keeping the final `1.0.0` gate pending.
 - 2026-06-06: Stamped the v1.0 local CLI release state: `pyproject.toml` version `1.0.0`, planned private Git tag `v1.0.0`, final v1 release docs, and v1 smoke as the release verifier. Stable routing remains deferred for v1.
+- 2026-06-07: Added `operator-summary` decision compression, the design-partner review pack, candidate-to-stable/durable admission RFC refresh, and active-governor preflight design. These compress review evidence and define future gates without adding durable admission, stable routing, dependency installation, permission widening, or governor steering.
 
 - 2026-06-01: Consolidated near-term roadmap into this document before runtime Skill Candidate Ledger work.
 - 2026-06-01: Named **Skill Candidate Ledger** as the next runtime milestone.

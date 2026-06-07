@@ -17,6 +17,7 @@ from app.models import (
     InputRequest,
     LoadedSkillLog,
     NegativeEvidenceReport,
+    OperatorDecisionItem,
     OperatorSummaryItem,
     OperatorSummaryReport,
     ScriptExecutionLog,
@@ -529,6 +530,7 @@ def emit_operator_summary_output(report: OperatorSummaryReport) -> None:
     )
     typer.echo("")
 
+    _emit_operator_decisions(report.operator_decisions)
     _emit_operator_summary_items("BLOCKED_ITEMS", report.blocked_items)
     _emit_operator_summary_items("HUMAN_INPUT", report.human_input_items)
     _emit_operator_summary_items(
@@ -570,6 +572,26 @@ def emit_operator_summary_output(report: OperatorSummaryReport) -> None:
 
     typer.echo("NEXT_STEPS")
     _emit_string_items(report.next_steps)
+
+
+def _emit_operator_decisions(items: list[OperatorDecisionItem]) -> None:
+    typer.echo("OPERATOR_DECISIONS")
+    if not items:
+        typer.echo("none")
+        typer.echo("")
+        return
+    for item in items:
+        typer.echo(f"- {item.decision}")
+        typer.echo(f"  Priority: {item.priority}")
+        typer.echo(f"  Severity: {item.severity}")
+        typer.echo(f"  Title: {item.title}")
+        typer.echo(f"  Reason: {item.reason}")
+        typer.echo(f"  Primary command: {item.primary_command or '-'}")
+        typer.echo(f"  Supporting commands: {_format_list(item.supporting_commands)}")
+        typer.echo(f"  Source item ids: {_format_list(item.source_item_ids)}")
+        typer.echo(f"  Blockers: {_format_list(item.blockers)}")
+        typer.echo(f"  Warnings: {_format_list(item.warnings)}")
+    typer.echo("")
 
 
 def _emit_operator_summary_items(

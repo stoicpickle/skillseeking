@@ -15,6 +15,15 @@ def test_v1_release_docs_exist_and_are_non_empty(repo_root: Path):
         repo_root / "docs" / "launch-proof-2026-06-07.md",
         repo_root / "docs" / "launch-demo-transcript.md",
         repo_root / "CONTRIBUTING.md",
+        repo_root / "docs" / "operator-summary-review-pack.md",
+        repo_root
+        / "docs"
+        / "plans"
+        / "candidate-to-stable-and-durable-admission-rfc-2026-06-07.md",
+        repo_root
+        / "docs"
+        / "plans"
+        / "active-governor-preflight-design-2026-06-07.md",
         repo_root / "docs" / "design-partner-feedback.md",
         repo_root / "docs" / "governance-monetization-principles.md",
     ]
@@ -43,6 +52,7 @@ def test_readme_positions_v1_as_local_cli_with_boundaries(repo_root: Path):
     assert "docs/v1-release-notes.md" in readme
     assert "docs/launch-demo-transcript.md" in readme
     assert "CONTRIBUTING.md" in readme
+    assert "docs/operator-summary-review-pack.md" in readme
     assert "docs/design-partner-feedback.md" in readme
     assert "docs/governance-monetization-principles.md" in readme
     assert "CHANGELOG.md" in readme
@@ -170,6 +180,9 @@ def test_launch_demo_transcript_preserves_public_boundaries(repo_root: Path):
 
 def test_public_preview_strategy_docs_match_source_and_scope(repo_root: Path):
     contributing = (repo_root / "CONTRIBUTING.md").read_text(encoding="utf-8")
+    review_pack = (repo_root / "docs" / "operator-summary-review-pack.md").read_text(
+        encoding="utf-8"
+    )
     design_partners = (repo_root / "docs" / "design-partner-feedback.md").read_text(
         encoding="utf-8"
     )
@@ -183,6 +196,18 @@ def test_public_preview_strategy_docs_match_source_and_scope(repo_root: Path):
     product_manager = (repo_root / "docs" / "product-manager.md").read_text(
         encoding="utf-8"
     )
+    candidate_stable_rfc = (
+        repo_root
+        / "docs"
+        / "plans"
+        / "candidate-to-stable-and-durable-admission-rfc-2026-06-07.md"
+    ).read_text(encoding="utf-8")
+    governor_preflight = (
+        repo_root
+        / "docs"
+        / "plans"
+        / "active-governor-preflight-design-2026-06-07.md"
+    ).read_text(encoding="utf-8")
 
     assert "MIT License" in (repo_root / "LICENSE").read_text(encoding="utf-8")
     assert "open source under the MIT License" in contributing
@@ -190,7 +215,15 @@ def test_public_preview_strategy_docs_match_source_and_scope(repo_root: Path):
     assert "not a hosted product" in contributing
     assert "durable generated-skill admission into `skills/`" in contributing
 
+    assert "operator-summary" in review_pack
+    assert "OPERATOR_DECISIONS" in review_pack
+    assert "Candidate evidence means" in review_pack
+    assert "not admission" in review_pack
+    assert "No active governor steering" in review_pack
+
     assert "3 to 5 design partners" in design_partners
+    assert "Operator Summary Review Pack" in design_partners
+    assert "Operator-summary decision clarity" in design_partners
     assert "setup friction" in design_partners.lower()
     assert "candidate-decision confusion" in design_partners.lower()
     assert "stable-routing deferral confusion" in design_partners.lower()
@@ -203,12 +236,29 @@ def test_public_preview_strategy_docs_match_source_and_scope(repo_root: Path):
     assert "marketplace remains deferred" in roadmap.lower()
     assert "Go-To-Market Boundary" in product_brief
     assert "Public Preview Strategy Boundary" in product_manager
+    assert "Operator Summary Review Pack" in product_manager
+    assert "Candidate-To-Stable And Durable Admission RFC" in product_manager
+    assert "Active Governor Preflight Design" in product_manager
+    assert "Status: design only" in candidate_stable_rfc
+    assert "No positive stable routing." in candidate_stable_rfc
+    assert "No active governor steering." in candidate_stable_rfc
+    assert "Status: design only" in governor_preflight
+    assert "No code path starts consulting the governor for new authority." in governor_preflight
 
 
 def test_public_docs_do_not_add_positive_authority_claims(repo_root: Path):
     docs = [
         repo_root / "README.md",
         repo_root / "CONTRIBUTING.md",
+        repo_root / "docs" / "operator-summary-review-pack.md",
+        repo_root
+        / "docs"
+        / "plans"
+        / "candidate-to-stable-and-durable-admission-rfc-2026-06-07.md",
+        repo_root
+        / "docs"
+        / "plans"
+        / "active-governor-preflight-design-2026-06-07.md",
         repo_root / "docs" / "v1-release-notes.md",
         repo_root / "docs" / "v1-release-contract.md",
         repo_root / "docs" / "demo-suite.md",

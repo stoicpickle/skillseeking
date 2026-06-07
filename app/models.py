@@ -1077,6 +1077,21 @@ class OperatorSummaryItem(BaseModel):
     created_at: datetime | None = None
 
 
+class OperatorDecisionItem(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    priority: int
+    severity: OperatorSummarySeverity
+    decision: str
+    title: str
+    reason: str
+    primary_command: str | None = None
+    supporting_commands: list[str] = Field(default_factory=list)
+    source_item_ids: list[str] = Field(default_factory=list)
+    blockers: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
 class OperatorCheckpointSummary(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -1120,6 +1135,7 @@ class OperatorSummaryReport(BaseModel):
     unsafe_or_negative_items: list[OperatorSummaryItem] = Field(default_factory=list)
     checkpoint_change_items: list[OperatorSummaryItem] = Field(default_factory=list)
     checkpoint: OperatorCheckpointSummary
+    operator_decisions: list[OperatorDecisionItem] = Field(default_factory=list)
     warnings: list[str] = Field(default_factory=list)
     next_steps: list[str] = Field(default_factory=list)
     run_logs_mutated: bool = False

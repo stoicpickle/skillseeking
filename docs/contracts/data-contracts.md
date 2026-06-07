@@ -1283,8 +1283,9 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `unsafe_or_negative_items`: safety approval requests, safety-flagged candidates, negative evidence, and unsafe aborted run logs.
 - `checkpoint`: latest checkpoint status, checkpoint hash, current evidence counts, and added/changed/removed evidence file paths since the latest checkpoint.
 - `checkpoint_change_items`: per-file checkpoint change records for added, changed, or removed evidence.
+- `operator_decisions`: additive decision-compression items ordered by priority. Each item names the operator decision, severity, primary command, supporting commands, source item IDs, blockers, and warnings. Decisions are advisory summaries over the raw evidence items; they do not approve, promote, install, route, append checkpoints, or mutate evidence.
 
-The report is advisory only. `dry_run` and `advisory_only` remain true, and the mutation flags for run logs, candidate ledgers, resolution ledgers, checkpoint ledgers, durable skills, registry state, and governor steering remain false. It does not replace the deeper reports; its `next_steps` point back to commands such as `input-requests`, `candidates`, `negative-evidence`, and `evidence-checkpoint --verify`.
+The report is advisory only. `dry_run` and `advisory_only` remain true, and the mutation flags for run logs, candidate ledgers, resolution ledgers, checkpoint ledgers, durable skills, registry state, and governor steering remain false. It does not replace the deeper reports; `operator_decisions` and `next_steps` point back to commands such as `input-requests`, `candidates`, `candidate-decision`, `negative-evidence`, `explain`, and `evidence-checkpoint --verify`.
 
 ## Eval Task
 
