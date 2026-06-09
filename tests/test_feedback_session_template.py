@@ -2,10 +2,14 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
+import re
 
 from typer.testing import CliRunner
 
 from app.cli import app
+
+
+ANSI_PATTERN = re.compile(r"\x1b\[[0-9;]*m")
 
 
 CANONICAL_FIELDS = [
@@ -255,7 +259,11 @@ def test_feedback_session_append_requires_partner_and_date_for_write(tmp_path: P
     )
 
     assert result.exit_code != 0
-    assert "--partner-alias and --date are required" in result.output
+    output = ANSI_PATTERN.sub("", result.output)
+    assert "partner-alias" in output
+    assert "date" in output
+    assert "required" in output
+    assert "no-dry-run" in output
     assert "No design-partner sessions have been recorded yet." in feedback_log.read_text(
         encoding="utf-8"
     )
