@@ -81,7 +81,7 @@ Key ownership today:
 - `app/skill_router.py:51-76` computes weighted lexical/schema/status/risk/compatibility scores; `RouteDecision` does not preserve ranked candidates.
 
 ### Prior art and constraints
-- No existing `docs/plans/` or `docs/completed/` prior plans were found before this plan was created.
+- No existing `docs/internal/plans/` or `docs/completed/` prior plans were found before this plan was created.
 - `docs/mvp-plan.md:87-104`, `docs/adr/0001-markdown-only-mvp.md:21-35`, and `docs/safety-model.md:3-54` establish the Markdown-only generated-skill safety boundary: no generated scripts/deps/network/secrets/promotion and no filesystem writes outside sanctioned artifacts.
 - `docs/skill-lifecycle.md:3-13` distinguishes requested, draft, temporary, candidate, stable, deprecated, and blocked; temporary means one-task use after minimal validation.
 - `docs/evaluation-plan.md:129-137` names success criteria: structured requests, no silent unsafe execution, visible trace, no unevaluated temporary promotion, and malicious-skill rejection.
@@ -412,7 +412,7 @@ Keep human-readable text as the default.
 - Demo/acceptance docs stop implying temporary skills are promoted or durable by default.
 - Scripted skills are described as restricted local subprocesses, not a true sandbox.
 
-**Key files:** `docs/contracts/data-contracts.md`, `docs/demo-suite.md`, `docs/build-map.md`, `docs/dev-log.md`, `docs/safety-model.md`, `docs/skill-lifecycle.md`, `README.md`, this plan
+**Key files:** `docs/contracts/data-contracts.md`, `docs/demo-suite.md`, `docs/build-map.md`, `docs/internal/dev-log.md`, `docs/safety-model.md`, `docs/skill-lifecycle.md`, `README.md`, this plan
 
 **Dependencies:** Items 1–11
 

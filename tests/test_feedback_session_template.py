@@ -47,8 +47,8 @@ def test_feedback_session_template_outputs_canonical_markdown_block():
     assert result.exit_code == 0
     assert "FEEDBACK_SESSION_TEMPLATE" in result.stdout
     assert "Status: template_only_read_only" in result.stdout
-    assert "Source doc: docs/design-partner-feedback-log.md" in result.stdout
-    assert "Durable record target: docs/design-partner-feedback-log.md" in result.stdout
+    assert "Source doc: docs/reviewer-feedback-log.md" in result.stdout
+    assert "Durable record target: docs/reviewer-feedback-log.md" in result.stdout
     assert "Feedback log appended: false" in result.stdout
     assert "Rollups updated: false" in result.stdout
     assert "## Session YYYY-MM-DD Partner Alias" in result.stdout
@@ -74,9 +74,9 @@ def test_feedback_session_template_json_is_template_only_and_ordered():
     assert result.exit_code == 0
     data = json.loads(result.stdout)
     assert data["status"] == "template_only_read_only"
-    assert data["template_name"] == "design_partner_session_entry"
-    assert data["source_doc"] == "docs/design-partner-feedback-log.md"
-    assert data["durable_record_target"] == "docs/design-partner-feedback-log.md"
+    assert data["template_name"] == "reviewer_session_entry"
+    assert data["source_doc"] == "docs/reviewer-feedback-log.md"
+    assert data["durable_record_target"] == "docs/reviewer-feedback-log.md"
     assert data["heading"] == "## Session YYYY-MM-DD Partner Alias"
     assert data["fields"] == CANONICAL_FIELDS
     assert data["template_only"] is True
@@ -237,7 +237,7 @@ def test_feedback_session_append_no_dry_run_records_session_and_rollups(tmp_path
     assert "| Partners who confused candidate evidence with durable admission | 0 |" in updated
     assert "| Partners who confused stable-readiness with stable routing | 0 |" in updated
     assert "| Partners who understood `ready_to_enable_new_authority=false` | 1 |" in updated
-    assert "No design-partner sessions have been recorded yet." not in updated
+    assert "No reviewer sessions have been recorded yet." not in updated
     assert "## Session 2026-06-07 alpha" in updated
     assert "- Launch-demo completed: yes" in updated
     assert "- Follow-up priority: none" in updated
@@ -264,7 +264,7 @@ def test_feedback_session_append_requires_partner_and_date_for_write(tmp_path: P
     assert "date" in output
     assert "required" in output
     assert "no-dry-run" in output
-    assert "No design-partner sessions have been recorded yet." in feedback_log.read_text(
+    assert "No reviewer sessions have been recorded yet." in feedback_log.read_text(
         encoding="utf-8"
     )
 
@@ -328,7 +328,7 @@ def test_feedback_log_summary_reports_ready_for_manual_synthesis(tmp_path: Path)
         "| Partners who identified the next `operator-summary` decision unaided | 2 |",
     )
     text = text.replace(
-        "No design-partner sessions have been recorded yet.",
+        "No reviewer sessions have been recorded yet.",
         "\n".join(
             [
                 "## Session 2026-06-07 alpha",
@@ -378,7 +378,7 @@ def test_feedback_log_summary_reports_ready_for_manual_synthesis(tmp_path: Path)
 def test_feedback_log_summary_warns_when_rollup_and_headings_disagree(tmp_path: Path):
     feedback_log = tmp_path / "feedback-log.md"
     text = _feedback_log_text().replace(
-        "No design-partner sessions have been recorded yet.",
+        "No reviewer sessions have been recorded yet.",
         "## Session 2026-06-07 alpha\n\n- Partner alias: alpha",
     )
     feedback_log.write_text(text, encoding="utf-8")
@@ -404,7 +404,7 @@ def test_feedback_log_summary_warns_when_rollup_and_headings_disagree(tmp_path: 
 
 
 def _feedback_log_text() -> str:
-    return """# Design Partner Feedback Log
+    return """# Reviewer Feedback Log
 
 Status: active public-dev-preview evidence log
 
@@ -428,7 +428,7 @@ Status: active public-dev-preview evidence log
 
 ## Current Sessions
 
-No design-partner sessions have been recorded yet.
+No reviewer sessions have been recorded yet.
 
 ## Synthesis Checklist
 

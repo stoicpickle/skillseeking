@@ -1,15 +1,15 @@
-# Design Partner Feedback
+# Reviewer Feedback
 
 Status: public-dev-preview feedback runbook
 
-This runbook is for learning from 3 to 5 design partners who can try the local
+This runbook is for learning from 3 to 5 reviewer sessions with people who can try the local
 CLI on contained workflows with real capability gaps and review pressure. It is
 not a sales launch, hosted beta, production service, marketplace program, true
 sandbox, or autonomous promotion path.
 
-## Target Partners
+## Target Reviewers
 
-Good early partners are local operators who:
+Good early reviewers are local operators who:
 
 - can run a Python CLI locally;
 - have a contained workflow where missing capabilities are easy to notice;
@@ -22,7 +22,7 @@ hosted deployment, marketplace distribution, or irreversible writes.
 
 ## Session Path
 
-Use one short path for each partner:
+Use one short path for each reviewer:
 
 1. Install the repo locally.
 2. Read [Operator Summary Review Pack](operator-summary-review-pack.md).
@@ -37,7 +37,7 @@ Use one short path for each partner:
    session block, or run `skill-agent feedback-session-append --dry-run` to
    preview a completed entry. Use `feedback-session-append --no-dry-run` only
    when the session is ready to record in
-   [Design Partner Feedback Log](design-partner-feedback-log.md). The append
+   [Reviewer Feedback Log](reviewer-feedback-log.md). The append
    command updates only the selected feedback log and objective rollup counters;
    it does not update repeated-friction synthesis rows or grant authority.
 8. Run `skill-agent feedback-log-summary` to check whether 3 to 5 sessions are
@@ -51,7 +51,7 @@ confusing, not to prove broad production readiness.
 
 ## Feedback Template
 
-Use this template for each partner:
+Use this template for each reviewer:
 
 ```md
 ## Partner Feedback

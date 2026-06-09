@@ -26,7 +26,7 @@ trap cleanup EXIT
 DURABLE_NO_MUTATION_TARGETS=(
   "skills"
   "docs/stable-routing-policy.md"
-  "docs/plans/v1-stable-routing-policy-deferred-2026-06-06.md"
+  "docs/internal/plans/v1-stable-routing-policy-deferred-2026-06-06.md"
 )
 
 step() {
@@ -118,7 +118,7 @@ for path in \
   "CHANGELOG.md" \
   "docs/v1-release-contract.md" \
   "docs/v1-release-notes.md" \
-  "docs/v1-release-tasking.md" \
+  "docs/internal/v1-release-tasking.md" \
   "evals/v1_release.jsonl" \
   "scripts/run_gauntlet_demo.py"; do
   test -f "${path}" || {
@@ -240,9 +240,9 @@ if "Next `OPERATOR_DECISIONS` action identified unaided: yes/no" not in data.get
     raise SystemExit("feedback-session-template must include operator decision field")
 print("feedback-session-template ok")
 PY
-cp docs/design-partner-feedback-log.md "${SMOKE_ROOT}/design-partner-feedback-log.md"
+cp docs/reviewer-feedback-log.md "${SMOKE_ROOT}/reviewer-feedback-log.md"
 "${SKILL_AGENT_BIN}" feedback-session-append \
-  --feedback-log "${SMOKE_ROOT}/design-partner-feedback-log.md" \
+  --feedback-log "${SMOKE_ROOT}/reviewer-feedback-log.md" \
   --partner-alias smoke \
   --date 2026-06-07 \
   --workflow-type "v1 smoke" \
@@ -252,7 +252,7 @@ cp docs/design-partner-feedback-log.md "${SMOKE_ROOT}/design-partner-feedback-lo
   --ready-to-enable-new-authority-false-understood yes \
   --no-dry-run \
   --json >"${SMOKE_ROOT}/feedback-session-append.json"
-"${PYTHON_BIN}" - "${SMOKE_ROOT}/feedback-session-append.json" "${SMOKE_ROOT}/design-partner-feedback-log.md" <<'PY'
+"${PYTHON_BIN}" - "${SMOKE_ROOT}/feedback-session-append.json" "${SMOKE_ROOT}/reviewer-feedback-log.md" <<'PY'
 import json
 import sys
 from pathlib import Path
@@ -283,7 +283,7 @@ if "## Session 2026-06-07 smoke" not in log_text:
 print("feedback-session-append ok")
 PY
 "${SKILL_AGENT_BIN}" feedback-log-summary \
-  --feedback-log "${SMOKE_ROOT}/design-partner-feedback-log.md" \
+  --feedback-log "${SMOKE_ROOT}/reviewer-feedback-log.md" \
   --json >"${SMOKE_ROOT}/feedback-log-summary.json"
 "${PYTHON_BIN}" - "${SMOKE_ROOT}/feedback-log-summary.json" <<'PY'
 import json

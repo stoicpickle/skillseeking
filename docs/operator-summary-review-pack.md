@@ -1,6 +1,6 @@
 # Operator Summary Review Pack
 
-Status: public-dev-preview design-partner review pack
+Status: public-dev-preview reviewer review pack
 
 This pack is the shortest review path for a technical design partner. It uses
 `operator-summary` as the front door after the launch demo so the reviewer sees
@@ -26,7 +26,7 @@ Run the launch demo:
 bash scripts/run_launch_demo.sh --keep-workspace
 ```
 
-For an interactive design-partner session, use the demo workspace path printed
+For an interactive reviewer session, use the demo workspace path printed
 by the script and inspect the run evidence:
 
 ```bash

@@ -658,7 +658,7 @@ Added:
 - Human queue output that prints source paths and source details for each open or blocked request.
 - Queue warnings for unreadable candidate ledger evidence.
 - Missing-evidence admission-plan assertions for blocked `missing_evidence` input requests.
-- Design-only input request resolution workflow at `docs/plans/input-request-resolution-workflow-2026-06-03.md`.
+- Design-only input request resolution workflow at `docs/internal/plans/input-request-resolution-workflow-2026-06-03.md`.
 
 Boundaries:
 
@@ -774,7 +774,7 @@ Translated the external deep-research recommendations into a repo-local proof-ca
 
 Added:
 
-- `docs/plans/proof-carrying-capability-roadmap-2026-06-03.md` with goals for paired utility proof, plan-digest approval, permission/dependency diffs, managed shadow activation, rollback, negative evidence, tamper-evident checkpoints, and a future non-steering evidence governor.
+- `docs/internal/plans/proof-carrying-capability-roadmap-2026-06-03.md` with goals for paired utility proof, plan-digest approval, permission/dependency diffs, managed shadow activation, rollback, negative evidence, tamper-evident checkpoints, and a future non-steering evidence governor.
 - Optional `--baseline-run-id` and `--treatment-run-id` flags on `skill-agent candidate-usefulness`.
 - A read-only `comparison` object that records baseline/treatment result categories, exit codes, candidate-request matching, temporary-skill loading, comparison outcome, blockers, warnings, and summary.
 - Tests proving a blocked no-temporary-skill baseline plus successful temporary-skill treatment reports `improved`, while a contaminated baseline is rejected.
@@ -1007,7 +1007,7 @@ Captured the external review's next-product-risk assessment as durable tasking.
 
 Added:
 
-- `docs/plans/operator-decision-load-and-stable-review-rehearsal-2026-06-04.md` with the review thesis, tasking list, explicit not-yet list, and Slice 1 goal.
+- `docs/internal/plans/operator-decision-load-and-stable-review-rehearsal-2026-06-04.md` with the review thesis, tasking list, explicit not-yet list, and Slice 1 goal.
 - Product-manager guidance that the current risk is operator decision overload, not missing proof infrastructure.
 - Operating roadmap and build-map updates naming candidate-to-stable review rehearsal as the next slice direction.
 - Evaluation-plan guidance for stable-readiness outcomes and not-stable-routed assertions.
@@ -1148,7 +1148,7 @@ Validation:
 - `.venv/bin/python -m pytest -q` passed with 261 tests.
 - `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-capgap-v0-check-2` passed 20/20.
 - `.venv/bin/python -m compileall -q app` and `git diff --check` passed.
-- `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` was run once; it reached `reviewing` and heartbeat status but did not emit findings before the bounded stall cutoff.
+- `coderabbit review --agent -t uncommitted --dir <repo-root>` was run once; it reached `reviewing` and heartbeat status but did not emit findings before the bounded stall cutoff.
 
 ## 2026-06-06 V1 Local-Use Operator Checklist
 
@@ -1174,7 +1174,7 @@ Validation:
 - `.venv/bin/python -m pytest -q` passed with 263 tests.
 - `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-capgap-v0-check-3` passed 20/20.
 - `.venv/bin/python -m compileall -q app` and `git diff --check` passed.
-- `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` completed with 0 findings.
+- `coderabbit review --agent -t uncommitted --dir <repo-root>` completed with 0 findings.
 
 ## 2026-06-06 V1 Stable Routing Policy
 
@@ -1200,7 +1200,7 @@ Validation:
 - `.venv/bin/python -m pytest -q` passed with 264 tests.
 - `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-capgap-v0-check-task5` passed 20/20.
 - `.venv/bin/python -m compileall -q app` and `git diff --check` passed.
-- `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` completed with 0 findings.
+- `coderabbit review --agent -t uncommitted --dir <repo-root>` completed with 0 findings.
 
 ## 2026-06-06 V1 Data Contract Freeze
 
@@ -1208,7 +1208,7 @@ Closed Task 9 by adding representative compatibility fixtures for the v1 JSON/da
 
 Added:
 
-- `docs/plans/v1-data-contract-freeze-2026-06-06.md`.
+- `docs/internal/plans/v1-data-contract-freeze-2026-06-06.md`.
 - `tests/fixtures/v1_contracts/` with deterministic fixtures for run logs, skill candidate ledgers, input request resolution ledgers, evidence checkpoint ledgers, candidate decision reports, and eval reports.
 - `tests/test_v1_fixture_compatibility.py`, which validates model-backed fixtures with Pydantic v2 `model_validate` and `model_dump(mode="json")`.
 - A v1 public JSON contract freeze section in `docs/contracts/data-contracts.md`.
@@ -1228,7 +1228,7 @@ Validation:
 - `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-capgap-v0-check-task9` passed 20/20.
 - `.venv/bin/python -m pytest -q` passed with 270 tests.
 - `.venv/bin/python -m compileall -q app && git diff --check` passed.
-- `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` completed with `findings:0`.
+- `coderabbit review --agent -t uncommitted --dir <repo-root>` completed with `findings:0`.
 
 ## 2026-06-06 V1 Release Candidate Documentation
 
@@ -1238,7 +1238,7 @@ Added:
 
 - `CHANGELOG.md` with an Unreleased release-candidate section.
 - `docs/v1-release-notes.md` with current abilities, limitations, verification commands, and remaining final-gate work.
-- `docs/plans/v1-release-candidate-docs-2026-06-06.md`.
+- `docs/internal/plans/v1-release-candidate-docs-2026-06-06.md`.
 - `tests/test_v1_release_docs.py` to keep docs honest about local-only scope, no publish/tag/version stamp, deferred stable routing, and non-sandboxed scripted skills.
 - `scripts/v1_smoke.sh` checks for release docs and runs the release-doc regression test.
 
@@ -1256,7 +1256,7 @@ Validation:
 - `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-capgap-v0-check-task10` passed 20/20.
 - `.venv/bin/python -m pytest -q` passed with 275 tests.
 - `.venv/bin/python -m compileall -q app && git diff --check` passed.
-- `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` completed with 1 minor finding; the over-escaped release-doc regex was fixed and local validation passed after the fix. CodeRabbit was not rerun.
+- `coderabbit review --agent -t uncommitted --dir <repo-root>` completed with 1 minor finding; the over-escaped release-doc regex was fixed and local validation passed after the fix. CodeRabbit was not rerun.
 
 ## 2026-06-06 Final V1 Release Gate
 
@@ -1268,7 +1268,7 @@ Updated:
 - README, changelog, release notes, release contract, and tasking from release-candidate language to v1.0 local CLI release language.
 - `scripts/v1_smoke.sh` from a pre-v1 guard into a v1 release verifier, with optional `REQUIRE_V1_TAG=1` post-tag verification.
 - `tests/test_v1_release_docs.py` from pre-v1 assertions to final release-state assertions.
-- `docs/plans/v1-final-release-gate-2026-06-06.md`.
+- `docs/internal/plans/v1-final-release-gate-2026-06-06.md`.
 
 Boundaries:
 
@@ -1287,4 +1287,4 @@ Validation:
 - `.venv/bin/skill-agent eval --suite evals/v1_release.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-final-release` passed 11/11.
 - `.venv/bin/python -m pytest -q` passed with 275 tests.
 - `.venv/bin/python -m compileall -q app && git diff --check` passed.
-- `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` completed with `findings:0`.
+- `coderabbit review --agent -t uncommitted --dir <repo-root>` completed with `findings:0`.

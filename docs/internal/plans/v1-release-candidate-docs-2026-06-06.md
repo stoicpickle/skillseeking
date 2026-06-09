@@ -37,7 +37,7 @@ Out of scope:
 1. Update `README.md` to describe Skill-Seeking Agent as a local v1 CLI release candidate for governed capability acquisition.
 2. Add `CHANGELOG.md` with an Unreleased release-candidate section.
 3. Add `docs/v1-release-notes.md` with current abilities, explicit limitations, verification commands, and remaining final-gate work.
-4. Update `docs/v1-release-contract.md` and `docs/v1-release-tasking.md` so release docs are complete but the final `1.0.0` gate remains pending.
+4. Update `docs/v1-release-contract.md` and `docs/internal/v1-release-tasking.md` so release docs are complete but the final `1.0.0` gate remains pending.
 5. Add `tests/test_v1_release_docs.py` to guard against overclaiming release, hosted, marketplace, production-safe, sandbox, stable-routing, or version-tag status.
 6. Update `scripts/v1_smoke.sh` to require the release docs and run the release-doc regression test.
 

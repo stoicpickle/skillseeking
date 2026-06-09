@@ -30,7 +30,7 @@ The remaining risk is not "v1 should not exist." The risk is that a public audie
 - `README.md`
 - `pyproject.toml`
 - `.github/workflows/tests.yml`
-- `docs/v1-release-tasking.md`
+- `docs/internal/v1-release-tasking.md`
 - `docs/v1-release-contract.md`
 - `docs/v1-release-notes.md`
 - `tests/test_v1_release_docs.py`
@@ -259,7 +259,7 @@ Checks:
 
 - Public language matches the actual license and contribution policy.
 
-### 12. Recruit 3 To 5 Design Partners
+### 12. Recruit 3 To 5 Reviewers
 
 Goal:
 Learn where real users get lost before building a broad product surface.
@@ -348,4 +348,4 @@ That makes the repo easier to understand without changing the underlying capabil
 - [x] Slice 3: Single read-only operator summary. Added `skill-agent operator-summary` with JSON/text output over active input requests, candidate review queues, promotion-ready candidates, missing-evidence signals, unsafe/negative evidence, unsafe aborted run logs, and checkpoint deltas; added no-mutation builder/CLI tests; and documented the advisory-only mutation boundary in README, demo-suite, and data contracts.
 - [x] Slice 4: Near-miss and adversarial eval expansion. Added diagnostic eval rows for factual conflicts, incompatible claims, file summarization approval boundaries, and "always use this skill" routing resistance; added targeted deterministic catalog phrases without adding learned routing; added malicious skill fixtures for prompt injection, permission widening, stale evidence claims, duplicate identity, and confusing aliases; and proved those fixtures are rejected or non-routed without mutating durable skills.
 - [x] Slice 5: No-mutation smoke coverage. `scripts/v1_smoke.sh` now snapshots durable `skills/` plus the v1 stable-routing policy docs before and after the smoke gate, then fails on added, removed, or changed durable files before it can report success.
-- [x] Slice 6: P2 public-preview strategy docs. Confirmed the MIT/open-source local CLI source boundary through `CONTRIBUTING.md`, added design-partner feedback capture, and documented governance-first monetization principles while keeping hosted service, marketplace, sandboxing, autonomous promotion, durable generated-skill admission, positive stable routing, and production-readiness claims out of scope.
+- [x] Slice 6: P2 public-preview strategy docs. Confirmed the MIT/open-source local CLI source boundary through `CONTRIBUTING.md`, added reviewer feedback capture, and documented commercial-boundary principles while keeping hosted service, marketplace, sandboxing, autonomous promotion, durable generated-skill admission, positive stable routing, and production-readiness claims out of scope.

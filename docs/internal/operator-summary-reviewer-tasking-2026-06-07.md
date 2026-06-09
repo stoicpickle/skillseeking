@@ -1,4 +1,4 @@
-# Operator-Summary Design Partner Tasking
+# Operator-Summary Reviewer Tasking
 
 Status: complete
 
@@ -29,7 +29,7 @@ Put more plainly, Skill-Seeking Agent is a local CLI workbench for making agent 
 
 - Pasted external review dated 2026-06-07
 - `docs/post-v1-public-dev-preview-tasking-2026-06-07.md`
-- `docs/design-partner-feedback.md`
+- `docs/reviewer-feedback.md`
 - `docs/demo-suite.md`
 - `docs/product-manager.md`
 - `README.md`
@@ -40,7 +40,7 @@ Put more plainly, Skill-Seeking Agent is a local CLI workbench for making agent 
 These should not become duplicate work unless future edits regress them.
 
 - Public-preview hardening is complete through CI gates, launch proof, launch demo, public-claims tests, operator summary, adversarial eval expansion, no-mutation smoke coverage, and strategy docs.
-- `docs/design-partner-feedback.md` already defines the 3 to 5 partner feedback loop and friction template.
+- `docs/reviewer-feedback.md` already defines the 3 to 5 partner feedback loop and friction template.
 - `docs/demo-suite.md` already names `operator-summary` as the follow-up operator index after the launch demo.
 - `operator-summary` is read-only and reports active input requests, candidate queues, promotion-ready candidates, missing evidence, unsafe/negative evidence, unsafe run-log items, checkpoint deltas, and next steps.
 - Durable admission remains dry-run/preview only; positive stable routing and active governor steering remain deferred.
@@ -78,7 +78,7 @@ Tasks:
   - candidate-decision;
   - operator-summary;
   - v1 smoke no-mutation proof.
-- Update README and `docs/design-partner-feedback.md` so design partners start with the review pack before deeper report docs.
+- Update README and `docs/reviewer-feedback.md` so reviewers start with the review pack before deeper report docs.
 
 Checks:
 
@@ -261,7 +261,7 @@ Do not build these from this review:
 Start with:
 
 ```text
-Design-partner review pack centered on operator-summary
+Reviewer review pack centered on operator-summary
 ```
 
 Why:
@@ -288,7 +288,7 @@ The decision should depend on whether the next goal is clearer architecture or s
 ## Implementation Progress
 
 - [x] P2 decision compression inside `operator-summary`: added prioritized `OPERATOR_DECISIONS` while preserving advisory, read-only output.
-- [x] P0 design-partner review pack: added `docs/operator-summary-review-pack.md` and README/design-partner/demo/product-manager pointers.
+- [x] P0 reviewer review pack: added `docs/operator-summary-review-pack.md` and README/reviewer/demo/product-manager pointers.
 - [x] P1 candidate-to-stable/durable admission RFC refresh: added a design-only proof contract and roadmap/lifecycle/stable-routing references.
 - [x] P3 active-governor preflight design: added a design-only boundary document and roadmap/governor references.
 - [x] P1 adversarial lifecycle/admission proof expansion: locked the failure-case matrix in the RFC/docs tests and preserved executable coverage for stale source hash, digest mismatch, expired approval, permission widening, duplicate/negative evidence, missing checkpoint, and unresolved repair blockers.

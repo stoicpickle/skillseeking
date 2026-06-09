@@ -116,7 +116,7 @@ A future durable install/copy slice must first add proof that is not present tod
 
 ## Acceptance For This Slice
 
-- This workflow plan is present under `docs/plans/`.
+- This workflow plan is present under `docs/internal/plans/`.
 - Build-map and operating-roadmap references point to the design without claiming durable install/copy exists.
 - Data contracts state that `approve_review` resolution evidence is not install/copy approval.
 - A focused preview test protects the collision policy, destination write plan, source snapshot retention path, permission approval record hook, and historical-evidence immutability.

@@ -1007,7 +1007,7 @@ Admission plans are output-only dry-run reports. They inspect candidate ledger e
 
 Allowed outcomes are `ready_for_durable_review`, `needs_promotion_approval`, `evidence_incomplete`, and `blocked`. Missing candidates or unreadable ledgers are command errors; missing run logs, missing source paths, missing source files, source validation failures, permission widening, scripted candidates, and same-name durable collisions are report blockers.
 
-Durable admission workflow design lives in `docs/plans/durable-admission-workflow-design-2026-06-03.md`. That workflow treats `ready_for_durable_review` and `approve_review` resolution evidence as review checkpoints only. They are not durable install/copy approval, registry admission, stable promotion, permission widening, or governor steering.
+Durable admission workflow design lives in `docs/internal/plans/durable-admission-workflow-design-2026-06-03.md`. That workflow treats `ready_for_durable_review` and `approve_review` resolution evidence as review checkpoints only. They are not durable install/copy approval, registry admission, stable promotion, permission widening, or governor steering.
 
 ## Durable Admission Preview
 
@@ -1262,8 +1262,8 @@ Failure categories: `timeout`, `nonzero_exit`, `invalid_json`, `output_schema_mi
 - `skill-agent candidate-decision --json` emits the compact read-only operator decision report for one candidate, including `candidate_id`, `decision`, source-backed `why` items, nested stable-readiness evidence, and `next_command`.
 - `skill-agent operator-summary --json` emits the read-only operator summary report over local run evidence, candidate review queues, active input requests, negative evidence, unsafe aborts, and checkpoint deltas. It is advisory only and records unchanged mutation authority for run logs, ledgers, durable skills, registries, and governor steering.
 - `skill-agent new-authority-readiness --json` emits the read-only new-authority phase report. It may report `ready_for_authority_planning=true`, but `ready_to_enable_new_authority` must remain `false` until a separate reviewed authority slice exists.
-- `skill-agent feedback-session-template --json` emits the template-only design-partner session report. It does not append to the feedback log, update rollups, mutate evidence, or enable new authority.
-- `skill-agent feedback-session-append --json` emits the design-partner feedback append report. By default it is a dry-run preview; with `--no-dry-run`, it may append only to the selected feedback log and update objective rollup counters.
+- `skill-agent feedback-session-template --json` emits the template-only reviewer session report. It does not append to the feedback log, update rollups, mutate evidence, or enable new authority.
+- `skill-agent feedback-session-append --json` emits the reviewer feedback append report. By default it is a dry-run preview; with `--no-dry-run`, it may append only to the selected feedback log and update objective rollup counters.
 - `skill-agent feedback-log-summary --json` emits the read-only feedback-log synthesis readiness report. It does not append feedback, update rollups, synthesize repeated friction, or enable new authority.
 - `skill-agent negative-evidence --json` emits read-only unfavorable/limiting evidence from candidate and resolution ledgers.
 - `skill-agent evidence-checkpoint --json` emits the local evidence checkpoint create or verify report. `--no-dry-run` appends only to `runs/evidence_checkpoints.json`; `--verify` is read-only.
@@ -1322,9 +1322,9 @@ widening, marketplace publication, hosted behavior, or true-sandbox claims.
 ## Feedback Session Template
 
 `skill-agent feedback-session-template --json` emits a static template-only
-report for design-partner feedback capture. The current status is
+report for reviewer feedback capture. The current status is
 `template_only_read_only`: the command prints the canonical session block from
-[Design Partner Feedback Log](../design-partner-feedback-log.md), but it does
+[Reviewer Feedback Log](../reviewer-feedback-log.md), but it does
 not record a session.
 
 Required fields include:
@@ -1350,12 +1350,12 @@ Required fields include:
 candidate-ledger, resolution-ledger, checkpoint-ledger, durable-skill, registry,
 stable-routing, governor-steering, dependency-install, permission-widening,
 hosted-behavior, and marketplace-behavior flags. Completed notes are manually
-copied into `docs/design-partner-feedback-log.md` after real sessions.
+copied into `docs/reviewer-feedback-log.md` after real sessions.
 
 ## Feedback Session Append
 
 `skill-agent feedback-session-append --json` emits a report for previewing or
-recording one design-partner session. The command defaults to dry-run preview.
+recording one reviewer session. The command defaults to dry-run preview.
 With `--no-dry-run`, it may append one Markdown session entry to the selected
 feedback log and update objective rollup counters for completed sessions and
 yes/no comprehension fields.
@@ -1390,7 +1390,7 @@ marketplace behavior, and it never grants new authority.
 ## Feedback Log Summary
 
 `skill-agent feedback-log-summary --json` emits a read-only synthesis readiness
-report over the design-partner feedback log. It parses objective rollup counts
+report over the reviewer feedback log. It parses objective rollup counts
 and recorded session headings, then reports whether at least 3 sessions exist
 for manual synthesis.
 

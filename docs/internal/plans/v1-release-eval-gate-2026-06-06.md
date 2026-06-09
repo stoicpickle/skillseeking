@@ -64,5 +64,5 @@ git diff --check
 Run one CodeRabbit pass before push:
 
 ```bash
-coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent
+coderabbit review --agent -t uncommitted --dir <repo-root>
 ```

@@ -5,5 +5,5 @@
 - Run the repo's validation bundle when changing behavior: tests/evals first, then review.
 - Keep public/private branch context explicit before pushing.
 - When the user asks for "a better tempo", structure the work as checkpoints and evidence surfaces, not just the next feature.
-- For CodeRabbit, scope review to this repo with `--dir /Users/russ/Documents/Russ/skillseekingagent`.
+- For CodeRabbit, scope review to this repo with `--dir <repo-root>`.
 - Use `docs/product-manager.md` when framing product/eval direction; it routes work but does not replace focused implementation threads.

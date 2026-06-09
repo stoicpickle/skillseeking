@@ -103,6 +103,6 @@ High-failure skill -> repair request -> validator -> candidate replacement
 
 - Should skills be shareable across users or local-only?
 - Should external skills require signatures?
-- A public skill marketplace remains deferred; monetization exploration should stay around governance, policy, evidence, approval, and audit surfaces.
+- A public skill marketplace remains deferred; any commercial exploration should stay secondary to policy, evidence, approval, and audit surfaces.
 - Should Skillsmith use templates per domain?
 - Should the first UI be web, CLI, or both?

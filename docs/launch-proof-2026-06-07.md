@@ -9,7 +9,7 @@ This artifact records the proof for the `v1.0.0` local CLI release state. It is 
 This proof applies to the private local CLI release path:
 
 - Branch: `codex/capgap-eval-private`
-- Remote: `private` (`https://github.com/stoicpickle/skillseeking-private.git`)
+- Remote: `private` (`<private release remote>`)
 - Package version: `1.0.0`
 - Git tag: `v1.0.0`
 - Release commit: `e006ca815a5eba2e33b130386d5106fa5d7fb191`

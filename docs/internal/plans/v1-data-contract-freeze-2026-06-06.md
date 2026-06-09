@@ -34,7 +34,7 @@ This is not an exhaustive schema generator. It is a compatibility sentinel for t
 4. Serialize model-backed fixtures with `model_dump(mode="json")` and re-validate the serialized payload.
 5. Validate the eval report fixture with explicit key/type checks because eval reports are currently plain dicts.
 6. Update `docs/contracts/data-contracts.md` with the v1 freeze policy, schema/version notes, and volatility caveat.
-7. Mark Task 9 complete in `docs/v1-release-tasking.md` and keep the remaining release blockers accurate.
+7. Mark Task 9 complete in `docs/internal/v1-release-tasking.md` and keep the remaining release blockers accurate.
 8. Wire the focused compatibility test into `scripts/v1_smoke.sh`.
 
 ## Validation

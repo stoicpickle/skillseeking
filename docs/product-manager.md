@@ -54,7 +54,7 @@ Primary use case:
 
 The repo's current source boundary is MIT-licensed open source for the local CLI dev-preview. That does not grant product scope for hosted service behavior, production safety, true sandboxing, marketplace support, autonomous promotion, durable generated-skill admission, or positive stable routing.
 
-Public-preview learning should come from 3 to 5 design partners running contained local workflows and reporting setup, demo, `operator-summary` decision clarity, evidence, candidate-decision, safety-boundary, new-authority readiness, and stable-routing deferral friction. The recommended front door is the [Operator Summary Review Pack](operator-summary-review-pack.md): run the launch demo, inspect `operator-summary`, then drill into run logs or candidate-specific proof only when needed. Capture each session in [Design Partner Feedback Log](design-partner-feedback-log.md). Use the design-only [Candidate-To-Stable And Durable Admission RFC](plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md) and [Active Governor Preflight Design](plans/active-governor-preflight-design-2026-06-07.md) to explain future gates without promising new authority. Future monetization exploration should stay around governance, evidence, approvals, auditability, policy control, private registries, and hosted control-plane ideas over local agents. These strategy docs are not implementation approval for those future surfaces.
+Public-preview learning should come from 3 to 5 contained reviewer sessions that report setup, demo, `operator-summary` decision clarity, evidence, candidate-decision, safety-boundary, new-authority readiness, and stable-routing deferral friction. The recommended front door is the [Operator Summary Review Pack](operator-summary-review-pack.md): run the launch demo, inspect `operator-summary`, then drill into run logs or candidate-specific proof only when needed. Capture each session in [Reviewer Feedback Log](reviewer-feedback-log.md). Use the design-only [Candidate-To-Stable And Durable Admission RFC](internal/plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md) and [Active Governor Preflight Design](internal/plans/active-governor-preflight-design-2026-06-07.md) to explain future gates without promising new authority. Future commercial exploration should stay secondary to evidence, approval, audit, policy control, and private-registry proof surfaces. These strategy notes are not implementation approval for those future surfaces.
 
 ## Next-Slice Rules
 
@@ -118,7 +118,7 @@ Goal:
 <one sentence product/eval outcome>
 
 Repo:
-/Users/russ/Documents/Russ/skillseekingagent
+<repo-root>
 
 Grounding:
 - Inspect git status and branch.

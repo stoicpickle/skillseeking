@@ -153,19 +153,19 @@ V1_LOCAL_USE_REPORT = {
 
 
 NEW_AUTHORITY_READINESS_REPORT = {
-    "phase": "v1.0 local CLI / design-partner validation",
+    "phase": "v1.0 local CLI / reviewer validation",
     "status": "ready_for_new_authority_design_review",
     "ready_for_authority_planning": True,
     "ready_to_enable_new_authority": False,
     "next_authority_candidate": "checkpoint-gated active blocker before any positive stable-routing attempt",
     "why_not_enable_yet": [
-        "Design-partner feedback has not been collected against the operator-summary review path.",
+        "Reviewer feedback has not been collected against the operator-summary review path.",
         "No positive stable-routing, durable-admission, or active-governor implementation slice has been reviewed.",
         "No new-authority eval rows have proven allowed and blocked paths for the proposed authority.",
         "No digest-bound human override and revoke ledger exists for the proposed authority.",
     ],
     "required_before_enablement": [
-        "Collect design-partner evidence that operator-summary decisions are understandable.",
+        "Collect reviewer evidence that operator-summary decisions are understandable.",
         "Choose exactly one smallest reversible authority candidate.",
         "Write a design plan that separates advisory, blocking, and authorizing behavior.",
         "Add eval rows for allowed, blocked, overblocked, stale-evidence, expired-approval, and revoke cases.",
@@ -193,8 +193,8 @@ NEW_AUTHORITY_READINESS_REPORT = {
     ],
     "reference_docs": [
         "docs/operator-summary-review-pack.md",
-        "docs/plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md",
-        "docs/plans/active-governor-preflight-design-2026-06-07.md",
+        "docs/internal/plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md",
+        "docs/internal/plans/active-governor-preflight-design-2026-06-07.md",
         "docs/product-manager.md",
         "docs/operating-roadmap.md",
     ],
@@ -203,10 +203,10 @@ NEW_AUTHORITY_READINESS_REPORT = {
 
 FEEDBACK_SESSION_TEMPLATE_REPORT = {
     "status": "template_only_read_only",
-    "template_name": "design_partner_session_entry",
-    "source_doc": "docs/design-partner-feedback-log.md",
-    "durable_record_target": "docs/design-partner-feedback-log.md",
-    "operator_action": "Manually copy a completed block into the feedback log after a real design-partner session.",
+    "template_name": "reviewer_session_entry",
+    "source_doc": "docs/reviewer-feedback-log.md",
+    "durable_record_target": "docs/reviewer-feedback-log.md",
+    "operator_action": "Manually copy a completed block into the feedback log after a real reviewer session.",
     "template_only": True,
     "feedback_log_appended": False,
     "rollups_updated": False,
@@ -275,8 +275,8 @@ FEEDBACK_SESSION_TEMPLATE_REPORT = {
         "true sandboxing claims",
     ],
     "next_steps": [
-        "Run the design-partner review path before filling out the template.",
-        "Manually copy completed notes into docs/design-partner-feedback-log.md.",
+        "Run the reviewer review path before filling out the template.",
+        "Manually copy completed notes into docs/reviewer-feedback-log.md.",
         "Update summary rollups manually only after real sessions are recorded.",
     ],
 }
@@ -457,7 +457,7 @@ def _append_feedback_session_to_log(
     marker = "## Current Sessions"
     if marker not in text:
         raise typer.BadParameter("feedback log is missing '## Current Sessions'")
-    no_sessions = "No design-partner sessions have been recorded yet."
+    no_sessions = "No reviewer sessions have been recorded yet."
     if no_sessions in text:
         text = text.replace(no_sessions, session_entry.rstrip(), 1)
     else:
@@ -510,14 +510,14 @@ def _build_feedback_log_summary(feedback_log: Path) -> dict[str, object]:
     sessions_needed = max(0, minimum_sessions - completed_sessions)
     ready_for_synthesis = completed_sessions >= minimum_sessions
     if completed_sessions == 0:
-        recommended_next_action = "Record the first design-partner session with feedback-session-append."
+        recommended_next_action = "Record the first reviewer session with feedback-session-append."
         status = "no_sessions_recorded"
     elif ready_for_synthesis:
         recommended_next_action = "Manually synthesize repeated friction before planning any new authority."
         status = "ready_for_manual_synthesis"
     else:
         recommended_next_action = (
-            f"Record {sessions_needed} more design-partner session(s) before synthesis."
+            f"Record {sessions_needed} more reviewer session(s) before synthesis."
         )
         status = "more_sessions_needed"
     return {
@@ -544,7 +544,7 @@ def _build_feedback_log_summary(feedback_log: Path) -> dict[str, object]:
         ),
         "excluded_authority": FEEDBACK_SESSION_APPEND_EXCLUDED_AUTHORITY,
         "next_steps": [
-            "Keep recording contained design-partner sessions until 3 to 5 sessions exist.",
+            "Keep recording contained reviewer sessions until 3 to 5 sessions exist.",
             "Synthesize repeated setup and evidence-surface friction manually from recorded sessions.",
             "Do not treat feedback summary as approval to enable new authority.",
         ],
@@ -595,7 +595,7 @@ def feedback_session_template(
         bool,
         typer.Option(
             "--json",
-            help="Print the design-partner feedback session template report as JSON.",
+            help="Print the reviewer feedback session template report as JSON.",
         ),
     ] = False,
 ) -> None:
@@ -643,9 +643,9 @@ def feedback_session_template(
 def feedback_session_append(
     feedback_log: Annotated[
         Path,
-        typer.Option(help="Design-partner feedback log to preview or update."),
-    ] = Path("docs/design-partner-feedback-log.md"),
-    partner_alias: Annotated[str, typer.Option(help="Design partner alias.")] = "",
+        typer.Option(help="Reviewer feedback log to preview or update."),
+    ] = Path("docs/reviewer-feedback-log.md"),
+    partner_alias: Annotated[str, typer.Option(help="Reviewer alias.")] = "",
     session_date: Annotated[str, typer.Option("--date", help="Session date, usually YYYY-MM-DD.")] = "",
     workflow_type: Annotated[str, typer.Option(help="Contained workflow type reviewed.")] = "",
     local_environment: Annotated[str, typer.Option(help="Local environment summary.")] = "",
@@ -686,7 +686,7 @@ def feedback_session_append(
         str,
         typer.Option(help="Least useful or most confusing proof surface."),
     ] = "",
-    desired_next_action: Annotated[str, typer.Option(help="Design partner's desired next action.")] = "",
+    desired_next_action: Annotated[str, typer.Option(help="Reviewer's desired next action.")] = "",
     captured_issue_doc_note: Annotated[str, typer.Option(help="Captured issue or docs note.")] = "",
     follow_up_priority: Annotated[
         str,
@@ -785,7 +785,7 @@ def feedback_session_append(
         ),
         "excluded_authority": FEEDBACK_SESSION_APPEND_EXCLUDED_AUTHORITY,
         "next_steps": [
-            "Review the appended session with the design-partner feedback log.",
+            "Review the appended session with the reviewer feedback log.",
             "Leave repeated setup or evidence-surface friction rollups manual until 3 to 5 sessions exist.",
             "Do not treat feedback capture as approval to enable new authority.",
         ]
@@ -833,8 +833,8 @@ def feedback_session_append(
 def feedback_log_summary(
     feedback_log: Annotated[
         Path,
-        typer.Option(help="Design-partner feedback log to summarize."),
-    ] = Path("docs/design-partner-feedback-log.md"),
+        typer.Option(help="Reviewer feedback log to summarize."),
+    ] = Path("docs/reviewer-feedback-log.md"),
     json_output: Annotated[
         bool,
         typer.Option("--json", help="Print the feedback-log summary as JSON."),

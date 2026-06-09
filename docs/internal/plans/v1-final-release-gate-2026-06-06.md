@@ -39,7 +39,7 @@ bash scripts/v1_smoke.sh
 .venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-final-lifecycle
 .venv/bin/skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-final-diagnostic
 .venv/bin/skill-agent eval --suite evals/v1_release.jsonl --skills-dir skills --runs-dir /tmp/skill-agent-v1-final-release
-coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent
+coderabbit review --agent -t uncommitted --dir <repo-root>
 ```
 
 After commit and private branch push, verify a fresh private checkout and create the annotated tag only if the checkout gate passes:

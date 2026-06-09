@@ -10,8 +10,8 @@ Design the first tiny, human-approved real write-mode slice for skill admission.
 - `SkillReceiptReport` composes candidate usefulness plus durable admission preview in `app/skill_receipt.py:23`. Its proof categories include origin, utility, containment, compatibility, approval, and reversibility; reversibility is always partial with blocker `write_mode_rollback_not_implemented` in `app/skill_receipt.py:208`.
 - Evidence checkpointing is the existing tamper-evidence surface for `runs/`: `build_evidence_checkpoint_report(..., verify=True)` blocks when current evidence differs from the latest checkpoint in `app/evidence_checkpoint.py:44`.
 - Shadow activation already models a managed-prefix gate. `build_shadow_write_gate_report(...)` verifies source hash, acceptance store/generation files, pointer restoration to rollback target, rollback marker, and exact acceptance-plan digest before reporting `ready_for_human_managed_prefix_write` in `app/shadow_activation.py:417`.
-- The evidence governor remains advisory. It composes receipt, negative evidence, and checkpoint verification but has no approval, install, promotion, permission widening, or route-steering authority per `app/models.py:942` and the roadmap boundary in `docs/plans/proof-carrying-capability-roadmap-2026-06-03.md:78`.
-- Prior durable admission plans intentionally stop at proof surfaces: `docs/plans/durable-admission-workflow-design-2026-06-03.md:84` calls for future write mode to consume run-scoped snapshot/staging evidence and require a separate human-approved write gate before copying into durable `skills/`; `docs/build-map.md:482` still lists durable candidate copy/install workflow and active governor steering as future boundaries.
+- The evidence governor remains advisory. It composes receipt, negative evidence, and checkpoint verification but has no approval, install, promotion, permission widening, or route-steering authority per `app/models.py:942` and the roadmap boundary in `docs/internal/plans/proof-carrying-capability-roadmap-2026-06-03.md:78`.
+- Prior durable admission plans intentionally stop at proof surfaces: `docs/internal/plans/durable-admission-workflow-design-2026-06-03.md:84` calls for future write mode to consume run-scoped snapshot/staging evidence and require a separate human-approved write gate before copying into durable `skills/`; `docs/build-map.md:482` still lists durable candidate copy/install workflow and active governor steering as future boundaries.
 - The lifecycle contract keeps temporary generated skills under `runs/artifacts/<run_id>/skills` and treats promotion/admission as explicit human workflow, not automatic durable routing, in `docs/skill-lifecycle.md:43`.
 
 ## Approach
@@ -225,8 +225,8 @@ None for the first slice. The plan chooses managed-prefix-only `shadow-managed-w
 - `app/shadow_activation.py:417`
 - `app/models.py:712`, `app/models.py:942`, `app/models.py:1100`
 - `app/cli.py:899`
-- `docs/plans/durable-admission-workflow-design-2026-06-03.md`
-- `docs/plans/durable-candidate-admission-plan-2026-06-02.md`
-- `docs/plans/proof-carrying-capability-roadmap-2026-06-03.md`
+- `docs/internal/plans/durable-admission-workflow-design-2026-06-03.md`
+- `docs/internal/plans/durable-candidate-admission-plan-2026-06-02.md`
+- `docs/internal/plans/proof-carrying-capability-roadmap-2026-06-03.md`
 - `docs/skill-lifecycle.md`
 - `docs/build-map.md`

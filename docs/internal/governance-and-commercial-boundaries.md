@@ -1,4 +1,4 @@
-# Governance Monetization Principles
+# Governance And Commercial Boundaries
 
 Status: strategy boundary for post-v1 public dev-preview
 
@@ -12,8 +12,8 @@ true sandbox, or autonomous promotion system.
 
 ## Principle
 
-Explore monetization around governance, evidence, approvals, auditability, and
-policy control. Do not lead with a public skill marketplace.
+Explore commercial paths around evidence governance, approvals, auditability,
+and policy control. Do not lead with a public skill marketplace.
 
 Marketplace-first incentives would push toward more tools and more routing
 surface before the review, eval, and no-mutation boundaries are easy for

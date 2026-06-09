@@ -8,7 +8,7 @@ This plan implements the first slice from [V1.0 Release Tasking](../v1-release-t
 
 Current branch context:
 
-- Branch: `codex/capgap-eval-private` tracking `private/codex/capgap-eval-private`.
+- Branch: `codex/capgap-eval-private` tracking `release branch`.
 - Baseline: `candidate-decision` is committed and pushed as `2397dae feat: add candidate decision summary`.
 - At the time of this slice, `pyproject.toml` declared `version = "0.1.0"`. The final release gate later stamped `version = "1.0.0"`.
 
@@ -25,7 +25,7 @@ Create the v1 release contract and a fresh-checkout smoke path that prove the lo
 ### Docs
 
 - Add `docs/v1-release-contract.md`.
-- Link `docs/v1-release-tasking.md` and the new contract from `docs/operating-roadmap.md`.
+- Link `docs/internal/v1-release-tasking.md` and the new contract from `docs/operating-roadmap.md`.
 - Update README only enough to point to the v1 tasking/contract work, not to claim v1 is shipped.
 
 ### Smoke Helper
@@ -105,7 +105,7 @@ Checks:
 Add discoverability:
 
 - README pointer to v1 tasking/contract planning.
-- Operating roadmap pointer to `docs/v1-release-tasking.md`.
+- Operating roadmap pointer to `docs/internal/v1-release-tasking.md`.
 - Dev log entry for the slice.
 
 Checks:

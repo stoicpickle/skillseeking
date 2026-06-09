@@ -3,7 +3,7 @@
 Status: active hardening goal
 
 This tasking list tracks the work to make Skill-Seeking Agent stronger for
-broader public use without adding new autonomy. Recommendation 2, design-partner
+broader public use without adding new autonomy. Recommendation 2, reviewer
 recruitment and live observation, is intentionally excluded because it requires
 real external users.
 

@@ -1,15 +1,15 @@
-# Design Partner Feedback Log
+# Reviewer Feedback Log
 
 Status: active public-dev-preview evidence log
 
-This log captures design-partner review evidence for the local CLI public-dev
+This log captures reviewer review evidence for the local CLI public-dev
 preview. It is intentionally about comprehension and operator decision clarity,
 not hosted onboarding, marketplace demand, production safety, stable routing, or
 new authority.
 
-Use this after each contained design-partner session that follows
+Use this after each contained reviewer session that follows
 [Operator Summary Review Pack](operator-summary-review-pack.md) and
-[Design Partner Feedback](design-partner-feedback.md).
+[Reviewer Feedback](reviewer-feedback.md).
 
 ## Summary Rollup
 
@@ -66,7 +66,7 @@ Copy this block for each partner session.
 
 ## Current Sessions
 
-No design-partner sessions have been recorded yet.
+No reviewer sessions have been recorded yet.
 
 ## Synthesis Checklist
 

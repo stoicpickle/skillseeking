@@ -459,7 +459,7 @@ Slices:
 | Dry-run input resolution | complete | `skill-agent resolve-input-request` classifies every declared human decision option while tests prove run logs and candidate ledgers remain unchanged and mutation flags stay false |
 | Append-only input resolution ledger | complete | `skill-agent resolve-input-request --no-dry-run` appends `runs/input_request_resolutions.json` records and `input-requests` applies the latest status without mutating run logs, candidate ledgers, durable skills, or governor behavior |
 | Resolution-ledger eval expectations | complete | `evals/agent_diagnostic_v0.jsonl` proves deferred requests remain active, resolved requests leave the active queue, and repeated resolution history is append-only |
-| Durable admission workflow design | complete | `docs/plans/durable-admission-workflow-design-2026-06-03.md` defines candidate -> review gate -> admission-plan dry run -> required proof -> human approval boundary before any future install/copy work |
+| Durable admission workflow design | complete | `docs/internal/plans/durable-admission-workflow-design-2026-06-03.md` defines candidate -> review gate -> admission-plan dry run -> required proof -> human approval boundary before any future install/copy work |
 | Dry-run durable admission mutation preview | complete | `skill-agent admit-candidate --dry-run` reports source fingerprint, target durable path, required approval evidence, and false mutation flags while `--no-dry-run` is rejected |
 | Durable admission write-plan contract | complete | `admit-candidate --dry-run` now emits a nested write plan with collision policy, destination paths, source snapshot retention paths, permission approval evidence, write blockers, and false mutation flags |
 | No-write durable admission acceptance harness | complete | `tests/test_durable_admission_acceptance.py` verifies source hash drift, snapshot path planning, collision approval, permission approval, destination planning, and no mutation before any future copy/install mode |
@@ -481,9 +481,9 @@ Slices:
 | Stable readiness report | complete | `skill-agent stable-readiness` composes candidate ledger, skill receipt, negative evidence, and durable registry evidence to advise candidate-to-stable review without stable promotion or routing authority |
 | Candidate decision summary | complete | `skill-agent candidate-decision` compresses stable-readiness, receipt, usefulness, admission, and negative evidence into one advisory `ask_human`, `test_more`, `deny`, or `defer` answer without granting approval or mutating evidence |
 | Operator summary decision compression | complete | `operator-summary` exposes prioritized `OPERATOR_DECISIONS` before raw evidence sections while remaining read-only |
-| Design-partner operator review pack | complete | `docs/operator-summary-review-pack.md` makes `operator-summary` the first inspection command and preserves no-admission/no-routing/no-governor-authority boundaries |
-| Candidate-to-stable durable admission RFC refresh | complete | `docs/plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md` names required proof and adversarial failure cases before any future authority |
-| Active governor preflight design | complete | `docs/plans/active-governor-preflight-design-2026-06-07.md` defines advisory, blocking, and authorizing boundaries without implementing active steering |
+| Reviewer operator review pack | complete | `docs/operator-summary-review-pack.md` makes `operator-summary` the first inspection command and preserves no-admission/no-routing/no-governor-authority boundaries |
+| Candidate-to-stable durable admission RFC refresh | complete | `docs/internal/plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md` names required proof and adversarial failure cases before any future authority |
+| Active governor preflight design | complete | `docs/internal/plans/active-governor-preflight-design-2026-06-07.md` defines advisory, blocking, and authorizing boundaries without implementing active steering |
 | Roadmap checkpoint docs | complete | README and operating roadmap distinguish local testing readiness from production readiness |
 
 ## Next Slice Goal: Candidate-to-Stable Review Rehearsal
@@ -501,7 +501,7 @@ Slices:
 | Stable-readiness eval dimension | complete | Eval expectations cover ready-for-review, duplicate-blocked, and negative-evidence-blocked stable-readiness states while stable routing remains disabled |
 | Candidate decision summary | complete | `candidate-decision` cites source reports for every reason and keeps approval/install/promotion/routing/mutation flags false |
 | Operator decision-load guardrails | complete | Tests/docs preserve advisory-only semantics and avoid adding unrelated proof surfaces |
-| Design-partner review pack | complete | `operator-summary` is documented as the front door and `OPERATOR_DECISIONS` is locked by docs tests |
+| Reviewer review pack | complete | `operator-summary` is documented as the front door and `OPERATOR_DECISIONS` is locked by docs tests |
 | Candidate-to-stable/durable admission RFC | complete | Design-only RFC separates candidate evidence, promotion approval, durable admission review, managed-prefix local use, and stable routing |
 | Active governor preflight | complete | Design-only preflight names future eval gates while keeping governor behavior advisory |
 

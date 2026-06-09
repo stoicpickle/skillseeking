@@ -7,7 +7,7 @@ This document is the near-term operating source of truth for Skill-Seeking Agent
 - [Homeostatic Governor](homeostatic-governor.md)
 - [Skill Lifecycle](skill-lifecycle.md)
 - [Evaluation Plan](evaluation-plan.md)
-- [V1.0 Release Tasking](v1-release-tasking.md)
+- [V1.0 Release Tasking](internal/v1-release-tasking.md)
 - [V1.0 Release Contract](v1-release-contract.md)
 
 ## Current Proven Surface
@@ -39,10 +39,10 @@ The v0 surface is implemented and proven through the completed milestones in the
 - Candidate decision summaries through `skill-agent candidate-decision`, compressing stable-readiness, receipt, usefulness, admission, and negative evidence into one advisory next decision without granting approval, install, promotion, routing, permission, or governor authority.
 - Operator summary decision compression through `skill-agent operator-summary`, presenting prioritized `OPERATOR_DECISIONS` before raw evidence while remaining read-only.
 - New-authority readiness reporting through `skill-agent new-authority-readiness`, stating that the agent is ready for authority design review but not ready to enable new authority.
-- Design-partner operator review path through [Operator Summary Review Pack](operator-summary-review-pack.md).
-- Design-partner feedback capture through [Design Partner Feedback Log](design-partner-feedback-log.md), currently empty until review sessions are recorded.
-- Candidate-to-stable and durable admission preflight RFC through [Candidate-To-Stable And Durable Admission RFC](plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md), design-only and not a write path.
-- Active governor preflight through [Active Governor Preflight Design](plans/active-governor-preflight-design-2026-06-07.md), design-only and not active steering.
+- Reviewer operator review path through [Operator Summary Review Pack](operator-summary-review-pack.md).
+- Reviewer feedback capture through [Reviewer Feedback Log](reviewer-feedback-log.md), currently empty until review sessions are recorded.
+- Candidate-to-stable and durable admission preflight RFC through [Candidate-To-Stable And Durable Admission RFC](internal/plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md), design-only and not a write path.
+- Active governor preflight through [Active Governor Preflight Design](internal/plans/active-governor-preflight-design-2026-06-07.md), design-only and not active steering.
 - Advisory lifecycle review queues for promotion-ready, repair-needed, blocked/quarantined, duplicate-merge-needed, and repeated-requested-gap candidate records.
 - Durable admission dry-run reports through `skill-agent admission-plan`, without copying, installing, or promoting skills.
 - Remote progress input focus through `InputRequest`, `skill-agent input-requests`, `INPUT_NEEDED`, `INPUT_FOCUS`, append-only input request resolutions, and resolution-ledger eval assertions.
@@ -51,7 +51,7 @@ The current product proof is a CLI-first prototype, not a production agent frame
 
 The next product risk is proof-surface sprawl: many reports now expose useful evidence, but the operator still needs a smaller answer about what decision to make next. Near-term work should keep `operator-summary` as the front door and pressure-test evidence gates before adding durable admission, stable routing, dependency installation, UI, marketplace, or active governor authority.
 
-The current v1 planning source is [V1.0 Release Tasking](v1-release-tasking.md), and the local v1 promise is drafted in [V1.0 Release Contract](v1-release-contract.md). The active slice is [V1 Contract And Fresh-Checkout Operator Path](plans/v1-contract-and-fresh-checkout-operator-path-2026-06-06.md).
+The current v1 planning source is [V1.0 Release Tasking](internal/v1-release-tasking.md), and the local v1 promise is drafted in [V1.0 Release Contract](v1-release-contract.md). The active slice is [V1 Contract And Fresh-Checkout Operator Path](internal/plans/v1-contract-and-fresh-checkout-operator-path-2026-06-06.md).
 
 ## Current Control Layer
 
@@ -101,7 +101,7 @@ Promotion remains human-governed:
    - Operator sequence for `shadow-managed-write`: prepare durable admission proof, prepare acceptance evidence, verify `shadow-write-gate`, dry-run `shadow-managed-write` to capture `managed_write_plan_digest`, record a separate non-expired write approval with that digest, checkpoint and verify evidence, then execute `shadow-managed-write --no-dry-run` with every expected digest/hash plus the latest checkpoint hash and `--write-approval-id`.
    - Next coverage: candidate-to-stable review rehearsal through `stable-readiness`, stable-readiness eval assertions, promotion review queues, durable `skills/` admission, and stable routing only after stable-readiness evidence, the managed-prefix boundary, and no-write dependency evidence boundary remain proven. `stable-readiness` is advisory only: it is not stable promotion, durable `skills/` admission, stable routing, registry mutation, ledger mutation, permission widening, or governor steering. Dependency evidence is not dependency installation, candidate-to-stable promotion, durable `skills/` admission, registry mutation, ledger mutation, stable routing, or governor steering.
    - Current decision compression: `candidate-decision` uses existing proof reports to return `ask_human`, `test_more`, `deny`, or `defer` plus source-backed reasons and the next `stable-readiness` command, without creating new persistence or authority.
-   - Current review front door: `operator-summary` exposes prioritized `OPERATOR_DECISIONS`; [Candidate-To-Stable And Durable Admission RFC](plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md) names the proof gates before any future authority.
+   - Current review front door: `operator-summary` exposes prioritized `OPERATOR_DECISIONS`; [Candidate-To-Stable And Durable Admission RFC](internal/plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md) names the proof gates before any future authority.
    - Keep permission widening human-gated and evidence-backed.
 
 3. **Lifecycle review queues and health expansion**
@@ -154,7 +154,7 @@ Status: passed for local validation; the current CLI prototype is ready for loca
 | v0 eval | `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `20/20` passed, task pass rate `1.0`, trace completeness `20 / 20`; report: `runs/evals/eval_report_20260603_154814_748619.json`. |
 | Lifecycle eval | `.venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`; report: `runs/evals/eval_report_20260603_154806_645953.json`. |
 | Agent diagnostic eval | `.venv/bin/skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `16/16` passed, task pass rate `1.0`, trace completeness `16 / 16`; report: `runs/evals/eval_report_20260603_154814_636176.json`. |
-| CodeRabbit review | `coderabbit review --agent -t uncommitted --dir /Users/russ/Documents/Russ/skillseekingagent` | stalled | Bounded review reached `tools_completed`, entered `reviewing`, then remained heartbeat-only; the process was terminated. No findings were returned. |
+| CodeRabbit review | `coderabbit review --agent -t uncommitted --dir <repo-root>` | stalled | Bounded review reached `tools_completed`, entered `reviewing`, then remained heartbeat-only; the process was terminated. No findings were returned. |
 
 ### Baseline proof state — 2026-06-01
 
@@ -185,7 +185,7 @@ The following are explicitly out of scope for the next runtime milestone:
 ## Decision Log
 
 - 2026-06-04: Stable-readiness eval coverage now includes ready-for-review, duplicate-blocked, and negative-evidence-blocked candidate-to-stable rehearsal rows while stable review, stable promotion, and stable routing remain unauthorized.
-- 2026-06-04: Captured external review tasking in `docs/plans/operator-decision-load-and-stable-review-rehearsal-2026-06-04.md`; next work should reduce operator decision overload by strengthening stable-readiness review rehearsal and eval coverage before adding stable routing or durable admission authority.
+- 2026-06-04: Captured external review tasking in `docs/internal/plans/operator-decision-load-and-stable-review-rehearsal-2026-06-04.md`; next work should reduce operator decision overload by strengthening stable-readiness review rehearsal and eval coverage before adding stable routing or durable admission authority.
 - 2026-06-06: Added `skill-agent candidate-decision` as the first compact operator-decision summary over existing candidate proof reports. It returns only advisory decisions and leaves approval, install, stable promotion, stable routing, permission widening, evidence mutation, registry mutation, and governor steering disabled.
 - 2026-06-06: Started the v1 contract and fresh-checkout operator path slice. `scripts/v1_smoke.sh` is the local readiness smoke helper; it does not stamp `1.0.0`, publish releases, admit durable skills, enable stable routing, claim true sandboxing, or add hosted/marketplace scope.
 - 2026-06-06: Added `skill-agent v1-local-use` as the read-only v1 operator checklist for the managed-prefix-first local-use path. It points to `shadow-managed-write` and keeps durable `skills/` admission, stable routing, registry/ledger mutation, permission widening, and governor steering out of scope.
@@ -193,14 +193,14 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-06: Froze representative v1 JSON/data-contract fixtures for run logs, candidate ledgers, input resolutions, checkpoints, candidate decisions, and eval reports. The freeze is a compatibility sentinel, not exhaustive JSON Schema generation.
 - 2026-06-06: Added v1 release-candidate documentation in `CHANGELOG.md` and `docs/v1-release-notes.md`; README now frames the repo as a local v1 CLI release candidate while keeping the final `1.0.0` gate pending.
 - 2026-06-06: Stamped the v1.0 local CLI release state: `pyproject.toml` version `1.0.0`, planned private Git tag `v1.0.0`, final v1 release docs, and v1 smoke as the release verifier. Stable routing remains deferred for v1.
-- 2026-06-07: Added `operator-summary` decision compression, the design-partner review pack, candidate-to-stable/durable admission RFC refresh, and active-governor preflight design. These compress review evidence and define future gates without adding durable admission, stable routing, dependency installation, permission widening, or governor steering.
+- 2026-06-07: Added `operator-summary` decision compression, the reviewer review pack, candidate-to-stable/durable admission RFC refresh, and active-governor preflight design. These compress review evidence and define future gates without adding durable admission, stable routing, dependency installation, permission widening, or governor steering.
 - 2026-06-07: Added `skill-agent new-authority-readiness` as the explicit phase statement for the post-v1 boundary: ready for new-authority design review and planning, not ready to enable new authority.
-- 2026-06-07: Added `docs/design-partner-feedback-log.md` so public-dev-preview sessions can be compared before adding any new authority.
+- 2026-06-07: Added `docs/reviewer-feedback-log.md` so public-dev-preview sessions can be compared before adding any new authority.
 - 2026-06-07: Added `skill-agent banner` as a compact Rich-powered human CLI identity surface. JSON and evidence commands remain unprefixed for scripts and evals.
 - 2026-06-07: Added `scripts/cli_doctor.py` as a fast operator-facing CLI surface checker. It runs representative human and JSON commands in a temporary workspace and reports issues before live-candidate testing.
 - 2026-06-07: Added `docs/start-here.md` and `run_launch_demo.sh --keep-workspace` so a new local user can check the CLI, run the launch demo, keep evidence, and inspect `operator-summary` as the front door.
 - 2026-06-07: Added public authority-lock regression tests for v1 local-use, new-authority readiness, feedback capture, and summary surfaces so public-use polish cannot silently grant durable admission, stable routing, hosted behavior, marketplace behavior, sandbox claims, or active governor steering.
-- 2026-06-07: Added `docs/general-public-readiness-tasking-2026-06-07.md` to track public-use hardening recommendations 1, 3, 4, 5, 6, and 7 while leaving live design-partner recruitment external.
+- 2026-06-07: Added `docs/internal/general-public-readiness-tasking-2026-06-07.md` to track public-use hardening recommendations 1, 3, 4, 5, 6, and 7 while leaving live reviewer recruitment external.
 
 - 2026-06-01: Consolidated near-term roadmap into this document before runtime Skill Candidate Ledger work.
 - 2026-06-01: Named **Skill Candidate Ledger** as the next runtime milestone.

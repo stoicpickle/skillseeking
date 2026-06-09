@@ -26,7 +26,7 @@ Positive stable routing is post-v1 work. It requires a separate human-approved w
 V1 intentionally chooses managed-prefix-first local use instead of normal stable routing. This keeps generated skill evidence separate from routine task routing until a future routing workflow is explicitly designed, reviewed, and tested.
 
 The current design-only preflight for that future work is
-[Candidate-To-Stable And Durable Admission RFC](plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md).
+[Candidate-To-Stable And Durable Admission RFC](internal/plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md).
 It does not enable stable routing.
 
 ## Release Gate

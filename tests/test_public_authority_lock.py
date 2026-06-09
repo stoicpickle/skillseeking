@@ -95,7 +95,7 @@ def test_feedback_and_summary_surfaces_do_not_grant_authority(tmp_path):
                 "",
                 "## Current Sessions",
                 "",
-                "No design-partner sessions have been recorded yet.",
+                "No reviewer sessions have been recorded yet.",
                 "",
                 "## Synthesis Checklist",
                 "",

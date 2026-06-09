@@ -7,7 +7,7 @@ def test_stable_routing_policy_documents_v1_deferral(repo_root: Path):
     policy = (repo_root / "docs" / "stable-routing-policy.md").read_text(
         encoding="utf-8"
     )
-    tasking = (repo_root / "docs" / "v1-release-tasking.md").read_text(
+    tasking = (repo_root / "docs" / "internal" / "v1-release-tasking.md").read_text(
         encoding="utf-8"
     )
     contract = (repo_root / "docs" / "v1-release-contract.md").read_text(

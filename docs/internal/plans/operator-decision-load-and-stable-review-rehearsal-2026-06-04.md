@@ -2,7 +2,7 @@
 
 ## Source
 
-This note distills the external review in `/Users/russ/Downloads/review 06032026.md` into repo-local tasking. The review assessment was docs-and-selected-evidence based, not a fresh line-by-line code audit, so implementation threads should still inspect current code, tests, ledgers, and CLI behavior before changing anything.
+This note distills the external review in `<local review artifact>` into repo-local tasking. The review assessment was docs-and-selected-evidence based, not a fresh line-by-line code audit, so implementation threads should still inspect current code, tests, ledgers, and CLI behavior before changing anything.
 
 Context7 check: current Typer documentation still recommends typed command functions with `Annotated`, `typer.Argument`, and `typer.Option` help text for clear CLI surfaces. Any Slice 1 CLI additions should follow the existing repo pattern: typed arguments/options, explicit `--json` output, and help text that names the no-authority boundary.
 

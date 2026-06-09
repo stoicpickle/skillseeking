@@ -66,11 +66,11 @@ def test_new_authority_readiness_states_planning_ready_but_enablement_blocked():
 
     assert result.exit_code == 0
     assert "NEW_AUTHORITY_READINESS" in result.stdout
-    assert "Phase: v1.0 local CLI / design-partner validation" in result.stdout
+    assert "Phase: v1.0 local CLI / reviewer validation" in result.stdout
     assert "Ready for authority planning: true" in result.stdout
     assert "Ready to enable new authority: false" in result.stdout
     assert "checkpoint-gated active blocker" in result.stdout
-    assert "Design-partner feedback has not been collected" in result.stdout
+    assert "Reviewer feedback has not been collected" in result.stdout
     assert "positive stable routing" in result.stdout
     assert "active governor steering" in result.stdout
     assert "durable generated-skill admission" in result.stdout
@@ -88,11 +88,11 @@ def test_new_authority_readiness_json_preserves_no_authority_boundary():
     assert data["ready_for_authority_planning"] is True
     assert data["ready_to_enable_new_authority"] is False
     assert "checkpoint-gated active blocker" in data["next_authority_candidate"]
-    assert any("Design-partner feedback" in item for item in data["why_not_enable_yet"])
+    assert any("Reviewer feedback" in item for item in data["why_not_enable_yet"])
     assert any("eval rows" in item for item in data["required_before_enablement"])
     assert any("approval expiry" in item for item in data["required_before_enablement"])
     assert "positive stable routing" in data["must_remain_disabled_until_separate_slice"]
     assert "active governor steering" in data["must_remain_disabled_until_separate_slice"]
-    assert "docs/plans/active-governor-preflight-design-2026-06-07.md" in data[
+    assert "docs/internal/plans/active-governor-preflight-design-2026-06-07.md" in data[
         "reference_docs"
     ]

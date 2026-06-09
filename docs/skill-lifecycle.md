@@ -80,7 +80,7 @@ Candidate to stable:
 - No duplicate stable skill exists.
 - Owner or maintainer approval is recorded.
 - `skill-agent stable-readiness` is advisory evidence for human stable review; it does not mark a candidate stable, authorize stable promotion, enable stable routing, copy or install durable skills, mutate ledgers, mutate the registry, widen permissions, or steer the governor.
-- `docs/plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md` is the current design-only proof contract for future candidate-to-stable or durable admission authority.
+- `docs/internal/plans/candidate-to-stable-and-durable-admission-rfc-2026-06-07.md` is the current design-only proof contract for future candidate-to-stable or durable admission authority.
 
 Durable admission planning:
 

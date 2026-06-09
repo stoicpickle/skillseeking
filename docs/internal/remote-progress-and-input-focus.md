@@ -58,4 +58,4 @@ The diagnostic and lifecycle suites assert safety approval, promotion approval, 
 
 ## Resolution Workflow
 
-Resolution is implemented as classification plus an append-only evidence ledger. The workflow is documented in [Input Request Resolution Workflow Design](plans/input-request-resolution-workflow-2026-06-03.md). It defines the `resolve-input-request` command shape, decision/status mapping, and the read overlay that lets `input-requests` hide resolved decisions while keeping deferred requests open.
+Resolution is implemented as classification plus an append-only evidence ledger. The workflow is documented in [Input Request Resolution Workflow Design](internal/plans/input-request-resolution-workflow-2026-06-03.md). It defines the `resolve-input-request` command shape, decision/status mapping, and the read overlay that lets `input-requests` hide resolved decisions while keeping deferred requests open.

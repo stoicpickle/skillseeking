@@ -46,7 +46,7 @@ Checks:
 
 ### 2. Define The V1.0 Contract
 
-Status: complete in [V1 Contract And Fresh-Checkout Operator Path](plans/v1-contract-and-fresh-checkout-operator-path-2026-06-06.md)
+Status: complete in [V1 Contract And Fresh-Checkout Operator Path](internal/plans/v1-contract-and-fresh-checkout-operator-path-2026-06-06.md)
 
 Goal:
 Create one release contract that names what v1.0 promises and what it explicitly does not promise.
@@ -66,7 +66,7 @@ Checks:
 
 ### 3. Fresh-Checkout Operator Path
 
-Status: complete in [V1 Contract And Fresh-Checkout Operator Path](plans/v1-contract-and-fresh-checkout-operator-path-2026-06-06.md)
+Status: complete in [V1 Contract And Fresh-Checkout Operator Path](internal/plans/v1-contract-and-fresh-checkout-operator-path-2026-06-06.md)
 
 Goal:
 Make the first-run path boring and repeatable from a clean clone.
@@ -206,7 +206,7 @@ Checks:
 
 ### 9. Versioned Data Contract Freeze
 
-Status: complete in [V1 Data Contract Freeze](plans/v1-data-contract-freeze-2026-06-06.md)
+Status: complete in [V1 Data Contract Freeze](internal/plans/v1-data-contract-freeze-2026-06-06.md)
 
 Goal:
 Define v1 JSON and ledger compatibility surfaces.
@@ -232,7 +232,7 @@ Evidence:
 
 ### 10. Release Documentation
 
-Status: complete in [V1 Release Candidate Documentation](plans/v1-release-candidate-docs-2026-06-06.md)
+Status: complete in [V1 Release Candidate Documentation](internal/plans/v1-release-candidate-docs-2026-06-06.md)
 
 Goal:
 Move from research-only docs to local-v1 docs without overstating safety.
@@ -260,7 +260,7 @@ Evidence:
 
 ### 11. Final V1 Gate
 
-Status: complete in [Final V1 Release Gate](plans/v1-final-release-gate-2026-06-06.md)
+Status: complete in [Final V1 Release Gate](internal/plans/v1-final-release-gate-2026-06-06.md)
 
 Goal:
 Only stamp and tag `1.0.0` after proof is clean.

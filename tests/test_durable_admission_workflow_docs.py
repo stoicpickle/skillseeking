@@ -5,10 +5,11 @@ from pathlib import Path
 
 def test_durable_admission_workflow_design_preserves_advisory_boundary(repo_root: Path):
     plan = (
-        repo_root
-        / "docs"
-        / "plans"
-        / "durable-admission-workflow-design-2026-06-03.md"
+            repo_root
+            / "docs"
+            / "internal"
+            / "plans"
+            / "durable-admission-workflow-design-2026-06-03.md"
     )
     text = plan.read_text(encoding="utf-8")
 
@@ -176,10 +177,11 @@ def test_no_write_dependency_contract_docs_preserve_boundaries(repo_root: Path):
 
 def test_candidate_to_stable_rfc_preserves_design_only_boundary(repo_root: Path):
     rfc_path = (
-        repo_root
-        / "docs"
-        / "plans"
-        / "candidate-to-stable-and-durable-admission-rfc-2026-06-07.md"
+            repo_root
+            / "docs"
+            / "internal"
+            / "plans"
+            / "candidate-to-stable-and-durable-admission-rfc-2026-06-07.md"
     )
     rfc = rfc_path.read_text(encoding="utf-8")
     docs = {
@@ -233,10 +235,11 @@ def test_candidate_to_stable_rfc_preserves_design_only_boundary(repo_root: Path)
 
 def test_active_governor_preflight_preserves_non_steering_boundary(repo_root: Path):
     design_path = (
-        repo_root
-        / "docs"
-        / "plans"
-        / "active-governor-preflight-design-2026-06-07.md"
+            repo_root
+            / "docs"
+            / "internal"
+            / "plans"
+            / "active-governor-preflight-design-2026-06-07.md"
     )
     design = design_path.read_text(encoding="utf-8")
     docs = {
