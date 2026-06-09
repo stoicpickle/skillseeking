@@ -17,8 +17,9 @@ It is intentionally **local-only**, **operator-governed**, and **Markdown-first*
 | --- | --- | --- |
 | Does the CLI run from a fresh checkout? | `python3 -m venv .venv && .venv/bin/python -m pip install -e '.[dev]'` | [Start Here](docs/start-here.md) |
 | Can it show the capability-gap loop quickly? | `.venv/bin/python scripts/run_gauntlet_demo.py` | [Demo suite](docs/demo-suite.md) |
+| Which command path should reviewers use first? | `.venv/bin/skill-agent --help` | [CLI Reference](docs/cli-reference.md) |
 | Does it compress the next human decision? | `bash scripts/run_launch_demo.sh --keep-workspace`, then run the printed `operator-summary` command | [Operator Summary Review Pack](docs/operator-summary-review-pack.md) |
-| Are the safety boundaries tested? | `bash scripts/v1_smoke.sh` | [V1.0 Release Contract](docs/v1-release-contract.md) |
+| Are routing precision and safety boundaries tested? | `bash scripts/v1_smoke.sh` and `.venv/bin/skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir runs/evals` | [Evaluation Plan](docs/evaluation-plan.md) |
 
 ## The Hook
 
@@ -77,7 +78,9 @@ V1.0 can:
 - preserve candidate evidence in local ledgers;
 - surface human decision requests and append-only resolutions;
 - summarize candidate review state with `skill-agent candidate-decision`;
-- run release, lifecycle, diagnostic, and capability-gap eval suites.
+- group the full CLI help surface into reviewer-oriented command paths;
+- run release, lifecycle, diagnostic, and capability-gap eval suites;
+- prove diagnostic routing precision for compare-vs-contradiction near-misses and safety-preflight precedence.
 
 V1.0 still does **not** provide hosted operation, a public skill marketplace, true sandboxing, dependency installation, durable `skills/` admission for generated candidates, positive stable routing, autonomous promotion, permission widening without review, or active governor steering. Scripted skills are trusted-local only; `--scripted-skills` does not provide a sandbox.
 
@@ -97,6 +100,12 @@ Run the local smoke gate:
 
 ```bash
 bash scripts/v1_smoke.sh
+```
+
+The top-level help is grouped into reviewer-oriented command paths:
+
+```bash
+.venv/bin/skill-agent --help
 ```
 
 For a faster CLI surface check:

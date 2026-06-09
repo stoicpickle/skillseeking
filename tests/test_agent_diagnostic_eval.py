@@ -19,9 +19,9 @@ def test_agent_diagnostic_eval_surfaces_improvement_dimensions(
     report = run_eval_suite(suite, copied_seed_skills, tmp_path / "runs")
     json_path, md_path = write_eval_reports(report, tmp_path / "reports")
 
-    assert len(tasks) == 22
+    assert len(tasks) == 25
     assert report["passed"] is True
-    assert report["aggregate"]["total"] == 22
+    assert report["aggregate"]["total"] == 25
     assert report["aggregate"]["failed"] == 0
     assert report["aggregate"]["task_pass_rate"] == 1.0
     assert report["aggregate"]["average_request_quality"] >= 4.0
@@ -36,26 +36,30 @@ def test_agent_diagnostic_eval_surfaces_improvement_dimensions(
         "adversarial_routing",
         "append_only",
         "approval_required",
+        "compare_precision",
         "existing_skill",
         "lifecycle",
         "input_focus",
         "missing_skill",
         "near_miss",
+        "nuanced_input",
         "authority_lock",
         "messy_input",
         "repair_required",
         "request_quality",
+        "routing_precision",
         "review_queue",
         "routing_near_miss",
         "public_use",
         "resolution_ledger",
         "safety",
+        "safety_precedence",
         "temporary_success",
     }
     assert expected_dimensions <= set(dimensions)
-    assert dimensions["existing_skill"]["total"] == 3
-    assert dimensions["missing_skill"]["total"] == 5
-    assert dimensions["safety"]["total"] == 2
+    assert dimensions["existing_skill"]["total"] == 4
+    assert dimensions["missing_skill"]["total"] == 6
+    assert dimensions["safety"]["total"] == 3
     assert dimensions["approval_required"]["total"] == 7
     assert dimensions["adversarial"]["total"] == 3
     assert dimensions["adversarial_routing"]["total"] == 3
@@ -63,12 +67,16 @@ def test_agent_diagnostic_eval_surfaces_improvement_dimensions(
     assert dimensions["input_focus"]["total"] == 9
     assert dimensions["resolution_ledger"]["total"] == 3
     assert dimensions["append_only"]["total"] == 1
-    assert dimensions["near_miss"]["total"] == 5
-    assert dimensions["routing_near_miss"]["total"] == 4
-    assert dimensions["request_quality"]["total"] == 5
+    assert dimensions["near_miss"]["total"] == 6
+    assert dimensions["routing_near_miss"]["total"] == 5
+    assert dimensions["request_quality"]["total"] == 6
     assert dimensions["public_use"]["total"] == 2
     assert dimensions["messy_input"]["total"] == 1
-    assert dimensions["authority_lock"]["total"] == 1
+    assert dimensions["authority_lock"]["total"] == 2
+    assert dimensions["compare_precision"]["total"] == 1
+    assert dimensions["routing_precision"]["total"] == 3
+    assert dimensions["nuanced_input"]["total"] == 1
+    assert dimensions["safety_precedence"]["total"] == 1
     assert dimensions["request_quality"]["average_request_quality"] >= 4.0
     assert report["aggregate"]["weakest_diagnostic_dimensions"] == []
 
@@ -89,6 +97,7 @@ def test_agent_diagnostic_eval_surfaces_improvement_dimensions(
     assert input_request_kinds["diagnostic_public_dependency_and_file_summary_gate"] == [
         "safety_approval"
     ]
+    assert input_request_kinds.get("diagnostic_safety_precedence_secrets_over_compare", []) == []
     assert "promotion_approval" in input_request_kinds["diagnostic_lifecycle_temporary_success"]
     assert "repair_review" in input_request_kinds["diagnostic_lifecycle_repair_required"]
     resolution_statuses = {
