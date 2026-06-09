@@ -9,6 +9,7 @@ import typer
 
 from app.admission_plan import AdmissionPlanError, build_admission_plan
 from app.agent_loop import run_task
+from app.cli_banner import emit_cli_banner
 from app.cli_output import (
     emit_admission_plan_json,
     emit_admission_plan_output,
@@ -88,6 +89,7 @@ from app.skill_candidate_ledger import (
 from app.skill_receipt import SkillReceiptError, build_skill_receipt_report
 from app.stable_readiness import StableReadinessError, build_stable_readiness_report
 from app.registry import SkillRegistry
+from app.redaction import redact_data
 
 
 app = typer.Typer(no_args_is_help=True)
@@ -327,6 +329,28 @@ FEEDBACK_SESSION_APPEND_EXCLUDED_AUTHORITY = [
     "marketplace behavior",
     "true sandboxing claims",
 ]
+
+
+@app.command("banner")
+def banner(
+    color: Annotated[
+        bool,
+        typer.Option(
+            "--color/--no-color",
+            help="Enable or disable ANSI color in the banner.",
+        ),
+    ] = True,
+    force_color: Annotated[
+        bool,
+        typer.Option(
+            "--force-color",
+            help="Force ANSI color even when stdout is not detected as a terminal.",
+        ),
+    ] = False,
+) -> None:
+    """Print the compact human-facing CLI banner."""
+
+    emit_cli_banner(color=color, force_color=force_color)
 
 
 def _single_line(value: str) -> str:
@@ -2094,7 +2118,7 @@ def eval_command(
     report["json_report_path"] = str(json_path)
     report["markdown_report_path"] = str(md_path)
     if json_output:
-        typer.echo(json.dumps(report, indent=2, sort_keys=True))
+        typer.echo(json.dumps(redact_data(report), indent=2, sort_keys=True))
     else:
         aggregate = report["aggregate"]
         typer.echo("EVAL")

@@ -32,5 +32,8 @@ def create_skill_repair_request(
 
 def _repair_request_id(skill_request_id: str, failure_reasons: list[str]) -> str:
     reason_text = "|".join(failure_reasons)
-    digest = hashlib.sha1(f"{skill_request_id}:{reason_text}".encode("utf-8")).hexdigest()[:10]
+    digest = hashlib.sha1(
+        f"{skill_request_id}:{reason_text}".encode("utf-8"),
+        usedforsecurity=False,
+    ).hexdigest()[:10]
     return f"repairreq_{digest}"

@@ -113,6 +113,10 @@ def test_missing_skill_demo_emits_structured_request(copied_seed_skills, tmp_pat
     assert "REQUEST_SKILL - :: detect contradictions" in result.stdout
     assert "Missing capability: detect contradictions" in result.stdout
     assert "Requested skill: detect-contradictions" in result.stdout
+    assert "NEXT_ACTION" in result.stdout
+    assert "Start with summary: skill-agent operator-summary --runs-dir" in result.stdout
+    assert "Explain this run: skill-agent explain" in result.stdout
+    assert "Boundary: no durable skill admission or stable routing happened automatically." in result.stdout
     assert not (copied_seed_skills / "detect-contradictions").exists()
     logs = list(runs_dir.glob("run_*.json"))
     assert len(logs) == 1

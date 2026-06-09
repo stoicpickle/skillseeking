@@ -196,6 +196,11 @@ The following are explicitly out of scope for the next runtime milestone:
 - 2026-06-07: Added `operator-summary` decision compression, the design-partner review pack, candidate-to-stable/durable admission RFC refresh, and active-governor preflight design. These compress review evidence and define future gates without adding durable admission, stable routing, dependency installation, permission widening, or governor steering.
 - 2026-06-07: Added `skill-agent new-authority-readiness` as the explicit phase statement for the post-v1 boundary: ready for new-authority design review and planning, not ready to enable new authority.
 - 2026-06-07: Added `docs/design-partner-feedback-log.md` so public-dev-preview sessions can be compared before adding any new authority.
+- 2026-06-07: Added `skill-agent banner` as a compact Rich-powered human CLI identity surface. JSON and evidence commands remain unprefixed for scripts and evals.
+- 2026-06-07: Added `scripts/cli_doctor.py` as a fast operator-facing CLI surface checker. It runs representative human and JSON commands in a temporary workspace and reports issues before live-candidate testing.
+- 2026-06-07: Added `docs/start-here.md` and `run_launch_demo.sh --keep-workspace` so a new local user can check the CLI, run the launch demo, keep evidence, and inspect `operator-summary` as the front door.
+- 2026-06-07: Added public authority-lock regression tests for v1 local-use, new-authority readiness, feedback capture, and summary surfaces so public-use polish cannot silently grant durable admission, stable routing, hosted behavior, marketplace behavior, sandbox claims, or active governor steering.
+- 2026-06-07: Added `docs/general-public-readiness-tasking-2026-06-07.md` to track public-use hardening recommendations 1, 3, 4, 5, 6, and 7 while leaving live design-partner recruitment external.
 
 - 2026-06-01: Consolidated near-term roadmap into this document before runtime Skill Candidate Ledger work.
 - 2026-06-01: Named **Skill Candidate Ledger** as the next runtime milestone.

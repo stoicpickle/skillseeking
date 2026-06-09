@@ -363,7 +363,10 @@ def candidate_id_for(skill_name: str, capability: str) -> str:
 
 def _legacy_candidate_id_for(skill_name: str, capability: str) -> str:
     normalized = f"{_normalize_key(skill_name)}:{_normalize_key(capability)}"
-    digest = hashlib.sha1(normalized.encode("utf-8")).hexdigest()[:12]
+    digest = hashlib.sha1(
+        normalized.encode("utf-8"),
+        usedforsecurity=False,
+    ).hexdigest()[:12]
     return f"candidate_{digest}"
 
 

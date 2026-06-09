@@ -1339,8 +1339,10 @@ def test_shadow_managed_write_verifies_write_approval_and_exact_gates(
     assert no_dry_run_data["registry_mutated"] is False
     assert no_dry_run_data["candidate_ledger_mutated"] is False
     assert no_dry_run_data["resolution_ledger_mutated"] is False
+    assert no_dry_run_data["checkpoint_ledger_mutated"] is False
     assert no_dry_run_data["run_logs_mutated"] is False
     assert no_dry_run_data["governor_steering_enabled"] is False
+    assert no_dry_run_data["stable_routing_policy"] == "stable_routing_unchanged"
     assert no_dry_run_data["blockers"] == []
     assert Path(no_dry_run_data["store_skill_path"]).read_bytes() == Path(no_dry_run_data["source_skill_path"]).read_bytes()
     assert Path(no_dry_run_data["generation_skill_path"]).read_bytes() == Path(no_dry_run_data["source_skill_path"]).read_bytes()
@@ -1390,6 +1392,11 @@ def test_shadow_managed_write_verifies_write_approval_and_exact_gates(
     assert rerun_data["already_applied"] is True
     assert rerun_data["managed_prefix_mutated"] is False
     assert rerun_data["profile_mutated"] is False
+    assert rerun_data["durable_skills_mutated"] is False
+    assert rerun_data["registry_mutated"] is False
+    assert rerun_data["candidate_ledger_mutated"] is False
+    assert rerun_data["stable_routing_policy"] == "stable_routing_unchanged"
+    assert rerun_data["governor_steering_enabled"] is False
     assert _snapshot_tree(copied_seed_skills) == durable_before
     assert _snapshot_tree(runs_dir) == runs_before
     assert _snapshot_tree(managed_prefix) != managed_before

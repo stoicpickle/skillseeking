@@ -12,6 +12,7 @@ from app.input_focus import collect_input_requests
 from app.input_resolution import InputResolutionError, resolve_input_request
 from app.input_resolution_ledger import append_input_request_resolution
 from app.models import InputRequest, InputRequestResolutionDryRun
+from app.redaction import REDACTION_NOTICE, redact_data
 from app.request_quality import score_skill_request
 from app.skill_candidate_ledger import (
     SkillCandidateLedgerError,
@@ -133,8 +134,17 @@ def write_eval_reports(report: dict[str, Any], report_dir: Path) -> tuple[Path, 
     md_path = report_dir / f"eval_report_{stamp}.md"
     report["json_report_path"] = str(json_path)
     report["markdown_report_path"] = str(md_path)
-    json_path.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    md_path.write_text(render_markdown_summary(report), encoding="utf-8")
+    redacted_report = redact_data(report)
+    if redacted_report != report:
+        redacted_report["redactions_applied"] = True
+        redacted_report["security_warnings"] = sorted(
+            {*redacted_report.get("security_warnings", []), REDACTION_NOTICE}
+        )
+    json_path.write_text(
+        json.dumps(redacted_report, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+    md_path.write_text(render_markdown_summary(redacted_report), encoding="utf-8")
     return json_path, md_path
 
 

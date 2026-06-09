@@ -7,9 +7,13 @@ from typing import Any
 
 from app.env_utils import safe_env
 from app.models import ScriptExecutionLog, SkillRecord
+from app.redaction import REDACTION_NOTICE, redact_text
 
 STDOUT_LIMIT = 8192
 STDERR_LIMIT = 8192
+SCRIPTED_SKILL_SECURITY_WARNING = (
+    "Scripted skills are trusted-local subprocesses, not a true sandbox."
+)
 
 
 def execute_scripted_skill(skill: SkillRecord, payload: dict) -> ScriptExecutionLog:
@@ -37,8 +41,11 @@ def execute_scripted_skill(skill: SkillRecord, payload: dict) -> ScriptExecution
         )
         stdout_too_large = len(result.stdout or "") > STDOUT_LIMIT
         stderr_too_large = len(result.stderr or "") > STDERR_LIMIT
-        stdout = _cap_text(result.stdout.strip(), STDOUT_LIMIT)
-        stderr = _cap_text(result.stderr.strip(), STDERR_LIMIT)
+        capped_stdout = _cap_text(result.stdout.strip(), STDOUT_LIMIT)
+        capped_stderr = _cap_text(result.stderr.strip(), STDERR_LIMIT)
+        stdout = redact_text(capped_stdout)
+        stderr = redact_text(capped_stderr)
+        redactions_applied = stdout != capped_stdout or stderr != capped_stderr
         failure_category = None
         parsed_stdout = None
         output_validated = False
@@ -66,16 +73,33 @@ def execute_scripted_skill(skill: SkillRecord, payload: dict) -> ScriptExecution
             parsed_stdout=parsed_stdout,
             output_validated=output_validated,
             failure_category=failure_category,
+            redactions_applied=redactions_applied,
+            security_warnings=[SCRIPTED_SKILL_SECURITY_WARNING]
+            + ([REDACTION_NOTICE] if redactions_applied else []),
         )
     except subprocess.TimeoutExpired as exc:
+        capped_stdout = _cap_text(
+            (exc.stdout or "").strip() if isinstance(exc.stdout, str) else "",
+            STDOUT_LIMIT,
+        )
+        capped_stderr = _cap_text(
+            (exc.stderr or "").strip() if isinstance(exc.stderr, str) else "",
+            STDERR_LIMIT,
+        )
+        stdout = redact_text(capped_stdout)
+        stderr = redact_text(capped_stderr)
+        redactions_applied = stdout != capped_stdout or stderr != capped_stderr
         return ScriptExecutionLog(
             skill_name=skill.name,
             command=command,
             returncode=124,
-            stdout=_cap_text((exc.stdout or "").strip() if isinstance(exc.stdout, str) else "", STDOUT_LIMIT),
-            stderr=_cap_text((exc.stderr or "").strip() if isinstance(exc.stderr, str) else "", STDERR_LIMIT),
+            stdout=stdout,
+            stderr=stderr,
             timed_out=True,
             failure_category="timeout",
+            redactions_applied=redactions_applied,
+            security_warnings=[SCRIPTED_SKILL_SECURITY_WARNING]
+            + ([REDACTION_NOTICE] if redactions_applied else []),
         )
 
 

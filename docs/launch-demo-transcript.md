@@ -8,7 +8,7 @@ Run it after local setup:
 
 ```bash
 .venv/bin/python -m pip install -e '.[dev]'
-bash scripts/run_launch_demo.sh
+bash scripts/run_launch_demo.sh --keep-workspace
 ```
 
 ## Expected Flow
@@ -29,6 +29,8 @@ DRAFTING_TEMP_SKILL
 VALIDATION_PASSED
 LOADING_TEMP_SKILL
 ROUTE_COMPLETE
+OPERATOR_SUMMARY
+OPERATOR_DECISIONS
 Candidate decision
 Durable skills mutated: no
 Stable routing enabled: no
@@ -41,7 +43,8 @@ Sandbox provided: no
 - The local CLI can identify a low-risk missing capability.
 - The CLI emits a structured skill request instead of pretending the capability exists.
 - A temporary Markdown skill can be drafted, validated, loaded, and used for the current run.
-- Candidate evidence is available for `skill-agent candidate-decision`.
+- `operator-summary` is the first inspection surface after the run.
+- Candidate evidence is available for `skill-agent candidate-decision` as supporting proof.
 - Human review remains in the path before stable local use.
 - Durable `skills/` admission remains disabled.
 - Stable routing remains disabled.

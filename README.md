@@ -1,14 +1,34 @@
 # Skill-Seeking Agent
 
+[![Tests](https://github.com/stoicpickle/skillseeking/actions/workflows/tests.yml/badge.svg)](https://github.com/stoicpickle/skillseeking/actions/workflows/tests.yml)
+![Python](https://img.shields.io/badge/python-3.11%2B-blue)
+![Version](https://img.shields.io/badge/local_CLI-v1.0.0-orange)
+![License](https://img.shields.io/badge/license-MIT-green)
+
+![Skill-Seeking Agent governed capability acquisition hero](docs/assets/skillseeking-hero.png)
+
 Skill-Seeking Agent is a v1.0 local CLI release for governed capability acquisition. It helps an operator identify capability gaps as structured skill requests, validate temporary Markdown skills, preserve evidence, ask for human decisions, and keep the capability-gap loop inspectable.
 
 It is intentionally **local-only**, **operator-governed**, and **Markdown-first**. Version `1.0.0` is the local CLI compatibility stamp; the matching Git release tag is `v1.0.0`. It is not a production agent framework, not a hosted platform, and not production-safe.
+
+The portfolio version of the project is deliberately narrow: it shows how an agent can stop, explain the missing capability, preserve proof, and ask for the next human decision before new authority is granted.
 
 The product is not a generic skill marketplace or "a chatbot with many tools." The product is the agent's ability to say:
 
 > I am blocked because I lack capability X. I need a skill with input Y, output Z, and success test W.
 
 That capability-gap loop is the core demo, the trust surface, and the long-term product wedge.
+
+## What To Inspect First
+
+| Reviewer question | Start here | Proof |
+| --- | --- | --- |
+| Does the CLI run from a fresh checkout? | `python3 -m venv .venv && .venv/bin/python -m pip install -e '.[dev]'` | [Start Here](docs/start-here.md) |
+| Can it show the capability-gap loop quickly? | `bash scripts/run_launch_demo.sh --keep-workspace` | [Launch demo transcript](docs/launch-demo-transcript.md) |
+| Does it compress the next human decision? | `.venv/bin/skill-agent operator-summary --runs-dir <demo-workspace>/runs` | [Operator Summary Review Pack](docs/operator-summary-review-pack.md) |
+| Are safety and public-claim boundaries tested? | `bash scripts/v1_smoke.sh` | [V1.0 Release Contract](docs/v1-release-contract.md) |
+
+![Governed capability-gap evidence loop](docs/assets/skillseeking-evidence-loop.png)
 
 ## Public Repo Framing
 
@@ -58,10 +78,10 @@ See [Core demo suite](docs/demo-suite.md) for the smaller demos behind each beha
 For the shortest public-dev-preview path through the product wedge, run:
 
 ```bash
-bash scripts/run_launch_demo.sh
+bash scripts/run_launch_demo.sh --keep-workspace
 ```
 
-This uses an isolated temporary copy of `skills/` to show the agent detecting a missing capability, requesting and validating a temporary Markdown skill, loading it for one run, then surfacing `candidate-decision` while durable skill admission and stable routing remain disabled. See [Launch demo transcript](docs/launch-demo-transcript.md) for the expected landmarks.
+This uses an isolated temporary copy of `skills/` to show the agent detecting a missing capability, requesting and validating a temporary Markdown skill, loading it for one run, then surfacing `candidate-decision` while durable skill admission and stable routing remain disabled. `--keep-workspace` preserves the demo evidence and prints the exact `operator-summary` command to inspect next. See [Start Here](docs/start-here.md) for the short public-preview path and [Launch demo transcript](docs/launch-demo-transcript.md) for the expected landmarks.
 
 ## V1.0 Local CLI Release
 
@@ -81,6 +101,23 @@ bash scripts/v1_smoke.sh
 ```
 
 This smoke checks local operator readiness only, including the named `evals/v1_release.jsonl` gate, v1 release documentation, and `skill-agent v1-local-use` managed-prefix checklist. It does not publish releases, admit durable skills, or enable stable routing.
+
+For a faster CLI surface check before a live candidate:
+
+```bash
+.venv/bin/python scripts/cli_doctor.py
+.venv/bin/python scripts/cli_doctor.py --json
+```
+
+The doctor runs representative human and JSON CLI commands in a temporary workspace, then reports any command, parsing, or boundary issues without mutating durable `skills/`.
+
+Run the local security gate before public-facing changes:
+
+```bash
+.venv/bin/python scripts/security_check.py
+```
+
+The security gate runs Bandit, pip-audit, and detect-secrets against tracked and untracked local source files. It does not install candidate dependencies or add hosted/API behavior.
 
 Scripted skills are trusted-local only. Do not run untrusted scripted skills; `--scripted-skills` does not provide a sandbox.
 
@@ -106,6 +143,8 @@ V1.0 still does not provide hosted operation, a marketplace, true sandboxing, de
 ## Current Documentation
 
 - [Product brief](docs/product-brief.md)
+- [Start here](docs/start-here.md)
+- [General public readiness tasking](docs/general-public-readiness-tasking-2026-06-07.md)
 - [System architecture](docs/architecture.md)
 - [Skill lifecycle](docs/skill-lifecycle.md)
 - [MVP plan](docs/mvp-plan.md)
@@ -259,6 +298,13 @@ Inspect machine-readable surfaces:
 .venv/bin/skill-agent candidates --json
 ```
 
+Print the compact human-facing CLI banner:
+
+```bash
+.venv/bin/skill-agent banner
+.venv/bin/skill-agent banner --no-color
+```
+
 Run the M5 library health report:
 
 ```bash
@@ -394,7 +440,8 @@ Local testing/iteration readiness for the current CLI prototype is proven with:
 
 ```bash
 .venv/bin/python -m pytest -q
-.venv/bin/python -m compileall -q app
+.venv/bin/python scripts/security_check.py
+.venv/bin/python -m compileall -q app scripts
 .venv/bin/skill-agent eval --suite evals/capgap_smoke.jsonl --skills-dir skills --runs-dir runs/evals
 .venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir runs/evals
 .venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir runs/evals

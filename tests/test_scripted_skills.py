@@ -87,17 +87,92 @@ def test_cli_executes_scripted_skill_when_enabled(tmp_path, repo_root: Path):
 
     assert result.exit_code == 0
     assert "EXECUTING_SCRIPT" in result.stdout
+    assert "SECURITY" in result.stdout
+    assert "Scripted skills are trusted-local subprocesses" in result.stdout
     assert "SCRIPT_EXECUTED" in result.stdout
     assert "Skill: count-words" in result.stdout
     logs = list(runs_dir.glob("run_*.json"))
     assert len(logs) == 1
     data = json.loads(logs[0].read_text(encoding="utf-8"))
     assert data["script_executions"][0]["skill_name"] == "count-words"
+    assert data["security_warnings"] == [
+        "Scripted skills are trusted-local subprocesses, not a true sandbox."
+    ]
     execution = data["script_executions"][0]
     assert json.loads(execution["stdout"]) == {"word_count": 6}
     assert execution["parsed_stdout"] == {"word_count": 6}
     assert execution["output_validated"]
     assert execution["failure_category"] is None
+    assert execution["security_warnings"] == data["security_warnings"]
+
+
+def test_cli_json_surfaces_scripted_skill_warning_when_enabled(tmp_path, repo_root: Path):
+    skills_dir = tmp_path / "scripted-skills"
+    copytree(repo_root / "tests" / "fixtures" / "scripted-skills", skills_dir)
+    runs_dir = tmp_path / "runs"
+    runner = CliRunner()
+
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            "Count words in one two three.",
+            "--scripted-skills",
+            "--no-temporary-skills",
+            "--skills-dir",
+            str(skills_dir),
+            "--runs-dir",
+            str(runs_dir),
+            "--json",
+        ],
+    )
+
+    assert result.exit_code == 0
+    payload = json.loads(result.stdout)
+    assert payload["security_warnings"] == [
+        "Scripted skills are trusted-local subprocesses, not a true sandbox."
+    ]
+    assert "SCRIPTED_SKILL_WARNING" in payload["trace"]
+    warning_events = [
+        event
+        for event in payload["trace_events"]
+        if event["stage"] == "SCRIPTED_SKILL_WARNING"
+    ]
+    assert len(warning_events) == 1
+    assert warning_events[0]["message"] == payload["security_warnings"][0]
+
+    logs = list(runs_dir.glob("run_*.json"))
+    assert len(logs) == 1
+    persisted = json.loads(logs[0].read_text(encoding="utf-8"))
+    assert persisted["security_warnings"] == payload["security_warnings"]
+    assert "SCRIPTED_SKILL_WARNING" in persisted["trace"]
+
+
+def test_execute_scripted_skill_redacts_stdout_and_stderr(tmp_path, repo_root: Path):
+    record = _copied_script_record(tmp_path, repo_root)
+    _write_script(
+        record.path.parent,
+        """
+        import json
+        import sys
+        fake_key = "s" + "k-" + ("a" * 24)
+        print(json.dumps({"word_count": 1, "token": fake_key, "auth": "Bearer " + fake_key}))
+        sys.stderr.write("api_key=" + fake_key)
+        """,
+    )
+
+    execution = execute_scripted_skill(record, {"text": "one"})
+
+    assert execution.returncode == 0
+    assert execution.redactions_applied
+    assert "[REDACTED:openai_key]" in execution.stdout
+    assert "[REDACTED:bearer]" in execution.stdout
+    assert "api_key=[REDACTED:credential]" in execution.stderr
+    assert "sk-" not in execution.stdout
+    assert "sk-" not in execution.stderr
+    assert execution.parsed_stdout["token"] == "[REDACTED:openai_key]"
+    assert execution.parsed_stdout["auth"] == "[REDACTED:bearer]"
+    assert execution.output_validated
 
 
 def test_execute_scripted_skill_invalid_json_failure(tmp_path, repo_root: Path):
@@ -168,11 +243,8 @@ def _copied_script_record(tmp_path: Path, repo_root: Path):
 def _write_script(skill_dir: Path, body: str) -> None:
     script = skill_dir / "scripts" / "count_words.py"
     script.write_text(
-        dedent(
-            f"""
-            from __future__ import annotations
-            {body}
-            """
-        ),
+        "from __future__ import annotations\n"
+        + dedent(body).strip()
+        + "\n",
         encoding="utf-8",
     )

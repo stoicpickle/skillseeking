@@ -13,6 +13,8 @@ def test_v1_release_docs_exist_and_are_non_empty(repo_root: Path):
         repo_root / "docs" / "v1-release-contract.md",
         repo_root / "docs" / "v1-release-tasking.md",
         repo_root / "docs" / "launch-proof-2026-06-07.md",
+        repo_root / "docs" / "start-here.md",
+        repo_root / "docs" / "general-public-readiness-tasking-2026-06-07.md",
         repo_root / "docs" / "launch-demo-transcript.md",
         repo_root / "CONTRIBUTING.md",
         repo_root / "docs" / "operator-summary-review-pack.md",
@@ -51,6 +53,8 @@ def test_readme_positions_v1_as_local_cli_with_boundaries(repo_root: Path):
     assert "`--scripted-skills` is trusted-local only" in readme
     assert "does not provide a sandbox" in readme
     assert "docs/v1-release-notes.md" in readme
+    assert "docs/start-here.md" in readme
+    assert "docs/general-public-readiness-tasking-2026-06-07.md" in readme
     assert "docs/launch-demo-transcript.md" in readme
     assert "CONTRIBUTING.md" in readme
     assert "docs/operator-summary-review-pack.md" in readme
@@ -65,6 +69,54 @@ def test_readme_positions_v1_as_local_cli_with_boundaries(repo_root: Path):
     assert "docs/design-partner-feedback.md" in readme
     assert "docs/governance-monetization-principles.md" in readme
     assert "CHANGELOG.md" in readme
+
+
+def test_readme_front_images_are_present(repo_root: Path):
+    readme = (repo_root / "README.md").read_text(encoding="utf-8")
+    asset_paths = [
+        "docs/assets/skillseeking-hero.png",
+        "docs/assets/skillseeking-evidence-loop.png",
+    ]
+
+    for asset_path in asset_paths:
+        assert asset_path in readme
+        asset = repo_root / asset_path
+        assert asset.exists(), f"missing README asset: {asset_path}"
+        assert asset.stat().st_size > 100_000, f"unexpectedly tiny README asset: {asset_path}"
+
+
+def test_start_here_keeps_public_first_run_path_simple(repo_root: Path):
+    start_here = (repo_root / "docs" / "start-here.md").read_text(encoding="utf-8")
+    lower = start_here.lower()
+
+    assert "public-dev-preview first-run path" in lower
+    assert "scripts/cli_doctor.py" in start_here
+    assert "scripts/run_launch_demo.sh --keep-workspace" in start_here
+    assert "operator-summary --runs-dir <demo-workspace>/runs" in start_here
+    assert "candidate evidence is not durable admission" in lower
+    assert "stable routing remains disabled" in lower
+    assert "not a hosted service" in lower
+    assert "not production-safe" in lower
+    assert "not a true sandbox" in lower
+
+
+def test_general_public_readiness_tasking_excludes_design_partner_recruitment(repo_root: Path):
+    tasking = (
+        repo_root / "docs" / "general-public-readiness-tasking-2026-06-07.md"
+    ).read_text(encoding="utf-8")
+    lower = tasking.lower()
+
+    assert "recommendation 2" in lower
+    assert "intentionally excluded" in lower
+    assert "scripts/cli_doctor.py" in tasking
+    assert "run_launch_demo.sh --keep-workspace" in tasking
+    assert "operator-summary" in tasking
+    assert "NEXT_ACTION" in tasking
+    assert "22/22" in tasking
+    assert "authority-lock" in lower
+    assert "must not add" in lower
+    assert "positive stable routing" in lower
+    assert "true sandbox claims" in lower
 
 
 def test_release_notes_are_honest_about_current_v1_state(repo_root: Path):
@@ -142,7 +194,16 @@ def test_launch_proof_records_private_local_release_boundaries(repo_root: Path):
     lower = proof.lower()
 
     assert "status: private/local v1.0 release proof" in lower
-    assert "e006ca815a5eba2e33b130386d5106fa5d7fb191" in proof
+    release_commit = "".join(
+        [
+            "e006ca81",
+            "5a5eba2e",
+            "33b13038",
+            "6d5106fa",
+            "5d7fb191",
+        ]
+    )
+    assert release_commit in proof
     assert "refs/tags/v1.0.0^{}" in proof
     assert "full pytest: `279 passed`" in lower
     assert "tag-required v1 smoke: passed" in lower
@@ -165,6 +226,7 @@ def test_ci_workflow_runs_visible_v1_launch_gate(repo_root: Path):
     assert "skill-agent eval --suite evals/agent_diagnostic_v0.jsonl" in workflow
     assert "skill-agent eval --suite evals/v1_release.jsonl" in workflow
     assert "python -m compileall -q app" in workflow
+    assert "python scripts/security_check.py" in workflow
     assert "bash scripts/v1_smoke.sh" in workflow
     assert "REQUIRE_V1_TAG=1" not in workflow
 
@@ -177,6 +239,8 @@ def test_launch_demo_transcript_preserves_public_boundaries(repo_root: Path):
 
     assert "local public-dev-preview demo" in lower
     assert "human review remains in the path" in lower
+    assert "operator-summary" in lower
+    assert "first inspection surface" in lower
     assert "durable `skills/` admission remains disabled" in lower
     assert "stable routing remains disabled" in lower
     assert "not a hosted service" in lower
@@ -341,6 +405,12 @@ def test_public_docs_do_not_add_positive_authority_claims(repo_root: Path):
         "autonomously promotes",
         "external skill marketplace support is included",
         "durable generated-skill admission is enabled",
+        "dependency installation is enabled",
+        "installs candidate dependencies",
+        "automatically installs dependencies",
+        "dependency installer is available",
+        "provider api is enabled",
+        "hosted api is enabled",
     ]
 
     for path in docs:

@@ -106,6 +106,9 @@ Scripted skills are opt-in restricted local subprocesses, not a true sandbox. Cu
 - JSON stdout parsing on successful return.
 - Output-schema validation.
 - Failure categories for timeout, nonzero exit, invalid JSON, schema mismatch, and oversized output.
+- Redaction of obvious credential values before run logs and eval reports are written.
+
+Scripted-skill validation runs local pytest for the candidate skill and is also trusted-local execution. Do not validate scripted skills from untrusted sources.
 
 Real sandboxing, memory limits, dependency isolation, and external service controls are out of scope for v0.
 

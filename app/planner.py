@@ -22,5 +22,8 @@ def plan_task(task_text: str) -> TaskPlan:
             CapabilityRequest(capability="write structured answer", source_terms=["fallback"])
         )
 
-    digest = hashlib.sha1(task_text.encode("utf-8")).hexdigest()[:10]
+    digest = hashlib.sha1(
+        task_text.encode("utf-8"),
+        usedforsecurity=False,
+    ).hexdigest()[:10]
     return TaskPlan(task_id=f"task_{digest}", task=task_text, capabilities=capabilities)

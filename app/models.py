@@ -407,6 +407,8 @@ class ScriptExecutionLog(BaseModel):
     parsed_stdout: Any | None = None
     output_validated: bool = False
     failure_category: ScriptFailureCategory | None = None
+    redactions_applied: bool = False
+    security_warnings: list[str] = Field(default_factory=list)
 
 
 class TemporarySkillResult(BaseModel):
@@ -1523,6 +1525,8 @@ class RunLog(BaseModel):
     trace: list[str]
     trace_events: list[TraceEvent] = Field(default_factory=list)
     execution_summary: ExecutionSummary = Field(default_factory=ExecutionSummary)
+    security_warnings: list[str] = Field(default_factory=list)
+    redactions_applied: bool = False
     result_quality: dict = Field(
         default_factory=lambda: {
             "score": None,

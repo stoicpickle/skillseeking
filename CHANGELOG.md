@@ -14,6 +14,8 @@ All notable release changes are tracked here. The authoritative package version 
   and no new authority.
 - `skill-agent feedback-log-summary` reports design-partner feedback synthesis
   readiness without mutating the feedback log or enabling new authority.
+- GitHub-facing README polish with generated hero/evidence-loop assets,
+  reviewer-first proof links, and package metadata for the public repo surface.
 
 ## [1.0.0] - 2026-06-06
 

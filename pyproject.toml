@@ -2,20 +2,51 @@
 name = "skillseeking"
 version = "1.0.0"
 description = "Local CLI for governed capability-gap detection, skill requests, and evidence-controlled skill review."
+readme = "README.md"
 requires-python = ">=3.11"
+license = { file = "LICENSE" }
+keywords = [
+  "agents",
+  "ai",
+  "cli",
+  "evaluation",
+  "skills",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: Software Development :: Quality Assurance",
+  "Topic :: Utilities",
+]
 dependencies = [
   "pydantic>=2,<3",
   "PyYAML>=6,<7",
+  "rich>=15,<16",
   "typer>=0.21,<1.0",
 ]
 
 [project.optional-dependencies]
 dev = [
+  "bandit[toml]>=1.8,<2",
+  "detect-secrets>=1.5,<2",
+  "pip-audit>=2.9,<3",
   "pytest>=9,<10",
 ]
 
 [project.scripts]
 skill-agent = "app.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/stoicpickle/skillseeking"
+Repository = "https://github.com/stoicpickle/skillseeking"
+Documentation = "https://github.com/stoicpickle/skillseeking#readme"
+Issues = "https://github.com/stoicpickle/skillseeking/issues"
 
 [build-system]
 requires = ["setuptools>=69"]
@@ -27,3 +58,7 @@ include = ["app*"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["."]
+
+[tool.bandit]
+exclude_dirs = ["tests", "runs", ".venv"]
+skips = ["B404", "B603"]

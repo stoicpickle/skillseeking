@@ -8,7 +8,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from app.admission_plan import AdmissionPlanError
 from app.durable_admission import build_durable_admission_preview
@@ -314,11 +314,21 @@ def build_shadow_activation_acceptance_report(
     acceptance_conflict_detected = False
 
     if prepare_acceptance_evidence and not blockers:
-        assert source_bytes is not None
-        assert store_skill_path is not None
-        assert generation_skill_path is not None
-        assert activation_pointer is not None
-        assert rollback_target is not None
+        if (
+            source_bytes is None
+            or store_skill_path is None
+            or generation_skill_path is None
+            or activation_pointer is None
+            or rollback_target is None
+        ):
+            raise ShadowActivationPlanError(
+                "acceptance required evidence missing after preflight"
+            )
+        source_bytes = cast(bytes, source_bytes)
+        store_skill_path = cast(Path, store_skill_path)
+        generation_skill_path = cast(Path, generation_skill_path)
+        activation_pointer = cast(Path, activation_pointer)
+        rollback_target = cast(Path, rollback_target)
         generation_dir = generation_skill_path.parent.parent.parent
         write_blockers: list[str] = []
         rollback_marker = rollback_target / ".acceptance_rollback_target"
@@ -1118,13 +1128,13 @@ def _apply_shadow_managed_write(
         state["blockers"] = _unique(blockers)
         return state
 
-    assert source_skill_path is not None
-    assert source_sha256 is not None
-    assert store_skill_path is not None
-    assert generation_skill_path is not None
-    assert activation_pointer is not None
-    assert rollback_target is not None
-    assert managed_write_plan_digest is not None
+    source_skill_path = cast(Path, source_skill_path)
+    source_sha256 = cast(str, source_sha256)
+    store_skill_path = cast(Path, store_skill_path)
+    generation_skill_path = cast(Path, generation_skill_path)
+    activation_pointer = cast(Path, activation_pointer)
+    rollback_target = cast(Path, rollback_target)
+    managed_write_plan_digest = cast(str, managed_write_plan_digest)
 
     try:
         source_bytes = source_skill_path.read_bytes()

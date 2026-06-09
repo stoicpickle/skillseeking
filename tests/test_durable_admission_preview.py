@@ -404,7 +404,7 @@ def test_durable_admission_preview_recognizes_exact_dependency_realization_but_b
     assert contract.normalized_dependencies[0].realization_version == "1.0.0"
     assert (
         contract.normalized_dependencies[0].realization_sha256
-        == "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+        == "0123456789abcdef" * 4
     )
     assert "dependency_install_unsupported" in contract.blockers
     assert contract.dependency_approval_verified is False

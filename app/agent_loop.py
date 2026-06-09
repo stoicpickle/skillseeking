@@ -23,7 +23,7 @@ from app.registry import SkillRegistry
 from app.run_log import new_run_id, rewrite_run_log, write_run_log
 from app.skill_candidate_ledger import record_run_in_candidate_ledger
 from app.skill_repairer import create_skill_repair_request
-from app.script_executor import execute_scripted_skill
+from app.script_executor import SCRIPTED_SKILL_SECURITY_WARNING, execute_scripted_skill
 from app.skill_requester import create_skill_request
 from app.skillsmith import SkillsmithError, draft_temporary_skill
 
@@ -72,6 +72,16 @@ def run_task(
 
     loaded_logs: list[LoadedSkillLog] = []
     script_execution_logs: list[ScriptExecutionLog] = []
+    security_warnings: list[str] = []
+    if allow_scripted_skills:
+        security_warnings.append(SCRIPTED_SKILL_SECURITY_WARNING)
+        _record_trace(
+            trace,
+            trace_events,
+            "SCRIPTED_SKILL_WARNING",
+            message=SCRIPTED_SKILL_SECURITY_WARNING,
+            run_id=run_id,
+        )
     skill_requests: list[dict] = []
     skill_repair_requests: list[dict] = []
     route_load_failed = False
@@ -330,6 +340,7 @@ def run_task(
             )
             script_log = execute_scripted_skill(record, {"task": task_text, "text": task_text})
             script_execution_logs.append(script_log)
+            security_warnings.extend(script_log.security_warnings)
             if _script_failed(script_log):
                 exit_code = 1
 
@@ -386,6 +397,8 @@ def run_task(
         trace=trace,
         trace_events=trace_events,
         execution_summary=execution_summary,
+        security_warnings=_unique(security_warnings),
+        redactions_applied=any(execution.redactions_applied for execution in script_execution_logs),
     )
     path = write_run_log(run_log, runs_dir)
     try:

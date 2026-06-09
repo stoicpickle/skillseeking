@@ -29,6 +29,9 @@ jobs:
       - name: Check whitespace
         run: git diff --check
 
+      - name: Run security check
+        run: python scripts/security_check.py
+
       - name: Run tests
         run: python -m pytest -q
 

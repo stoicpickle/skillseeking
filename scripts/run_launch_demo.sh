@@ -17,8 +17,36 @@ else
   SKILL_AGENT_BIN="${SKILL_AGENT_BIN:-skill-agent}"
 fi
 
+KEEP_WORKSPACE=0
+for arg in "$@"; do
+  case "${arg}" in
+    --keep-workspace)
+      KEEP_WORKSPACE=1
+      ;;
+    --help|-h)
+      cat <<'EOF'
+Usage: bash scripts/run_launch_demo.sh [--keep-workspace]
+
+Run the shortest local launch demo for the governed capability-gap loop.
+
+Options:
+  --keep-workspace   Preserve the temporary demo workspace and print follow-up
+                     inspection commands for operator-summary and run logs.
+EOF
+      exit 0
+      ;;
+    *)
+      printf 'Unknown argument: %s\n' "${arg}" >&2
+      exit 2
+      ;;
+  esac
+done
+
 DEMO_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/skill-agent-launch-demo.XXXXXX")"
 cleanup() {
+  if [[ "${KEEP_WORKSPACE}" == "1" ]]; then
+    return
+  fi
   rm -rf "${DEMO_ROOT}"
 }
 trap cleanup EXIT
@@ -41,7 +69,11 @@ step "1. Capability gap run"
   --skills-dir "${DEMO_SKILLS}" \
   --runs-dir "${DEMO_RUNS}"
 
-step "2. Candidate decision"
+step "2. Operator summary"
+"${SKILL_AGENT_BIN}" operator-summary \
+  --runs-dir "${DEMO_RUNS}"
+
+step "3. Candidate decision"
 CANDIDATE_ID="$("${PYTHON_BIN}" - "${DEMO_RUNS}" <<'PY'
 import json
 import sys
@@ -62,7 +94,7 @@ printf 'Candidate ID: %s\n' "${CANDIDATE_ID}"
   --skills-dir "${DEMO_SKILLS}" \
   --runs-dir "${DEMO_RUNS}"
 
-step "3. Boundary check"
+step "4. Boundary check"
 "${SKILL_AGENT_BIN}" candidate-decision "${CANDIDATE_ID}" \
   --skills-dir "${DEMO_SKILLS}" \
   --runs-dir "${DEMO_RUNS}" \
@@ -100,4 +132,12 @@ if not human_review_required:
     raise SystemExit("launch demo must stop at human review")
 PY
 
-printf '\nLaunch demo complete. Temporary evidence was removed with %s\n' "${DEMO_ROOT}"
+if [[ "${KEEP_WORKSPACE}" == "1" ]]; then
+  printf '\nLaunch demo complete. Demo workspace kept: %s\n' "${DEMO_ROOT}"
+  printf 'Inspect the front-door summary:\n'
+  printf '  %s operator-summary --runs-dir %s\n' "${SKILL_AGENT_BIN}" "${DEMO_RUNS}"
+  printf 'Inspect candidate proof:\n'
+  printf '  %s candidate-decision %s --runs-dir %s --skills-dir %s\n' "${SKILL_AGENT_BIN}" "${CANDIDATE_ID}" "${DEMO_RUNS}" "${DEMO_SKILLS}"
+else
+  printf '\nLaunch demo complete. Temporary evidence was removed with %s\n' "${DEMO_ROOT}"
+fi

@@ -32,6 +32,7 @@ from app.models import (
     SkillReceiptReport,
 )
 from app.registry import SkillRegistry
+from app.redaction import redact_data
 from app.skill_candidate_ledger import (
     candidate_review_queue_counts,
     candidate_review_queue_names,
@@ -41,32 +42,38 @@ from app.input_focus import candidate_input_requests
 
 
 def emit_run_json(result: AgentRunResult) -> None:
+    payload = {
+        "run_id": result.run_log.run_id,
+        "task_id": result.run_log.task_id,
+        "exit_code": result.exit_code,
+        "result_category": result.run_log.result_category,
+        "run_log_path": str(result.run_log_path),
+        "execution_summary": result.run_log.execution_summary.model_dump(mode="json"),
+        "decisions": result.run_log.capability_decisions,
+        "governor_decisions": [
+            decision.model_dump(mode="json")
+            for decision in result.run_log.governor_decisions
+        ],
+        "skill_requests": result.run_log.skill_requests,
+        "skill_repair_requests": result.run_log.skill_repair_requests,
+        "input_requests": [
+            request.model_dump(mode="json")
+            for request in result.run_log.input_requests
+        ],
+        "script_executions": [
+            execution.model_dump(mode="json")
+            for execution in result.run_log.script_executions
+        ],
+        "skills_loaded": [skill.model_dump(mode="json") for skill in result.run_log.skills_loaded],
+        "rejected_skills": result.run_log.rejected_skills,
+        "trace": result.run_log.trace,
+        "trace_events": [event.model_dump(mode="json") for event in result.run_log.trace_events],
+        "security_warnings": result.run_log.security_warnings,
+        "redactions_applied": result.run_log.redactions_applied,
+    }
     typer.echo(
         json.dumps(
-            {
-                "run_id": result.run_log.run_id,
-                "task_id": result.run_log.task_id,
-                "exit_code": result.exit_code,
-                "result_category": result.run_log.result_category,
-                "run_log_path": str(result.run_log_path),
-                "execution_summary": result.run_log.execution_summary.model_dump(mode="json"),
-                "decisions": result.run_log.capability_decisions,
-                "governor_decisions": [
-                    decision.model_dump(mode="json")
-                    for decision in result.run_log.governor_decisions
-                ],
-                "skill_requests": result.run_log.skill_requests,
-                "skill_repair_requests": result.run_log.skill_repair_requests,
-                "input_requests": [
-                    request.model_dump(mode="json")
-                    for request in result.run_log.input_requests
-                ],
-                "script_executions": [execution.model_dump(mode="json") for execution in result.run_log.script_executions],
-                "skills_loaded": [skill.model_dump(mode="json") for skill in result.run_log.skills_loaded],
-                "rejected_skills": result.run_log.rejected_skills,
-                "trace": result.run_log.trace,
-                "trace_events": [event.model_dump(mode="json") for event in result.run_log.trace_events],
-            },
+            redact_data(payload),
             indent=2,
             sort_keys=True,
         )
@@ -1481,6 +1488,7 @@ def emit_run_output(result: AgentRunResult) -> None:
         typer.echo(f"{decision['decision']} {selected or '-'} :: {decision['capability']}")
 
     _emit_safety_decisions(result.run_log.capability_decisions)
+    _emit_security_warnings(result.run_log.security_warnings)
     _emit_skill_requests(result.run_log.skill_requests)
     _emit_skill_repair_requests(result.run_log.skill_repair_requests)
     _emit_script_executions(result.run_log.script_executions)
@@ -1498,6 +1506,16 @@ def _emit_safety_decisions(decisions: Iterable[dict]) -> None:
         typer.echo(f"Capability: {decision['capability']}")
         typer.echo(f"Reason: {decision['reason']}")
         typer.echo(f"Approval required: {decision.get('requires_human_approval', False)}")
+
+
+def _emit_security_warnings(warnings: Iterable[str]) -> None:
+    items = list(dict.fromkeys(warnings))
+    if not items:
+        return
+    typer.echo("")
+    typer.echo("SECURITY")
+    for warning in items:
+        typer.echo(f"Warning: {warning}")
 
 
 def _emit_skill_requests(skill_requests: Iterable[dict]) -> None:
@@ -1540,6 +1558,7 @@ def _emit_script_executions(script_executions: Iterable[ScriptExecutionLog]) -> 
         if execution.failure_category:
             typer.echo(f"Failure category: {execution.failure_category}")
         typer.echo(f"Output validated: {execution.output_validated}")
+        typer.echo(f"Redactions applied: {str(execution.redactions_applied).lower()}")
         if execution.stdout:
             typer.echo(f"Stdout: {execution.stdout}")
         if execution.stderr:
@@ -1601,6 +1620,30 @@ def _emit_result(result: AgentRunResult) -> None:
     typer.echo(f"Loaded skills: {loaded_names}")
     typer.echo(f"Temporary skills: {temporary_names}")
     typer.echo(f"Run log: {result.run_log_path}")
+    _emit_run_next_action(result)
+
+
+def _emit_run_next_action(result: AgentRunResult) -> None:
+    if (
+        result.exit_code == 0
+        and not result.run_log.skill_requests
+        and not result.run_log.skill_repair_requests
+        and not result.run_log.input_requests
+    ):
+        return
+
+    runs_dir = result.run_log_path.parent
+    typer.echo("")
+    typer.echo("NEXT_ACTION")
+    typer.echo(f"Start with summary: skill-agent operator-summary --runs-dir {runs_dir}")
+    typer.echo(f"Explain this run: skill-agent explain {result.run_log_path}")
+    if result.run_log.input_requests:
+        typer.echo(f"Review open input: skill-agent input-requests --runs-dir {runs_dir}")
+    if result.run_log.skill_requests:
+        typer.echo(f"Review candidate evidence: skill-agent candidates --runs-dir {runs_dir}")
+    if result.run_log.skill_repair_requests:
+        typer.echo("Repair required: inspect the failure reasons above before approval.")
+    typer.echo("Boundary: no durable skill admission or stable routing happened automatically.")
 
 
 def _format_skill_names(skills: Iterable[LoadedSkillLog]) -> str:

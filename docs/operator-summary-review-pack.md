@@ -23,10 +23,10 @@ python3 -m venv .venv
 Run the launch demo:
 
 ```bash
-bash scripts/run_launch_demo.sh
+bash scripts/run_launch_demo.sh --keep-workspace
 ```
 
-For an interactive design-partner session, keep the demo workspace path printed
+For an interactive design-partner session, use the demo workspace path printed
 by the script and inspect the run evidence:
 
 ```bash

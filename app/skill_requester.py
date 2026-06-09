@@ -116,7 +116,10 @@ def _blocked_reason(governor_decision: GovernorDecision) -> str | None:
 
 
 def _request_id(task_id: str, capability: str) -> str:
-    digest = hashlib.sha1(f"{task_id}:{capability}".encode("utf-8")).hexdigest()[:10]
+    digest = hashlib.sha1(
+        f"{task_id}:{capability}".encode("utf-8"),
+        usedforsecurity=False,
+    ).hexdigest()[:10]
     return f"skillreq_{digest}"
 
 

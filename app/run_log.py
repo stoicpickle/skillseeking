@@ -5,6 +5,7 @@ import re
 from pathlib import Path
 
 from app.models import RunLog, new_default_run_id
+from app.redaction import REDACTION_NOTICE, redact_data
 
 
 def new_run_id() -> str:
@@ -22,8 +23,15 @@ def write_run_log(run_log: RunLog, runs_dir: Path) -> Path:
 def rewrite_run_log(path: Path, run_log: RunLog) -> Path:
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp_path = path.with_suffix(".tmp")
+    data = run_log.model_dump(mode="json")
+    redacted = redact_data(data)
+    if redacted != data:
+        redacted["redactions_applied"] = True
+        redacted["security_warnings"] = sorted(
+            {*redacted.get("security_warnings", []), REDACTION_NOTICE}
+        )
     tmp_path.write_text(
-        json.dumps(run_log.model_dump(mode="json"), indent=2, sort_keys=True) + "\n",
+        json.dumps(redacted, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
     )
     tmp_path.replace(path)
@@ -33,4 +41,3 @@ def rewrite_run_log(path: Path, run_log: RunLog) -> Path:
 def _filename_safe_run_id(run_id: str) -> str:
     safe = re.sub(r"[^A-Za-z0-9_-]", "-", run_id).strip("-")
     return safe or new_run_id()
-

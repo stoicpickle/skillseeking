@@ -76,6 +76,10 @@ def test_core_demo_temporary_skill(copied_seed_skills, tmp_path):
             "Loaded: True",
             "Temporary skills: argument-clustering",
             "Exit code: 0",
+            "NEXT_ACTION",
+            "Start with summary: skill-agent operator-summary --runs-dir",
+            "Review candidate evidence: skill-agent candidates --runs-dir",
+            "Boundary: no durable skill admission or stable routing happened automatically.",
         ],
     )
 
@@ -110,6 +114,11 @@ def test_core_demo_blocked_skill(copied_seed_skills, tmp_path):
             "Missing capability: detect contradictions",
             "Requested skill: detect-contradictions",
             "Exit code: 1",
+            "NEXT_ACTION",
+            "Start with summary: skill-agent operator-summary --runs-dir",
+            "Explain this run: skill-agent explain",
+            "Review candidate evidence: skill-agent candidates --runs-dir",
+            "Boundary: no durable skill admission or stable routing happened automatically.",
         ],
     )
     assert "DRAFTING_TEMP_SKILL" not in result.stdout

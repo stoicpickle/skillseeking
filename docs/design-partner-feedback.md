@@ -26,7 +26,7 @@ Use one short path for each partner:
 
 1. Install the repo locally.
 2. Read [Operator Summary Review Pack](operator-summary-review-pack.md).
-3. Run `bash scripts/run_launch_demo.sh`.
+3. Run `bash scripts/run_launch_demo.sh --keep-workspace`.
 4. Run one contained missing-skill task through `skill-agent` if the launch demo
    is not enough.
 5. Inspect `operator-summary` first, then use the run log, `explain`, candidate

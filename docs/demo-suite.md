@@ -18,7 +18,7 @@ For another pass through the suite, create a new `DEMO_DIR`.
 Command:
 
 ```bash
-bash scripts/run_launch_demo.sh
+bash scripts/run_launch_demo.sh --keep-workspace
 ```
 
 Expected status: `0`
