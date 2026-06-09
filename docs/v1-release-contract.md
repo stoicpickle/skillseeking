@@ -128,7 +128,7 @@ git diff --check
 .venv/bin/skill-agent eval --suite evals/v1_release.jsonl --skills-dir skills --runs-dir runs/evals
 ```
 
-CodeRabbit or an equivalent external review pass should run once for release-relevant changes. Valid correctness, safety, data-loss, contract, and test-confidence findings should be fixed. Preference-only findings should not block a locally green v1 slice unless they reveal real operator confusion.
+An external/manual review pass should run once for release-relevant changes. Valid correctness, safety, data-loss, contract, and test-confidence findings should be fixed. Preference-only findings should not block a locally green v1 slice unless they reveal real operator confusion.
 
 ## Version And Release Artifacts
 

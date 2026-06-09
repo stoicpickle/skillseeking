@@ -62,7 +62,7 @@ git diff --check
 .venv/bin/skill-agent eval --suite evals/v1_release.jsonl --skills-dir skills --runs-dir runs/evals
 ```
 
-Release-relevant changes should also receive one scoped CodeRabbit review or a clearly recorded bounded-stall fallback with local proof.
+Release-relevant changes should also receive one scoped external/manual review or a clearly recorded bounded-stall fallback with local proof.
 
 ## Release Gate Result
 

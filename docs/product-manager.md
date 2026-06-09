@@ -92,7 +92,7 @@ Behavior slices:
 - capability-gap v0 eval
 - lifecycle eval when lifecycle evidence changes
 - agent diagnostic eval when routing, safety, lifecycle, repair, or input-focus behavior changes
-- CodeRabbit review before push when the change is nontrivial or the user asks for review
+- External/manual review before push when the change is nontrivial or the user asks for review
 
 ## Review Questions
 

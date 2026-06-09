@@ -143,7 +143,7 @@ The repo is ready for local testing and iteration of the current CLI prototype w
 
 ### Readiness proof state — 2026-06-03
 
-Status: passed for local validation; the current CLI prototype is ready for local testing and iteration inside the documented boundaries. CodeRabbit review has repeatedly stalled after `tools_completed` on recent slices, so local validation and manual review are the current reliable proof path.
+Status: passed for local validation; the current CLI prototype is ready for local testing and iteration inside the documented boundaries. Bounded external review has occasionally stalled after tool execution on recent slices, so local validation and manual review are the current reliable proof path.
 
 | Check | Command | Result | Notes |
 | --- | --- | --- | --- |
@@ -154,7 +154,7 @@ Status: passed for local validation; the current CLI prototype is ready for loca
 | v0 eval | `.venv/bin/skill-agent eval --suite evals/capgap_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `20/20` passed, task pass rate `1.0`, trace completeness `20 / 20`; report: `runs/evals/eval_report_20260603_154814_748619.json`. |
 | Lifecycle eval | `.venv/bin/skill-agent eval --suite evals/skill_lifecycle_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `4/4` passed, task pass rate `1.0`, trace completeness `4 / 4`; report: `runs/evals/eval_report_20260603_154806_645953.json`. |
 | Agent diagnostic eval | `.venv/bin/skill-agent eval --suite evals/agent_diagnostic_v0.jsonl --skills-dir skills --runs-dir runs/evals` | passed | `16/16` passed, task pass rate `1.0`, trace completeness `16 / 16`; report: `runs/evals/eval_report_20260603_154814_636176.json`. |
-| CodeRabbit review | `coderabbit review --agent -t uncommitted --dir <repo-root>` | stalled | Bounded review reached `tools_completed`, entered `reviewing`, then remained heartbeat-only; the process was terminated. No findings were returned. |
+| External review | Scoped review pass | stalled | Bounded review reached tool completion, entered review, then remained heartbeat-only; the process was terminated. No findings were returned. |
 
 ### Baseline proof state — 2026-06-01
 

@@ -62,7 +62,7 @@ Observed results:
 - Direct v1 release eval: `11/11`.
 - Compile app: passed.
 - `git diff --check`: passed.
-- CodeRabbit scoped review for the final v1 review-fix patch: `findings: 0`.
+- Scoped external review for the final v1 review-fix patch: `findings: 0`.
 - Fresh private tag checkout, editable install, and `REQUIRE_V1_TAG=1 bash scripts/v1_smoke.sh`: passed on `e006ca815a5eba2e33b130386d5106fa5d7fb191`.
 
 ## Known Omissions
