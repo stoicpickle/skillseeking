@@ -26,4 +26,5 @@ def test_cli_doctor_reports_passing_cli_surface(repo_root):
     check_names = {check["name"] for check in data["checks"]}
     assert "banner renders compactly" in check_names
     assert "blocked missing skill reports issue" in check_names
+    assert "top-level help is grouped by operator path" in check_names
     assert "operator summary json is parseable" in check_names

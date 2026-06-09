@@ -124,9 +124,18 @@ def run_cli_doctor(
             ),
         ),
         Check(
-            name="top-level help is available",
+            name="top-level help is grouped by operator path",
             args=["--help"],
-            stdout_contains=("run", "eval", "operator-summary"),
+            stdout_contains=(
+                "Start here",
+                "Operator decision review",
+                "Core task loop",
+                "Human input and approvals",
+                "Candidate evidence",
+                "Managed-prefix local writes",
+                "Eval and diagnostics",
+                "operator-summary",
+            ),
         ),
         Check(
             name="existing-skill run succeeds",

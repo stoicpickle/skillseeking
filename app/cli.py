@@ -92,7 +92,28 @@ from app.registry import SkillRegistry
 from app.redaction import redact_data
 
 
-app = typer.Typer(no_args_is_help=True)
+CLI_HELP = (
+    "Governed local skill acquisition CLI. Start with run, operator-summary, "
+    "candidate-decision, or v1-local-use before drilling into raw evidence."
+)
+
+PANEL_START_HERE = "Start here"
+PANEL_CORE = "Core task loop"
+PANEL_OPERATOR = "Operator decision review"
+PANEL_CANDIDATE = "Candidate evidence"
+PANEL_HUMAN = "Human input and approvals"
+PANEL_MANAGED = "Managed-prefix local writes"
+PANEL_EVAL = "Eval and diagnostics"
+
+
+app = typer.Typer(
+    no_args_is_help=True,
+    help=CLI_HELP,
+    epilog=(
+        "Recommended reviewer path: run the launch demo, inspect operator-summary, "
+        "then use candidate-decision or explain only when more proof is needed."
+    ),
+)
 
 
 V1_LOCAL_USE_REPORT = {
@@ -331,7 +352,12 @@ FEEDBACK_SESSION_APPEND_EXCLUDED_AUTHORITY = [
 ]
 
 
-@app.command("banner")
+@app.command(
+    "banner",
+    help="Print the compact human-facing CLI banner.",
+    short_help="Print the CLI banner.",
+    rich_help_panel=PANEL_START_HERE,
+)
 def banner(
     color: Annotated[
         bool,
@@ -551,7 +577,12 @@ def _build_feedback_log_summary(feedback_log: Path) -> dict[str, object]:
     }
 
 
-@app.command("v1-local-use")
+@app.command(
+    "v1-local-use",
+    help="Print the managed-prefix-first local-use checklist and unchanged authority boundary.",
+    short_help="Show the v1 local-use checklist.",
+    rich_help_panel=PANEL_START_HERE,
+)
 def v1_local_use(
     json_output: Annotated[
         bool,
@@ -589,7 +620,12 @@ def v1_local_use(
         typer.echo(f"- {item}")
 
 
-@app.command("feedback-session-template")
+@app.command(
+    "feedback-session-template",
+    help="Print the read-only reviewer feedback session template.",
+    short_help="Print reviewer feedback template.",
+    rich_help_panel=PANEL_OPERATOR,
+)
 def feedback_session_template(
     json_output: Annotated[
         bool,
@@ -639,7 +675,12 @@ def feedback_session_template(
         typer.echo(f"- {item}")
 
 
-@app.command("feedback-session-append")
+@app.command(
+    "feedback-session-append",
+    help="Preview or append one reviewer feedback session without granting authority.",
+    short_help="Capture reviewer feedback.",
+    rich_help_panel=PANEL_OPERATOR,
+)
 def feedback_session_append(
     feedback_log: Annotated[
         Path,
@@ -829,7 +870,12 @@ def feedback_session_append(
         typer.echo(f"- {item}")
 
 
-@app.command("feedback-log-summary")
+@app.command(
+    "feedback-log-summary",
+    help="Summarize recorded reviewer feedback sessions and readiness for manual synthesis.",
+    short_help="Summarize reviewer feedback.",
+    rich_help_panel=PANEL_OPERATOR,
+)
 def feedback_log_summary(
     feedback_log: Annotated[
         Path,
@@ -881,7 +927,12 @@ def feedback_log_summary(
         typer.echo(f"- {item}")
 
 
-@app.command("new-authority-readiness")
+@app.command(
+    "new-authority-readiness",
+    help="Report why new-authority planning is ready while enablement remains disabled.",
+    short_help="Explain disabled new authority.",
+    rich_help_panel=PANEL_START_HERE,
+)
 def new_authority_readiness(
     json_output: Annotated[
         bool,
@@ -928,7 +979,11 @@ def new_authority_readiness(
         typer.echo(f"- {item}")
 
 
-@app.command()
+@app.command(
+    help="Run a task through local skill routing and write run evidence.",
+    short_help="Run a task through local skills.",
+    rich_help_panel=PANEL_CORE,
+)
 def run(
     task: Annotated[str, typer.Argument(help="Task text to route through local skills.")],
     skills_dir: Annotated[Path, typer.Option(help="Local skills directory.")] = Path("skills"),
@@ -967,7 +1022,11 @@ def run(
         raise typer.Exit(result.exit_code)
 
 
-@app.command()
+@app.command(
+    help="List accepted and rejected local skills from the durable registry.",
+    short_help="List local skills.",
+    rich_help_panel=PANEL_CORE,
+)
 def registry(
     skills_dir: Annotated[Path, typer.Option(help="Local skills directory.")] = Path("skills"),
     json_output: Annotated[
@@ -985,7 +1044,11 @@ def registry(
         typer.echo(f"REJECTED {rejection.path}: {'; '.join(rejection.reasons)}")
 
 
-@app.command()
+@app.command(
+    help="Summarize local skill library, run evidence, input focus, and candidate queues.",
+    short_help="Summarize library health.",
+    rich_help_panel=PANEL_OPERATOR,
+)
 def health(
     skills_dir: Annotated[Path, typer.Option(help="Local skills directory.")] = Path("skills"),
     runs_dir: Annotated[Path, typer.Option(help="Run log directory.")] = Path("runs"),
@@ -1045,7 +1108,12 @@ def health(
         typer.echo(f"{issue.severity} {issue.code} {skill}: {issue.message}")
 
 
-@app.command("input-requests")
+@app.command(
+    "input-requests",
+    help="List active human input requests from run and candidate evidence.",
+    short_help="List active input requests.",
+    rich_help_panel=PANEL_HUMAN,
+)
 def input_requests(
     runs_dir: Annotated[Path, typer.Option(help="Run log directory to scan for input requests.")] = Path("runs"),
     json_output: Annotated[
@@ -1113,7 +1181,12 @@ def input_requests(
                 typer.echo(f"  {command}")
 
 
-@app.command("resolve-input-request")
+@app.command(
+    "resolve-input-request",
+    help="Dry-run or append an input-request resolution to the append-only ledger.",
+    short_help="Resolve a human input request.",
+    rich_help_panel=PANEL_HUMAN,
+)
 def resolve_input_request(
     input_request_id: Annotated[str, typer.Argument(help="Input request ID from skill-agent input-requests.")],
     runs_dir: Annotated[Path, typer.Option(help="Run log directory to scan for input requests.")] = Path("runs"),
@@ -1168,7 +1241,11 @@ def resolve_input_request(
         typer.echo(f"- {step}")
 
 
-@app.command()
+@app.command(
+    help="List skill candidate ledger records and their review queues.",
+    short_help="List skill candidates.",
+    rich_help_panel=PANEL_CANDIDATE,
+)
 def candidates(
     runs_dir: Annotated[Path, typer.Option(help="Run log directory containing the skill candidate ledger.")] = Path("runs"),
     json_output: Annotated[
@@ -1188,7 +1265,12 @@ def candidates(
         emit_candidates_output(ledger, path)
 
 
-@app.command("candidate-usefulness")
+@app.command(
+    "candidate-usefulness",
+    help="Summarize temporary-skill usefulness evidence for one candidate.",
+    short_help="Show candidate usefulness.",
+    rich_help_panel=PANEL_CANDIDATE,
+)
 def candidate_usefulness(
     candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to inspect for temporary-skill usefulness evidence.")],
     runs_dir: Annotated[Path, typer.Option(help="Run log directory containing the skill candidate ledger.")] = Path("runs"),
@@ -1224,7 +1306,12 @@ def candidate_usefulness(
         emit_candidate_usefulness_output(report)
 
 
-@app.command("skill-receipt")
+@app.command(
+    "skill-receipt",
+    help="Build a proof-carrying source, utility, containment, and reversibility receipt.",
+    short_help="Show candidate receipt.",
+    rich_help_panel=PANEL_CANDIDATE,
+)
 def skill_receipt(
     candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to summarize as a proof-carrying receipt.")],
     runs_dir: Annotated[Path, typer.Option(help="Run log directory containing the skill candidate ledger.")] = Path("runs"),
@@ -1284,7 +1371,12 @@ def skill_receipt(
         emit_skill_receipt_output(report)
 
 
-@app.command("stable-readiness")
+@app.command(
+    "stable-readiness",
+    help="Review candidate-to-stable evidence while keeping stable routing disabled.",
+    short_help="Review stable-readiness evidence.",
+    rich_help_panel=PANEL_CANDIDATE,
+)
 def stable_readiness(
     candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to inspect for candidate-to-stable readiness evidence.")],
     runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate and resolution ledgers.")] = Path("runs"),
@@ -1325,7 +1417,12 @@ def stable_readiness(
         emit_stable_readiness_output(report)
 
 
-@app.command("candidate-decision")
+@app.command(
+    "candidate-decision",
+    help="Compress candidate evidence into one advisory next human decision.",
+    short_help="Summarize next candidate decision.",
+    rich_help_panel=PANEL_OPERATOR,
+)
 def candidate_decision(
     candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to summarize into one advisory next decision.")],
     runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate and resolution ledgers.")] = Path("runs"),
@@ -1366,7 +1463,12 @@ def candidate_decision(
         emit_candidate_decision_output(report)
 
 
-@app.command("negative-evidence")
+@app.command(
+    "negative-evidence",
+    help="Surface blocked, rejected, deferred, duplicate, and repair evidence without rewriting history.",
+    short_help="Show negative evidence.",
+    rich_help_panel=PANEL_CANDIDATE,
+)
 def negative_evidence(
     runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate and resolution ledgers.")] = Path("runs"),
     candidate_id: Annotated[
@@ -1388,7 +1490,12 @@ def negative_evidence(
         emit_negative_evidence_output(report)
 
 
-@app.command("operator-summary")
+@app.command(
+    "operator-summary",
+    help="Show prioritized operator decisions before raw evidence sections.",
+    short_help="Show prioritized operator decisions.",
+    rich_help_panel=PANEL_START_HERE,
+)
 def operator_summary(
     runs_dir: Annotated[
         Path,
@@ -1406,7 +1513,12 @@ def operator_summary(
         emit_operator_summary_output(report)
 
 
-@app.command("evidence-checkpoint")
+@app.command(
+    "evidence-checkpoint",
+    help="Append or verify a local hash-chain over run evidence.",
+    short_help="Checkpoint or verify evidence.",
+    rich_help_panel=PANEL_CANDIDATE,
+)
 def evidence_checkpoint(
     runs_dir: Annotated[Path, typer.Option(help="Run directory containing evidence to checkpoint.")] = Path("runs"),
     dry_run: Annotated[
@@ -1444,7 +1556,12 @@ def evidence_checkpoint(
         emit_evidence_checkpoint_output(report)
 
 
-@app.command("evidence-governor")
+@app.command(
+    "evidence-governor",
+    help="Produce a non-steering recommendation from existing candidate proof surfaces.",
+    short_help="Recommend from evidence only.",
+    rich_help_panel=PANEL_CANDIDATE,
+)
 def evidence_governor(
     candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to evaluate with the non-steering evidence governor.")],
     runs_dir: Annotated[Path, typer.Option(help="Run directory containing candidate, resolution, and checkpoint evidence.")] = Path("runs"),
@@ -1504,7 +1621,12 @@ def evidence_governor(
         emit_evidence_governor_output(report)
 
 
-@app.command("shadow-activation-plan")
+@app.command(
+    "shadow-activation-plan",
+    help="Plan managed-prefix shadow activation without creating files or switching profiles.",
+    short_help="Plan shadow activation.",
+    rich_help_panel=PANEL_MANAGED,
+)
 def shadow_activation_plan(
     candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to plan for managed shadow activation.")],
     runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate and resolution ledgers.")] = Path("runs"),
@@ -1567,7 +1689,12 @@ def shadow_activation_plan(
         emit_shadow_activation_plan_output(report)
 
 
-@app.command("shadow-rollback-plan")
+@app.command(
+    "shadow-rollback-plan",
+    help="Verify rollback readiness for an existing managed-prefix profile pointer.",
+    short_help="Plan shadow rollback.",
+    rich_help_panel=PANEL_MANAGED,
+)
 def shadow_rollback_plan(
     candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to verify managed-prefix rollback readiness.")],
     runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate and resolution ledgers.")] = Path("runs"),
@@ -1630,7 +1757,12 @@ def shadow_rollback_plan(
         emit_shadow_rollback_plan_output(report)
 
 
-@app.command("shadow-activation-acceptance")
+@app.command(
+    "shadow-activation-acceptance",
+    help="Exercise managed-prefix activation mechanics inside a run-scoped acceptance prefix.",
+    short_help="Prepare activation acceptance.",
+    rich_help_panel=PANEL_MANAGED,
+)
 def shadow_activation_acceptance(
     candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to exercise managed-prefix activation mechanics in a run-scoped acceptance sandbox.")],
     runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate and resolution ledgers.")] = Path("runs"),
@@ -1709,7 +1841,12 @@ def shadow_activation_acceptance(
         emit_shadow_activation_acceptance_output(report)
 
 
-@app.command("shadow-write-gate")
+@app.command(
+    "shadow-write-gate",
+    help="Verify human-gated managed-prefix write readiness without writing.",
+    short_help="Verify managed write gate.",
+    rich_help_panel=PANEL_MANAGED,
+)
 def shadow_write_gate(
     candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to verify human-gated managed-prefix write readiness without writing.")],
     runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate and resolution ledgers.")] = Path("runs"),
@@ -1788,7 +1925,12 @@ def shadow_write_gate(
         emit_shadow_write_gate_output(report)
 
 
-@app.command("shadow-managed-write")
+@app.command(
+    "shadow-managed-write",
+    help="Preflight or execute the digest-bound human-approved managed-prefix write lane.",
+    short_help="Preflight managed-prefix write.",
+    rich_help_panel=PANEL_MANAGED,
+)
 def shadow_managed_write(
     candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to preflight for human-approved managed-prefix writing.")],
     runs_dir: Annotated[Path, typer.Option(help="Run log directory containing candidate, resolution, checkpoint, and acceptance evidence.")] = Path("runs"),
@@ -1907,7 +2049,12 @@ def shadow_managed_write(
         emit_shadow_managed_write_output(report)
 
 
-@app.command("promote-candidate")
+@app.command(
+    "promote-candidate",
+    help="Record human approval for candidate status without durable skill admission.",
+    short_help="Approve candidate status.",
+    rich_help_panel=PANEL_HUMAN,
+)
 def promote_candidate(
     candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to approve for candidate status.")],
     runs_dir: Annotated[Path, typer.Option(help="Run log directory containing the skill candidate ledger.")] = Path("runs"),
@@ -1941,7 +2088,12 @@ def promote_candidate(
         typer.echo(f"Promotion approved by: {entry.promotion_approved_by}")
 
 
-@app.command("admission-plan")
+@app.command(
+    "admission-plan",
+    help="Inspect durable-admission readiness evidence without copying or installing skills.",
+    short_help="Inspect admission readiness.",
+    rich_help_panel=PANEL_CANDIDATE,
+)
 def admission_plan(
     candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to inspect.")],
     runs_dir: Annotated[Path, typer.Option(help="Run log directory containing the skill candidate ledger.")] = Path("runs"),
@@ -1967,7 +2119,12 @@ def admission_plan(
         emit_admission_plan_output(report)
 
 
-@app.command("admit-candidate")
+@app.command(
+    "admit-candidate",
+    help="Preview durable admission write evidence; write mode remains intentionally unavailable.",
+    short_help="Preview durable admission.",
+    rich_help_panel=PANEL_HUMAN,
+)
 def admit_candidate(
     candidate_id: Annotated[str, typer.Argument(help="Skill Candidate Ledger candidate ID to preview for durable admission.")],
     runs_dir: Annotated[Path, typer.Option(help="Run log directory containing the skill candidate ledger.")] = Path("runs"),
@@ -2065,7 +2222,12 @@ def admit_candidate(
         emit_durable_admission_preview_output(report)
 
 
-@app.command("eval")
+@app.command(
+    "eval",
+    help="Run a JSONL eval suite through the real skill-agent loop and write reports.",
+    short_help="Run an eval suite.",
+    rich_help_panel=PANEL_EVAL,
+)
 def eval_command(
     suite: Annotated[
         Path,
@@ -2141,7 +2303,11 @@ def eval_command(
         raise typer.Exit(1)
 
 
-@app.command()
+@app.command(
+    help="Explain one JSON run log and optionally include matching candidate evidence.",
+    short_help="Explain one run log.",
+    rich_help_panel=PANEL_EVAL,
+)
 def explain(
     run_log: Annotated[
         Path,
